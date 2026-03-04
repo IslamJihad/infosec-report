@@ -17,8 +17,8 @@ export async function POST(req: Request) {
     }
 
     const apiKey = settings.aiApiKey;
-    const geminiModels = ['gemini-2.5-flash-preview-05-20', 'gemini-2.5-flash-lite-preview-06-17'];
-    const modelName = (settings.aiModel && geminiModels.includes(settings.aiModel)) ? settings.aiModel : 'gemini-2.5-flash-preview-05-20';
+    const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
+    const modelName = (settings.aiModel && geminiModels.includes(settings.aiModel)) ? settings.aiModel : 'gemini-2.5-flash';
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: modelName });

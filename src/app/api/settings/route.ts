@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 
-const GEMINI_MODELS = ['gemini-2.5-flash-preview-05-20', 'gemini-2.5-flash-lite-preview-06-17'];
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
 
 export async function GET() {
   try {
@@ -11,10 +11,10 @@ export async function GET() {
         data: { id: 'singleton' },
       });
     }
-    // Migrate old Perplexity model values to Gemini default
+    // Migrate old model values to Gemini default
     const response = { ...settings } as Record<string, unknown>;
     if (settings.aiModel && !GEMINI_MODELS.includes(settings.aiModel)) {
-      response.aiModel = 'gemini-2.5-flash-preview-05-20';
+      response.aiModel = 'gemini-2.5-flash';
     }
     return NextResponse.json(response);
   } catch (error) {

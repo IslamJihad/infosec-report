@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
     aiApiKey: '',
-    aiModel: 'gemini-2.5-flash-preview-05-20',
+    aiModel: 'gemini-2.5-flash',
     defaultOrgName: '',
     defaultAuthor: '',
   });
@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const [showKey, setShowKey] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  const geminiModels = ['gemini-2.5-flash-preview-05-20', 'gemini-2.5-flash-lite-preview-06-17'];
+  const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
 
   useEffect(() => {
     async function load() {
@@ -25,7 +25,7 @@ export default function SettingsPage() {
         const data = await fetchSettings();
         // Migrate old Perplexity model values to Gemini default
         if (data.aiModel && !geminiModels.includes(data.aiModel)) {
-          data.aiModel = 'gemini-2.5-flash-preview-05-20';
+          data.aiModel = 'gemini-2.5-flash';
         }
         setSettings(data);
       } catch (e) {
@@ -58,7 +58,7 @@ export default function SettingsPage() {
     }
     setTestResult('⏳ جاري الاختبار...');
     try {
-      const modelToTest = geminiModels.includes(settings.aiModel) ? settings.aiModel : 'gemini-2.5-flash-preview-05-20';
+      const modelToTest = geminiModels.includes(settings.aiModel) ? settings.aiModel : 'gemini-2.5-flash';
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelToTest}:generateContent?key=${settings.aiApiKey}`,
         {
@@ -144,8 +144,9 @@ export default function SettingsPage() {
                 onChange={(e) => setSettings({ ...settings, aiModel: e.target.value })}
                 className="border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] bg-white w-full hover:border-purple-200 transition-all duration-200"
               >
-                <option value="gemini-2.5-flash-preview-05-20">Gemini 2.5 Flash (5 RPM - متقدم)</option>
-                <option value="gemini-2.5-flash-lite-preview-06-17">Gemini 2.5 Flash Lite (10 RPM - أسرع)</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (5 RPM - متقدم)</option>
+                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (10 RPM - أسرع)</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash (الأحدث)</option>
               </select>
             </div>
 
