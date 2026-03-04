@@ -53,40 +53,40 @@ export default function AIReviewModal({ report, isOpen, onClose }: Props) {
 
   function renderMarkdown(text: string) {
     return text
-      .replace(/^## (.+)$/gm, '<h3 class="text-xs font-extrabold text-purple-900 mt-3.5 mb-1.5 pb-1 border-b-2 border-purple-200">$1</h3>')
-      .replace(/^### (.+)$/gm, '<h4 class="text-[11px] font-extrabold text-navy-950 mt-2 mb-1">$1</h4>')
+      .replace(/^## (.+)$/gm, '<h3 class="text-base font-extrabold text-purple-900 mt-4 mb-2 pb-1.5 border-b-2 border-purple-200">$1</h3>')
+      .replace(/^### (.+)$/gm, '<h4 class="text-sm font-extrabold text-navy-950 mt-3 mb-1.5">$1</h4>')
       .replace(/\*\*(.+?)\*\*/g, '<strong class="text-navy-950">$1</strong>')
-      .replace(/^- (.+)$/gm, '<div class="flex gap-1.5 my-0.5 text-[11px]"><span class="text-purple-900 flex-shrink-0">•</span><span>$1</span></div>')
-      .replace(/^\d+\. (.+)$/gm, '<div class="flex gap-1.5 my-0.5 text-[11px]"><span class="text-purple-900 font-extrabold flex-shrink-0">›</span><span>$1</span></div>')
-      .replace(/`(.+?)`/g, '<code class="bg-purple-50 px-1 py-px rounded text-[10px] text-purple-900">$1</code>')
+      .replace(/^- (.+)$/gm, '<div class="flex gap-2 my-1 text-sm"><span class="text-purple-900 flex-shrink-0">•</span><span>$1</span></div>')
+      .replace(/^\d+\. (.+)$/gm, '<div class="flex gap-2 my-1 text-sm"><span class="text-purple-900 font-extrabold flex-shrink-0">›</span><span>$1</span></div>')
+      .replace(/`(.+?)`/g, '<code class="bg-purple-50 px-1.5 py-0.5 rounded text-xs text-purple-900">$1</code>')
       .replace(/\n\n/g, '<br/>');
   }
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-6"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-xl w-full max-w-[700px] max-h-[86vh] overflow-hidden flex flex-col shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+      <div className="bg-white rounded-2xl w-full max-w-[750px] max-h-[86vh] overflow-hidden flex flex-col shadow-[0_25px_65px_rgba(0,0,0,0.4)]">
         {/* Header */}
-        <div className="bg-gradient-to-l from-[#1a237e] to-[#4a148c] text-white px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🤖</span>
+        <div className="bg-gradient-to-l from-[#1a237e] to-[#4a148c] text-white px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🤖</span>
             <div>
-              <h3 className="text-[13px] font-[800]">المراجعة الذكية – Gemini AI</h3>
-              <p className="text-[9px] opacity-65 mt-px">مدير أمن معلومات افتراضي</p>
+              <h3 className="text-lg font-[800]">المراجعة الذكية – Gemini AI</h3>
+              <p className="text-xs opacity-60 mt-0.5">مدير أمن معلومات افتراضي</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="bg-white/15 border-none text-white w-[26px] h-[26px] rounded-full cursor-pointer text-sm leading-none hover:bg-white/25 transition-colors"
+            className="bg-white/15 border-none text-white w-8 h-8 rounded-full cursor-pointer text-base leading-none hover:bg-white/25 transition-colors"
           >
             ×
           </button>
         </div>
 
         {/* Review types */}
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex gap-1.5 flex-wrap">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex gap-2.5 flex-wrap">
           {[
             { type: 'full', icon: '🔍', label: 'مراجعة شاملة' },
             { type: 'exec', icon: '👔', label: 'منظور الإدارة' },
@@ -97,7 +97,7 @@ export default function AIReviewModal({ report, isOpen, onClose }: Props) {
               key={btn.type}
               onClick={() => handleReview(btn.type)}
               disabled={loading}
-              className="bg-white border-[1.5px] border-border rounded-md px-3 py-1.5 cursor-pointer font-[Cairo] text-[11px] font-bold text-navy-800 transition-colors hover:bg-navy-100 hover:border-navy-800 disabled:opacity-50"
+              className="bg-white border-[1.5px] border-border rounded-xl px-4 py-2.5 cursor-pointer text-sm font-bold text-navy-800 transition-all duration-200 hover:bg-navy-100 hover:border-navy-600 hover:shadow-sm disabled:opacity-50"
             >
               {btn.icon} {btn.label}
             </button>
@@ -105,40 +105,40 @@ export default function AIReviewModal({ report, isOpen, onClose }: Props) {
         </div>
 
         {/* Response area */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 text-xs leading-[2] text-text-primary">
+        <div className="flex-1 overflow-y-auto px-6 py-5 text-sm leading-[1.9] text-text-primary">
           {loading ? (
-            <div className="text-center py-8">
-              <div className="text-[26px] animate-spin inline-block">⚙️</div>
-              <p className="text-purple-900 mt-2 font-bold">AI يحلل البيانات...</p>
+            <div className="text-center py-12">
+              <div className="text-4xl animate-spin inline-block">⚙️</div>
+              <p className="text-purple-900 mt-3 font-bold text-base">AI يحلل البيانات...</p>
             </div>
           ) : error ? (
-            <div className="text-center py-5 text-danger-500">
-              <div className="text-2xl">⚠️</div>
-              <p className="mt-2">{error}</p>
+            <div className="text-center py-8 text-danger-500">
+              <div className="text-3xl">⚠️</div>
+              <p className="mt-2 text-base">{error}</p>
             </div>
           ) : content ? (
             <div dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
           ) : (
-            <div className="text-center text-gray-400 py-8">
-              <div className="text-3xl mb-2">🤖</div>
-              <p>اختر نوع المراجعة للبدء</p>
+            <div className="text-center text-gray-400 py-12">
+              <div className="text-4xl mb-3">🤖</div>
+              <p className="text-base">اختر نوع المراجعة للبدء</p>
             </div>
           )}
         </div>
 
         {/* Follow-up input */}
-        <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2 bg-gray-50">
+        <div className="px-6 py-4 border-t border-gray-200 flex gap-2.5 bg-gray-50">
           <input
             value={followUpQ}
             onChange={(e) => setFollowUpQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleFollowUp(); }}
             placeholder="سؤال متابع..."
-            className="flex-1 border-[1.5px] border-border rounded-md py-1.5 px-2.5 font-[Cairo] text-[11px] outline-none focus:border-navy-800"
+            className="flex-1 border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] hover:border-purple-200 transition-all duration-200"
           />
           <button
             onClick={handleFollowUp}
             disabled={loading || !followUpQ.trim()}
-            className="bg-purple-900 text-white border-none rounded-md py-1.5 px-3.5 cursor-pointer font-[Cairo] text-[11px] font-bold hover:bg-purple-950 disabled:opacity-50 transition-colors"
+            className="bg-gradient-to-l from-purple-800 to-purple-900 text-white border-none rounded-xl py-2.5 px-5 cursor-pointer text-sm font-bold hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 transition-all duration-200 shadow-sm"
           >
             إرسال
           </button>
