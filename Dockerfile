@@ -33,16 +33,20 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy built assets from builder
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/package-lock.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
+# Copy standalone server (includes traced node_modules + server.js)
+COPY --from=builder /app/.next/standalone ./
+
+# Copy static assets that standalone server does NOT bundle
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
+
+# Copy Prisma files for runtime migrations
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/src/generated ./src/generated
-COPY --from=builder /app/next.config.ts ./
+
+# Install Prisma CLI for runtime database migrations
+RUN npm install --no-save prisma@7
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
@@ -50,7 +54,7 @@ RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 # Set DATABASE_URL to persistent volume path
 ENV DATABASE_URL="file:/app/data/infosec.db"
 
-# Run migrations on startup, then start the app
+# Copy entrypoint
 COPY --from=builder /app/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
