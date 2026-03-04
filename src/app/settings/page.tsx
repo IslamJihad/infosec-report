@@ -58,8 +58,9 @@ export default function SettingsPage() {
     }
     setTestResult('⏳ جاري الاختبار...');
     try {
+      const modelToTest = geminiModels.includes(settings.aiModel) ? settings.aiModel : 'gemini-2.0-flash';
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${settings.aiModel || 'gemini-2.0-flash'}:generateContent?key=${settings.aiApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelToTest}:generateContent?key=${settings.aiApiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
