@@ -73,7 +73,7 @@ export default function AIReviewModal({ report, isOpen, onClose }: Props) {
           <div className="flex items-center gap-2">
             <span className="text-xl">🤖</span>
             <div>
-              <h3 className="text-[13px] font-[800]">المراجعة الذكية – Perplexity AI</h3>
+              <h3 className="text-[13px] font-[800]">المراجعة الذكية – Gemini AI</h3>
               <p className="text-[9px] opacity-65 mt-px">مدير أمن معلومات افتراضي</p>
             </div>
           </div>

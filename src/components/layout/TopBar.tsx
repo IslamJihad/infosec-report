@@ -14,25 +14,25 @@ export default function TopBar({ onPreview, onAIReview }: TopBarProps) {
   const title = NAV_ITEMS[currentStep]?.label || '';
 
   return (
-    <div className="bg-white border-b border-border py-2.5 px-5 flex items-center justify-between sticky top-0 z-40 shadow-[0_1px_6px_rgba(0,0,0,0.07)]">
-      <h1 className="text-sm font-[800] text-navy-950">{title}</h1>
+    <div className="bg-white/90 backdrop-blur-lg border-b border-border py-3.5 px-6 flex items-center justify-between sticky top-0 z-40 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+      <h1 className="text-lg font-[800] text-navy-950">{title}</h1>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {/* Save status */}
-        <span className="text-[9px] text-text-muted ml-3">
+        <span className="text-xs text-text-muted ml-3">
           {isSaving ? (
-            <span className="flex items-center gap-1">
-              <span className="animate-spin text-xs">⏳</span> جاري الحفظ...
+            <span className="flex items-center gap-1.5">
+              <span className="animate-spin text-sm">⏳</span> جاري الحفظ...
             </span>
           ) : lastSaved ? (
-            <span className="text-success-700">✓ تم الحفظ</span>
+            <span className="text-success-700 font-semibold">✓ تم الحفظ</span>
           ) : null}
         </span>
 
         <button
           onClick={() => setStep(currentStep - 1)}
           disabled={currentStep === 0}
-          className="py-1.5 px-4 rounded-[7px] border border-border bg-white text-navy-800 font-[Cairo] text-[11px] font-bold transition-colors hover:bg-navy-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          className="py-2 px-5 rounded-xl border border-border bg-white text-navy-800 text-sm font-bold transition-all duration-200 hover:bg-navy-50 hover:shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
         >
           → السابق
         </button>
@@ -40,21 +40,21 @@ export default function TopBar({ onPreview, onAIReview }: TopBarProps) {
         <button
           onClick={() => setStep(currentStep + 1)}
           disabled={currentStep === 6}
-          className="py-1.5 px-4 rounded-[7px] border-none bg-navy-800 text-white font-[Cairo] text-[11px] font-bold transition-colors hover:bg-navy-900 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          className="py-2 px-5 rounded-xl border-none bg-gradient-to-l from-navy-800 to-navy-900 text-white text-sm font-bold transition-all duration-200 hover:from-navy-700 hover:to-navy-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-sm"
         >
           التالي ←
         </button>
 
         <button
           onClick={onAIReview}
-          className="py-1.5 px-4 rounded-[7px] border-none bg-purple-900 text-white font-[Cairo] text-[11px] font-bold transition-colors hover:bg-purple-950 cursor-pointer flex items-center gap-1"
+          className="py-2 px-5 rounded-xl border-none bg-gradient-to-l from-purple-800 to-purple-900 text-white text-sm font-bold transition-all duration-200 hover:from-purple-700 hover:to-purple-800 cursor-pointer flex items-center gap-1.5 shadow-sm"
         >
           🤖 مراجعة AI
         </button>
 
         <button
           onClick={onPreview}
-          className="py-1.5 px-4 rounded-[7px] border-none bg-success-700 text-white font-[Cairo] text-[11px] font-bold transition-colors hover:bg-green-900 cursor-pointer flex items-center gap-1"
+          className="py-2 px-5 rounded-xl border-none bg-gradient-to-l from-success-700 to-green-800 text-white text-sm font-bold transition-all duration-200 hover:from-green-600 hover:to-green-700 cursor-pointer flex items-center gap-1.5 shadow-sm"
         >
           🖨️ إنشاء التقرير
         </button>

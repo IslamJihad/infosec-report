@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
     aiApiKey: '',
-    aiModel: 'sonar',
+    aiModel: 'gemini-2.0-flash',
     defaultOrgName: '',
     defaultAuthor: '',
   });
@@ -52,20 +52,19 @@ export default function SettingsPage() {
     }
     setTestResult('⏳ جاري الاختبار...');
     try {
-      const res = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${settings.aiApiKey}`,
-        },
-        body: JSON.stringify({
-          model: settings.aiModel || 'sonar',
-          messages: [{ role: 'user', content: 'مرحباً، أجب بكلمة واحدة: تجربة' }],
-          max_tokens: 20,
-        }),
-      });
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${settings.aiModel || 'gemini-2.0-flash'}:generateContent?key=${settings.aiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'مرحباً، أجب بكلمة واحدة: تجربة' }] }],
+            generationConfig: { maxOutputTokens: 20 },
+          }),
+        }
+      );
       if (res.ok) {
-        setTestResult('✅ الاتصال ناجح! API يعمل بشكل صحيح.');
+        setTestResult('✅ الاتصال ناجح! Gemini API يعمل بشكل صحيح.');
       } else {
         const err = await res.json().catch(() => ({}));
         setTestResult(`❌ خطأ ${res.status}: ${JSON.stringify(err).slice(0, 100)}`);
@@ -105,18 +104,18 @@ export default function SettingsPage() {
         {/* AI Settings */}
         <div className="bg-white rounded-lg border border-border mb-4 overflow-hidden shadow-sm">
           <div className="bg-purple-900 text-white px-4 py-2.5 text-[12px] font-bold flex items-center gap-2">
-            🤖 إعدادات الذكاء الاصطناعي (Perplexity AI)
+            🤖 إعدادات الذكاء الاصطناعي (Google Gemini)
           </div>
           <div className="p-4">
             <div className="mb-3">
-              <label className="text-[10px] font-bold text-text-secondary block mb-1">مفتاح API – Perplexity</label>
+              <label className="text-[10px] font-bold text-text-secondary block mb-1">مفتاح API – Google Gemini</label>
               <div className="flex gap-2">
                 <input
                   type={showKey ? 'text' : 'password'}
                   value={settings.aiApiKey}
                   onChange={(e) => setSettings({ ...settings, aiApiKey: e.target.value })}
                   className="flex-1 border-[1.5px] border-border rounded-[7px] py-[7px] px-2.5 font-[Cairo] text-[11px] outline-none focus:border-purple-900"
-                  placeholder="pplx-..."
+                  placeholder="AIza..."
                 />
                 <button
                   onClick={() => setShowKey(!showKey)}
@@ -127,7 +126,7 @@ export default function SettingsPage() {
               </div>
               <p className="text-[9px] text-text-hint mt-1">
                 احصل على مفتاح API من{' '}
-                <a href="https://www.perplexity.ai/settings/api" target="_blank" className="text-purple-900 underline">perplexity.ai/settings/api</a>
+                <a href="https://aistudio.google.com/apikey" target="_blank" className="text-purple-900 underline">Google AI Studio</a>
               </p>
             </div>
 
@@ -138,10 +137,10 @@ export default function SettingsPage() {
                 onChange={(e) => setSettings({ ...settings, aiModel: e.target.value })}
                 className="border-[1.5px] border-border rounded-[7px] py-[7px] px-2.5 font-[Cairo] text-[11px] outline-none focus:border-purple-900 bg-white w-full"
               >
-                <option value="sonar">Sonar (سريع + بحث)</option>
-                <option value="sonar-pro">Sonar Pro (متقدم)</option>
-                <option value="sonar-reasoning">Sonar Reasoning (تفكير عميق)</option>
-                <option value="sonar-reasoning-pro">Sonar Reasoning Pro (الأفضل)</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash (سريع)</option>
+                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (أسرع)</option>
+                <option value="gemini-2.5-flash-preview-05-20">Gemini 2.5 Flash (متقدم)</option>
+                <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro (الأفضل)</option>
               </select>
             </div>
 

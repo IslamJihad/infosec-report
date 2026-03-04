@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
@@ -16,15 +17,25 @@ export async function POST(req: Request) {
     }
 
     const apiKey = settings.aiApiKey;
-    const model = settings.aiModel || 'sonar';
+    const modelName = settings.aiModel || 'gemini-2.0-flash';
 
-    let messages: Array<{ role: string; content: string }>;
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    const systemInstruction = 'أنت خبير أمن معلومات محترف. ردودك دقيقة ومبنية على البيانات المقدمة. تستخدم تنسيق Markdown باللغة العربية. تقدم تحليلات قابلة للتنفيذ.';
+
+    let geminiHistory: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+    let userMessage: string;
 
     if (followUp && history) {
-      messages = [
-        ...history,
-        { role: 'user', content: question },
-      ];
+      // Convert previous messages to Gemini format (skip system messages)
+      geminiHistory = history
+        .filter((m: { role: string }) => m.role !== 'system')
+        .map((m: { role: string; content: string }) => ({
+          role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
+          parts: [{ text: m.content }],
+        }));
+      userMessage = question;
     } else {
       // Build prompt based on review type
       const dataStr = JSON.stringify(reportData, null, 2);
@@ -35,41 +46,21 @@ export async function POST(req: Request) {
         gaps: `أنت مدقق أمن معلومات. ابحث عن النقاط المفقودة والفجوات في التقرير التالي باللغة العربية:\n\n${dataStr}\n\n## 🕳️ المعلومات الناقصة\n## 📋 أقسام يجب إضافتها\n## 🌐 مخاطر خارجية غير مذكورة\n## ✅ قائمة تحقق لتقرير مكتمل`,
       };
 
-      messages = [
-        {
-          role: 'system',
-          content: 'أنت خبير أمن معلومات محترف. ردودك دقيقة ومبنية على البيانات المقدمة. تستخدم تنسيق Markdown باللغة العربية. تقدم تحليلات قابلة للتنفيذ.',
-        },
-        { role: 'user', content: prompts[reviewType] || prompts.full },
-      ];
+      userMessage = prompts[reviewType] || prompts.full;
     }
 
-    // Call Perplexity API
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: 2000,
+    // Call Gemini API
+    const chat = model.startChat({
+      history: geminiHistory,
+      systemInstruction,
+      generationConfig: {
+        maxOutputTokens: 2000,
         temperature: 0.3,
-      }),
+      },
     });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      console.error('Perplexity API error:', errData);
-      return NextResponse.json(
-        { error: `خطأ من API الذكاء الاصطناعي: ${response.status}` },
-        { status: response.status }
-      );
-    }
-
-    const result = await response.json();
-    const assistantMessage = result.choices?.[0]?.message?.content || 'لا يوجد رد';
+    const response = await chat.sendMessage(userMessage);
+    const assistantMessage = response.response.text() || 'لا يوجد رد';
 
     // Save conversation
     if (reportId) {
@@ -101,7 +92,7 @@ export async function POST(req: Request) {
         : [{ role: 'user', content: `مراجعة: ${reviewType}` }, { role: 'assistant', content: assistantMessage }],
     });
   } catch (error) {
-    console.error('AI review error:', error);
+    console.error('Gemini API error:', error);
     return NextResponse.json(
       { error: 'حدث خطأ أثناء الاتصال بالذكاء الاصطناعي' },
       { status: 500 }

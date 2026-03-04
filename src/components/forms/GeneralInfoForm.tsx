@@ -12,33 +12,33 @@ export default function GeneralInfoForm() {
     <div className="animate-fadeIn">
       <FormCard icon="🏢" title="معلومات الشركة والتقرير">
         {/* Logo Upload */}
-        <div className="mb-3">
-          <label className="text-[10px] font-bold text-text-secondary block mb-1">شعار الشركة</label>
+        <div className="mb-4">
+          <label className="text-sm font-bold text-text-secondary block mb-2">شعار الشركة</label>
           <LogoUpload
             logoBase64={report.logoBase64}
             onChange={(v) => updateField('logoBase64', v)}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <FormField label="اسم الشركة / المنظمة" value={report.orgName} onChange={(v) => updateField('orgName', v)} />
           <FormField label="المدير العام / المستلم" value={report.recipientName} onChange={(v) => updateField('recipientName', v)} />
         </div>
 
-        <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+        <div className="grid grid-cols-3 gap-4 mb-4">
           <FormField label="الفترة الزمنية" value={report.period} onChange={(v) => updateField('period', v)} />
           <FormField label="تاريخ الإصدار" value={report.issueDate} onChange={(v) => updateField('issueDate', v)} type="date" />
           <FormField label="رقم الإصدار" value={report.version} onChange={(v) => updateField('version', v)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-4">
           <FormField label="معد التقرير / القسم" value={report.author} onChange={(v) => updateField('author', v)} />
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-text-secondary">تصنيف التقرير</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-bold text-text-secondary">تصنيف التقرير</label>
             <select
               value={report.classification}
               onChange={(e) => updateField('classification', e.target.value)}
-              className="border-[1.5px] border-border rounded-[7px] py-[7px] px-2.5 font-[Cairo] text-[11px] text-text-primary outline-none transition-colors focus:border-navy-800 focus:shadow-[0_0_0_2px_rgba(26,58,124,0.08)] bg-white"
+              className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200"
             >
               {CLASSIFICATIONS.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -54,14 +54,14 @@ export default function GeneralInfoForm() {
 // Reusable form card
 export function FormCard({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-[10px] border border-border mb-3.5 overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-      <div className="bg-navy-50 py-2.5 px-4 border-b border-border flex items-center gap-2">
-        <div className="bg-navy-800 text-white w-6 h-6 rounded-md flex items-center justify-center text-[11px] flex-shrink-0">
+    <div className="bg-white rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+      <div className="bg-gradient-to-l from-navy-50 to-white py-4 px-5 border-b border-border flex items-center gap-3">
+        <div className="bg-gradient-to-br from-navy-800 to-navy-900 text-white w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 shadow-sm">
           {icon}
         </div>
-        <h3 className="text-xs font-[800] text-navy-950 flex-1">{title}</h3>
+        <h3 className="text-base font-[800] text-navy-950 flex-1">{title}</h3>
       </div>
-      <div className="p-3.5">{children}</div>
+      <div className="p-5">{children}</div>
     </div>
   );
 }
@@ -87,8 +87,8 @@ export function FormField({
   max?: number;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[10px] font-bold text-text-secondary">{label}</label>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-bold text-text-secondary">{label}</label>
       <input
         type={type}
         value={value}
@@ -96,11 +96,11 @@ export function FormField({
         readOnly={readOnly}
         min={min}
         max={max}
-        className={`border-[1.5px] border-border rounded-[7px] py-[7px] px-2.5 font-[Cairo] text-[11px] text-text-primary outline-none transition-colors focus:border-navy-800 focus:shadow-[0_0_0_2px_rgba(26,58,124,0.08)] bg-white ${
+        className={`border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] focus:ring-0 bg-white hover:border-navy-200 ${
           readOnly ? 'bg-navy-50 font-bold cursor-default' : ''
         }`}
       />
-      {hint && <span className="text-[9px] text-text-hint mt-0.5">{hint}</span>}
+      {hint && <span className="text-xs text-text-hint mt-1">{hint}</span>}
     </div>
   );
 }
@@ -128,19 +128,19 @@ function LogoUpload({ logoBase64, onChange }: { logoBase64: string; onChange: (v
           onClick={() => document.getElementById('logo-input')?.click()}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
-          className="border-2 border-dashed border-border rounded-[9px] p-3.5 text-center cursor-pointer bg-surface transition-colors hover:bg-navy-100 hover:border-navy-800"
+          className="border-2 border-dashed border-border rounded-2xl p-5 text-center cursor-pointer bg-surface transition-all duration-200 hover:bg-navy-100 hover:border-navy-600 hover:shadow-sm"
         >
-          <div className="text-xl mb-1">🖼️</div>
-          <div className="text-[10px] text-text-hint">اضغط أو اسحب لرفع الشعار (PNG / JPG / SVG)</div>
+          <div className="text-3xl mb-2">🖼️</div>
+          <div className="text-sm text-text-muted">اضغط أو اسحب لرفع الشعار (PNG / JPG / SVG)</div>
         </div>
       ) : (
-        <div className="flex items-center gap-3">
-          <div className="border border-border rounded-lg p-2 bg-surface">
-            <img src={logoBase64} alt="شعار" className="max-h-[50px] max-w-[140px] object-contain" />
+        <div className="flex items-center gap-4">
+          <div className="border border-border rounded-xl p-3 bg-surface">
+            <img src={logoBase64} alt="شعار" className="max-h-[60px] max-w-[160px] object-contain" />
           </div>
           <button
             onClick={() => onChange('')}
-            className="bg-danger-100 text-danger-500 border-none rounded-md py-1 px-2.5 text-[10px] cursor-pointer font-[Cairo] hover:bg-red-200 transition-colors"
+            className="bg-danger-100 text-danger-500 border border-red-200 rounded-xl py-2 px-4 text-sm cursor-pointer hover:bg-red-200 transition-all duration-200"
           >
             × حذف الشعار
           </button>

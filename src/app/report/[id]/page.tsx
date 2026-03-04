@@ -93,9 +93,9 @@ export default function ReportEditorPage() {
   const CurrentForm = FORM_SECTIONS[currentStep];
 
   return (
-    <div className="min-h-screen bg-surface flex" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-surface to-[#eef1f8] flex" dir="rtl">
       <Sidebar />
-      <div className="flex-1 mr-[260px] flex flex-col min-h-screen">
+      <div className="flex-1 mr-[280px] flex flex-col min-h-screen">
         <TopBar
           onPreview={() => {
             doSave();
@@ -103,7 +103,7 @@ export default function ReportEditorPage() {
           }}
           onAIReview={() => setShowAI(true)}
         />
-        <div className="flex-1 overflow-y-auto p-4 pb-8">
+        <div className="flex-1 overflow-y-auto p-6 pb-10">
           <CurrentForm />
         </div>
       </div>
