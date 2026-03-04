@@ -21,9 +21,14 @@ export async function POST(req: Request) {
     const modelName = (settings.aiModel && geminiModels.includes(settings.aiModel)) ? settings.aiModel : 'gemini-2.5-flash';
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: modelName });
-
-    const systemInstruction = 'أنت خبير أمن معلومات محترف. ردودك دقيقة ومبنية على البيانات المقدمة. تستخدم تنسيق Markdown باللغة العربية. تقدم تحليلات قابلة للتنفيذ.';
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+      systemInstruction: 'أنت خبير أمن معلومات محترف. ردودك دقيقة ومبنية على البيانات المقدمة. تستخدم تنسيق Markdown باللغة العربية. تقدم تحليلات قابلة للتنفيذ.',
+      generationConfig: {
+        maxOutputTokens: 2000,
+        temperature: 0.3,
+      },
+    });
 
     let geminiHistory: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
     let userMessage: string;
@@ -53,11 +58,6 @@ export async function POST(req: Request) {
     // Call Gemini API
     const chat = model.startChat({
       history: geminiHistory,
-      systemInstruction,
-      generationConfig: {
-        maxOutputTokens: 2000,
-        temperature: 0.3,
-      },
     });
 
     const response = await chat.sendMessage(userMessage);
@@ -92,10 +92,11 @@ export async function POST(req: Request) {
         ? [...history, { role: 'user', content: question }, { role: 'assistant', content: assistantMessage }]
         : [{ role: 'user', content: `مراجعة: ${reviewType}` }, { role: 'assistant', content: assistantMessage }],
     });
-  } catch (error) {
-    console.error('Gemini API error:', error);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Gemini API error:', errMsg);
     return NextResponse.json(
-      { error: 'حدث خطأ أثناء الاتصال بالذكاء الاصطناعي' },
+      { error: `خطأ من Gemini: ${errMsg.slice(0, 200)}` },
       { status: 500 }
     );
   }
