@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Report {
+  id             String   @id @default(uuid())
+  title          String   @default("تقرير أمن المعلومات")
+  orgName        String   @default("شركة المستقبل للتقنية")
+  recipientName  String   @default("")
+  period         String   @default("")
+  issueDate      String   @default("")
+  version        String   @default("1.0")
+  author         String   @default("إدارة أمن المعلومات")
+  classification String   @default("سري")
+  logoBase64     String   @default("")
+  summary        String   @default("")
+  securityLevel  String   @default("متوسط")
+  securityScore  Int      @default(0)
+  trend          String   @default("مستقر →")
+  status         String   @default("draft")
+
+  // KPI current
+  kpiCritical    Int @default(0)
+  kpiVuln        Int @default(0)
+  kpiTotal       Int @default(0)
+  kpiCompliance  Int @default(0)
+
+  // KPI previous
+  prevCritical   Int @default(0)
+  prevVuln       Int @default(0)
+  prevTotal      Int @default(0)
+  prevCompliance Int @default(0)
+
+  // Vulnerability distribution
+  vulnCritical   Int @default(0)
+  vulnHigh       Int @default(0)
+  vulnMedium     Int @default(0)
+  vulnLow        Int @default(0)
+
+  // Incident status
+  incOpen        Int @default(0)
+  incProgress    Int @default(0)
+  incClosed      Int @default(0)
+  incWatch       Int @default(0)
+
+  // SLA
+  slaMTTD        Float @default(0)
+  slaMTTR        Float @default(0)
+  slaMTTC        Float @default(0)
+  slaMTTDTarget  Float @default(2)
+  slaMTTRTarget  Float @default(8)
+  slaMTTCTarget  Float @default(24)
+  slaRate        Float @default(0)
+  slaBreach      Int   @default(0)
+
+  // Section toggles
+  showSLA        Boolean @default(true)
+  showMaturity   Boolean @default(true)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  decisions       Decision[]
+  risks           Risk[]
+  maturityDomains MaturityDomain[]
+  recommendations Recommendation[]
+  aiConversations AIConversation[]
+}
+
+model Decision {
+  id          String @id @default(uuid())
+  reportId    String
+  report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  title       String @default("")
+  description String @default("")
+  budget      String @default("")
+  department  String @default("")
+  timeline    String @default("")
+  sortOrder   Int    @default(0)
+}
+
+model Risk {
+  id          String @id @default(uuid())
+  reportId    String
+  report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  description String @default("")
+  system      String @default("")
+  severity    String @default("medium")
+  status      String @default("open")
+  probability Int    @default(3)
+  impact      Int    @default(3)
+  sortOrder   Int    @default(0)
+}
+
+model MaturityDomain {
+  id        String @id @default(uuid())
+  reportId  String
+  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  name      String @default("")
+  score     Int    @default(1)
+  sortOrder Int    @default(0)
+}
+
+model Recommendation {
+  id          String @id @default(uuid())
+  reportId    String
+  report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  title       String @default("")
+  description String @default("")
+  priority    String @default("medium")
+  department  String @default("")
+  timeline    String @default("")
+  sortOrder   Int    @default(0)
+}
+
+model AIConversation {
+  id         String @id @default(uuid())
+  reportId   String
+  report     Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reviewType String @default("full")
+  messages   String @default("[]")
+  createdAt  DateTime @default(now())
+}
+
+model AppSettings {
+  id              String @id @default("singleton")
+  aiApiKey        String @default("")
+  aiModel         String @default("sonar")
+  defaultOrgName  String @default("")
+  defaultAuthor   String @default("")
+}

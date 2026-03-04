@@ -1,0 +1,25 @@
+# ══════════════════════════════════════════════════════
+# InfoSec Report — Docker Compose
+# islamjihad/infosec-report
+# ══════════════════════════════════════════════════════
+#
+# Usage:
+#   docker compose up -d
+#   Open http://localhost:3000
+#
+
+services:
+  app:
+    image: islamjihad/infosec-report:latest
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - infosec-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/infosec.db
+    restart: unless-stopped
+
+volumes:
+  infosec-data:

@@ -1,0 +1,116 @@
+export const SEVERITY_MAP: Record<string, { label: string; className: string; bgClass: string }> = {
+  critical: { label: 'حرجة', className: 'text-danger-700', bgClass: 'bg-danger-100 text-danger-700 border-danger-100' },
+  high: { label: 'عالية', className: 'text-warning-700', bgClass: 'bg-warning-100 text-warning-700 border-warning-100' },
+  medium: { label: 'متوسطة', className: 'text-yellow-700', bgClass: 'bg-yellow-50 text-yellow-700 border-yellow-100' },
+  low: { label: 'منخفضة', className: 'text-success-700', bgClass: 'bg-success-100 text-success-700 border-success-100' },
+};
+
+export const STATUS_MAP: Record<string, { label: string; bgClass: string }> = {
+  open: { label: 'مفتوحة', bgClass: 'bg-danger-100 text-danger-500' },
+  inprogress: { label: 'قيد المعالجة', bgClass: 'bg-warning-100 text-warning-500' },
+  closed: { label: 'مغلقة', bgClass: 'bg-success-100 text-success-700' },
+};
+
+export const PRIORITY_MAP: Record<string, { label: string; bgClass: string }> = {
+  high: { label: 'أولوية عالية', bgClass: 'bg-danger-100 text-danger-700 border border-red-200' },
+  medium: { label: 'أولوية متوسطة', bgClass: 'bg-warning-100 text-warning-700 border border-orange-200' },
+  low: { label: 'أولوية عادية', bgClass: 'bg-success-100 text-success-700 border border-green-200' },
+};
+
+export const MATURITY_LEVELS: Record<number, { label: string; colorClass: string; barClass: string }> = {
+  1: { label: 'مبتدئ', colorClass: 'bg-danger-100 text-danger-700', barClass: 'bg-danger-500' },
+  2: { label: 'أساسي', colorClass: 'bg-warning-100 text-warning-700', barClass: 'bg-warning-500' },
+  3: { label: 'متوسط', colorClass: 'bg-yellow-50 text-yellow-700', barClass: 'bg-yellow-500' },
+  4: { label: 'متقدم', colorClass: 'bg-success-100 text-success-700', barClass: 'bg-success-500' },
+  5: { label: 'محسّن', colorClass: 'bg-green-100 text-success-700', barClass: 'bg-success-700' },
+};
+
+export const SECURITY_LEVELS = ['ممتاز', 'جيد', 'متوسط', 'ضعيف', 'حرج'];
+
+export const TRENDS = [
+  'تحسّن ملحوظ ↑',
+  'تحسّن تدريجي ↗',
+  'مستقر →',
+  'تراجع ↘',
+];
+
+export const CLASSIFICATIONS = ['سري للغاية', 'سري', 'داخلي'];
+
+export const HEATMAP_COLORS: Record<string, { bg: string; text: string }> = {
+  hm1: { bg: '#e8f5e9', text: '#1b5e20' },
+  hm2: { bg: '#fff9c4', text: '#827717' },
+  hm3: { bg: '#ffe0b2', text: '#6d4c00' },
+  hm4: { bg: '#ffcdd2', text: '#8b0000' },
+  hm5: { bg: '#6b0000', text: '#ffffff' },
+};
+
+export const PROBABILITY_LABELS = ['', 'نادر', 'غير محتمل', 'محتمل', 'مرجح', 'مؤكد'];
+export const IMPACT_LABELS = ['', 'ضئيل', 'منخفض', 'متوسط', 'عالٍ', 'كارثي'];
+
+export const NAV_ITEMS = [
+  { icon: '🏢', label: 'معلومات عامة', key: 0 },
+  { icon: '📋', label: 'الملخص والقرارات', key: 1 },
+  { icon: '📊', label: 'المؤشرات والاتجاهات', key: 2 },
+  { icon: '⏱️', label: 'مقاييس SLA', key: 3 },
+  { icon: '⚠️', label: 'أبرز المخاطر', key: 4 },
+  { icon: '🧭', label: 'النضج الأمني', key: 5 },
+  { icon: '✅', label: 'التوصيات', key: 6 },
+];
+
+export const DEFAULT_MATURITY_DOMAINS = [
+  'أمن الشبكة',
+  'إدارة الهوية والوصول',
+  'حماية البيانات',
+  'أمن التطبيقات',
+  'الاستجابة للحوادث',
+  'الوعي الأمني',
+  'الامتثال والحوكمة',
+  'إدارة الثغرات',
+];
+
+export function getRiskScoreClass(score: number): string {
+  if (score >= 20) return 'bg-danger-900 text-white';
+  if (score >= 15) return 'bg-danger-100 text-danger-700';
+  if (score >= 10) return 'bg-warning-100 text-warning-700';
+  if (score >= 5) return 'bg-yellow-50 text-yellow-700';
+  return 'bg-success-100 text-success-700';
+}
+
+export function getHeatmapClass(score: number): string {
+  if (score <= 4) return 'hm1';
+  if (score <= 9) return 'hm2';
+  if (score <= 16) return 'hm3';
+  if (score <= 20) return 'hm4';
+  return 'hm5';
+}
+
+export function getScoreColorClass(score: number): { ring: string; text: string; bg: string } {
+  if (score >= 75) return { ring: 'border-success-700', text: 'text-success-700', bg: 'bg-success-100' };
+  if (score >= 50) return { ring: 'border-warning-500', text: 'text-warning-500', bg: 'bg-warning-100' };
+  return { ring: 'border-danger-500', text: 'text-danger-500', bg: 'bg-danger-100' };
+}
+
+export function formatArabicDate(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+export function getDeltaInfo(current: number, previous: number, lowerIsBetter: boolean) {
+  const delta = current - previous;
+  const isGood = lowerIsBetter ? delta < 0 : delta > 0;
+  const isEqual = delta === 0;
+  return {
+    delta,
+    arrow: delta < 0 ? '↓' : delta > 0 ? '↑' : '→',
+    label: `${delta > 0 ? '+' : ''}${delta}`,
+    colorClass: isEqual ? 'bg-gray-100 text-gray-500' : isGood ? 'bg-success-100 text-success-700' : 'bg-danger-100 text-danger-500',
+  };
+}

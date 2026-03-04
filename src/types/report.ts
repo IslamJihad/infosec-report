@@ -1,0 +1,113 @@
+export interface ReportData {
+  id: string;
+  title: string;
+  orgName: string;
+  recipientName: string;
+  period: string;
+  issueDate: string;
+  version: string;
+  author: string;
+  classification: string;
+  logoBase64: string;
+  summary: string;
+  securityLevel: string;
+  securityScore: number;
+  trend: string;
+  status: string;
+
+  kpiCritical: number;
+  kpiVuln: number;
+  kpiTotal: number;
+  kpiCompliance: number;
+  prevCritical: number;
+  prevVuln: number;
+  prevTotal: number;
+  prevCompliance: number;
+
+  vulnCritical: number;
+  vulnHigh: number;
+  vulnMedium: number;
+  vulnLow: number;
+
+  incOpen: number;
+  incProgress: number;
+  incClosed: number;
+  incWatch: number;
+
+  slaMTTD: number;
+  slaMTTR: number;
+  slaMTTC: number;
+  slaMTTDTarget: number;
+  slaMTTRTarget: number;
+  slaMTTCTarget: number;
+  slaRate: number;
+  slaBreach: number;
+
+  showSLA: boolean;
+  showMaturity: boolean;
+
+  createdAt: string;
+  updatedAt: string;
+
+  decisions: Decision[];
+  risks: Risk[];
+  maturityDomains: MaturityDomain[];
+  recommendations: Recommendation[];
+}
+
+export interface Decision {
+  id: string;
+  reportId?: string;
+  title: string;
+  description: string;
+  budget: string;
+  department: string;
+  timeline: string;
+  sortOrder: number;
+}
+
+export interface Risk {
+  id: string;
+  reportId?: string;
+  description: string;
+  system: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: 'open' | 'inprogress' | 'closed';
+  probability: number;
+  impact: number;
+  sortOrder: number;
+}
+
+export interface MaturityDomain {
+  id: string;
+  reportId?: string;
+  name: string;
+  score: number;
+  sortOrder: number;
+}
+
+export interface Recommendation {
+  id: string;
+  reportId?: string;
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  department: string;
+  timeline: string;
+  sortOrder: number;
+}
+
+export interface AppSettings {
+  id: string;
+  aiApiKey: string;
+  aiModel: string;
+  defaultOrgName: string;
+  defaultAuthor: string;
+}
+
+export interface AIMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export type ReviewType = 'full' | 'exec' | 'risk' | 'gaps';
