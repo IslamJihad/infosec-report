@@ -9,6 +9,8 @@ export async function GET() {
         risks: { orderBy: { sortOrder: 'asc' } },
         maturityDomains: { orderBy: { sortOrder: 'asc' } },
         recommendations: { orderBy: { sortOrder: 'asc' } },
+        assets: { orderBy: { sortOrder: 'asc' } },
+        challenges: { orderBy: { sortOrder: 'asc' } },
       },
       orderBy: { updatedAt: 'desc' },
     });
@@ -80,12 +82,29 @@ export async function POST() {
             { title: 'إغلاق ثغرة RDP وتحديث الأنظمة', description: 'تطبيق التحديثات الأمنية وتقييد الوصول عبر RDP.', priority: 'high', department: 'البنية التحتية', timeline: '7 أيام', sortOrder: 1 },
           ],
         },
+
+        assets: {
+          create: [
+            { name: 'نظام ERP — الأعمال والمالية', value: 'أصل محوري — توقفه يوقف العمليات', protectionLevel: 55, gaps: 'صلاحيات مفرطة لمستخدمين، لا يوجد تسجيل للأنشطة', sortOrder: 0 },
+            { name: 'قاعدة بيانات العملاء', value: 'بيانات حساسة — اختراقها مسؤولية قانونية', protectionLevel: 70, gaps: 'تشفير جزئي، لا يوجد نظام DLP لمنع التسرب', sortOrder: 1 },
+            { name: 'البنية الشبكية الأساسية', value: 'تربط جميع الأنظمة', protectionLevel: 60, gaps: 'جدار الحماية لم يُحدَّث منذ 6 أشهر', sortOrder: 2 },
+          ],
+        },
+
+        challenges: {
+          create: [
+            { title: '12 حادثة مفتوحة تراكمت دون معالجة', type: 'staff', rootCause: 'نقص في كوادر الاستجابة — الفريق مُثقَل', requirement: 'توظيف محلل أمن إضافي', sortOrder: 0 },
+            { title: 'وقت الاحتواء يتجاوز الهدف بمقدار الضعف', type: 'tech', rootCause: 'عدم وجود أتمتة في عمليات الاستجابة', requirement: 'تفعيل منصة SOAR واعتماد playbooks جاهزة', sortOrder: 1 },
+          ],
+        },
       },
       include: {
         decisions: { orderBy: { sortOrder: 'asc' } },
         risks: { orderBy: { sortOrder: 'asc' } },
         maturityDomains: { orderBy: { sortOrder: 'asc' } },
         recommendations: { orderBy: { sortOrder: 'asc' } },
+        assets: { orderBy: { sortOrder: 'asc' } },
+        challenges: { orderBy: { sortOrder: 'asc' } },
       },
     });
 

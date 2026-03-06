@@ -43,6 +43,18 @@ export interface ReportData {
   slaRate: number;
   slaBreach: number;
 
+  // ROI & Benchmark
+  vulnResolved: number;
+  vulnRecurring: number;
+  bmScore: number;
+  bmCompliance: number;
+  bmMTTD: number;
+  bmMTTR: number;
+  bmSector: string;
+
+  // ISO Controls (JSON-serialized array of 14 domains)
+  isoControls: ISOControl[];
+
   showSLA: boolean;
   showMaturity: boolean;
 
@@ -53,6 +65,8 @@ export interface ReportData {
   risks: Risk[];
   maturityDomains: MaturityDomain[];
   recommendations: Recommendation[];
+  assets: Asset[];
+  challenges: Challenge[];
 }
 
 export interface Decision {
@@ -97,6 +111,34 @@ export interface Recommendation {
   sortOrder: number;
 }
 
+export interface Asset {
+  id: string;
+  reportId?: string;
+  name: string;
+  value: string;
+  protectionLevel: number;
+  gaps: string;
+  sortOrder: number;
+}
+
+export interface Challenge {
+  id: string;
+  reportId?: string;
+  title: string;
+  type: 'budget' | 'staff' | 'tech' | 'process';
+  rootCause: string;
+  requirement: string;
+  sortOrder: number;
+}
+
+export interface ISOControl {
+  domainId: string;
+  domainName: string;
+  totalControls: number;
+  currentApplied: number;
+  previousApplied: number;
+}
+
 export interface AppSettings {
   id: string;
   aiApiKey: string;
@@ -110,4 +152,4 @@ export interface AIMessage {
   content: string;
 }
 
-export type ReviewType = 'full' | 'exec' | 'risk' | 'gaps';
+export type ReviewType = 'full' | 'exec' | 'board' | 'risk' | 'gaps';

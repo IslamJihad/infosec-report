@@ -11,6 +11,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         risks: { orderBy: { sortOrder: 'asc' } },
         maturityDomains: { orderBy: { sortOrder: 'asc' } },
         recommendations: { orderBy: { sortOrder: 'asc' } },
+        assets: { orderBy: { sortOrder: 'asc' } },
+        challenges: { orderBy: { sortOrder: 'asc' } },
       },
     });
 
@@ -18,7 +20,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'التقرير غير موجود' }, { status: 404 });
     }
 
-    const { id: _id, createdAt: _c, updatedAt: _u, decisions, risks, maturityDomains, recommendations, ...data } = original;
+    const { id: _id, createdAt: _c, updatedAt: _u, decisions, risks, maturityDomains, recommendations, assets, challenges, ...data } = original;
 
     const duplicate = await prisma.report.create({
       data: {
@@ -37,12 +39,20 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         recommendations: {
           create: recommendations.map(({ id: _recid, reportId: _rid5, ...r }) => r),
         },
+        assets: {
+          create: assets.map(({ id: _aid, reportId: _rid6, ...a }) => a),
+        },
+        challenges: {
+          create: challenges.map(({ id: _cid, reportId: _rid7, ...c }) => c),
+        },
       },
       include: {
         decisions: { orderBy: { sortOrder: 'asc' } },
         risks: { orderBy: { sortOrder: 'asc' } },
         maturityDomains: { orderBy: { sortOrder: 'asc' } },
         recommendations: { orderBy: { sortOrder: 'asc' } },
+        assets: { orderBy: { sortOrder: 'asc' } },
+        challenges: { orderBy: { sortOrder: 'asc' } },
       },
     });
 

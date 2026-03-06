@@ -14,6 +14,7 @@ import {
   getRiskScoreClass,
   PROBABILITY_LABELS,
   IMPACT_LABELS,
+  CHALLENGE_TYPES,
 } from '@/lib/constants';
 
 interface Props {
@@ -182,7 +183,41 @@ export default function ReportPreview({ report }: Props) {
         )}
       </div>
 
-      {/* ═══════ SECTION 02: KPIs ═══════ */}
+      {/* ═══════ SECTION 02: ASSET PROTECTION ═══════ */}
+      {r.assets.length > 0 && (
+        <div className="report-section px-11 py-6 border-b border-gray-100">
+          {nextSection('🏛️', 'مستوى حماية الأصول الحيوية')}
+
+          <div className="space-y-3">
+            {r.assets.map((asset) => {
+              const pct = asset.protectionLevel;
+              const barColor = pct >= 70 ? 'bg-success-700' : pct >= 40 ? 'bg-warning-500' : 'bg-danger-500';
+              const badgeClass = pct >= 70 ? 'bg-success-100 text-success-700' : pct >= 40 ? 'bg-warning-100 text-warning-700' : 'bg-danger-100 text-danger-500';
+              return (
+                <div key={asset.id} className="border border-border rounded-md p-3.5">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="text-[11px] font-[800] text-navy-950">{asset.name}</div>
+                      <div className="text-[10px] text-text-secondary mt-0.5">{asset.value}</div>
+                    </div>
+                    <span className={`text-[10px] font-[900] px-2 py-0.5 rounded ${badgeClass}`}>{pct}%</span>
+                  </div>
+                  <div className="bg-gray-100 rounded-sm h-2 overflow-hidden mb-2">
+                    <div className={`h-full rounded-sm ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  {asset.gaps && (
+                    <div className="text-[10px] text-danger-500 bg-danger-100/50 rounded px-2.5 py-1.5 border-r-2 border-r-danger-500">
+                      ⚠️ {asset.gaps}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ SECTION 03: KPIs ═══════ */}
       <div className="report-section px-11 py-6 border-b border-gray-100">
         {nextSection('📊', 'لوحة المؤشرات والأداء')}
 
@@ -294,7 +329,66 @@ export default function ReportPreview({ report }: Props) {
         </table>
       </div>
 
-      {/* ═══════ SECTION 03: SLA ═══════ */}
+      {/* ═══════ SECTION 04.5: ROI & BENCHMARK ═══════ */}
+      {(r.vulnResolved > 0 || r.bmScore > 0) && (
+        <div className="report-section px-11 py-6 border-b border-gray-100">
+          {nextSection('💰', 'فعالية الاستثمار الأمني — هل الأموال تحقق غرضها؟')}
+
+          <div className="grid grid-cols-2 gap-3 mb-3.5">
+            <div className="border border-border rounded-md p-3.5 text-center">
+              <div className="text-[22px] font-[900] text-success-700">{r.vulnResolved}</div>
+              <div className="text-[10px] text-text-muted">ثغرات تمت معالجتها هذه الفترة</div>
+            </div>
+            <div className="border border-border rounded-md p-3.5 text-center">
+              <div className={`text-[22px] font-[900] ${r.vulnRecurring === 0 ? 'text-success-700' : 'text-danger-500'}`}>{r.vulnRecurring}</div>
+              <div className="text-[10px] text-text-muted">حوادث متكررة من نوع سابق</div>
+            </div>
+          </div>
+
+          {r.bmScore > 0 && (
+            <>
+              <div className="text-[10px] font-[800] text-navy-950 mb-2 mt-4">📍 مقارنة بالقطاع (Benchmark)</div>
+              <table className="w-full border-collapse text-[11px] mb-2">
+                <thead>
+                  <tr>
+                    {['المؤشر', 'قيمتنا', 'متوسط القطاع', 'الموقف'].map((h) => (
+                      <th key={h} className="bg-navy-950 text-white py-1.5 px-2.5 text-right font-bold text-[10px]">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: 'درجة الأمن العامة', ours: r.securityScore, theirs: r.bmScore, lower: false },
+                    { label: 'نسبة الامتثال ISO 27001 %', ours: r.kpiCompliance, theirs: r.bmCompliance, lower: false },
+                    { label: 'وقت الاكتشاف MTTD (ساعة)', ours: r.slaMTTD, theirs: r.bmMTTD, lower: true },
+                    { label: 'وقت الاستجابة MTTR (ساعة)', ours: r.slaMTTR, theirs: r.bmMTTR, lower: true },
+                  ].map((row, i) => {
+                    const diff = row.ours - row.theirs;
+                    const isGood = row.lower ? diff <= 0 : diff >= 0;
+                    return (
+                      <tr key={row.label} className={i % 2 === 1 ? 'bg-surface' : ''}>
+                        <td className="py-1.5 px-2.5 border-b border-gray-100">{row.label}</td>
+                        <td className="py-1.5 px-2.5 border-b border-gray-100 font-bold">{row.ours}</td>
+                        <td className="py-1.5 px-2.5 border-b border-gray-100">{row.theirs}</td>
+                        <td className="py-1.5 px-2.5 border-b border-gray-100">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGood ? 'bg-success-100 text-success-700' : 'bg-danger-100 text-danger-500'}`}>
+                            {isGood ? '✅ أفضل' : '⚠️ أقل'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {r.bmSector && (
+                <div className="text-[9px] text-text-hint mt-1">📌 المصدر: {r.bmSector}</div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══════ SECTION 05: SLA ═══════ */}
       {r.showSLA && (
         <div className="report-section px-11 py-6 border-b border-gray-100">
           {nextSection('⏱️', 'مقاييس الاستجابة للحوادث (SLA)')}
@@ -476,7 +570,44 @@ export default function ReportPreview({ report }: Props) {
         </div>
       )}
 
-      {/* ═══════ SECTION 06: RECOMMENDATIONS ═══════ */}
+      {/* ═══════ SECTION 08: CHALLENGES ═══════ */}
+      {r.challenges.length > 0 && (
+        <div className="report-section px-11 py-6 border-b border-gray-100">
+          {nextSection('🚧', 'التحديات والعوائق — ما يمنع الفريق من النجاح')}
+          <div className="text-[10px] text-text-secondary mb-3 bg-surface border-r-4 border-r-warning-500 rounded-l-md p-2.5 leading-relaxed">
+            هذه التحديات هي الأسباب الجذرية لمعظم المشاكل الأمنية. تجاوزها يتطلب قرارات من الإدارة العليا.
+          </div>
+
+          <div className="space-y-2.5">
+            {r.challenges.map((chal, i) => {
+              const ct = CHALLENGE_TYPES[chal.type] || CHALLENGE_TYPES.tech;
+              return (
+                <div key={chal.id} className="border border-border rounded-md p-3.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className="bg-navy-800 text-white w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-[800] flex-shrink-0 mt-0.5">
+                      {i + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="text-[11px] font-[800] text-navy-950">{chal.title}</div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${ct.bgClass}`}>{ct.label}</span>
+                      </div>
+                      <div className="text-[10px] text-text-secondary mb-1">
+                        <strong className="text-navy-800">السبب الجذري:</strong> {chal.rootCause}
+                      </div>
+                      <div className="text-[10px] text-success-700 bg-success-100/50 rounded px-2 py-1 border-r-2 border-r-success-700">
+                        ✅ <strong>المطلوب:</strong> {chal.requirement}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ SECTION 09: RECOMMENDATIONS ═══════ */}
       <div className="report-section px-11 py-6 border-b border-gray-100">
         {nextSection('✅', 'التوصيات وخارطة طريق العلاج')}
         <table className="w-full border-collapse text-[11px]">

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ReportData, Decision, Risk, MaturityDomain, Recommendation } from '@/types/report';
+import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Asset, Challenge, ISOControl } from '@/types/report';
 
 interface ReportStore {
   report: ReportData | null;
@@ -35,6 +35,19 @@ interface ReportStore {
   addRecommendation: () => void;
   updateRecommendation: (index: number, data: Partial<Recommendation>) => void;
   removeRecommendation: (index: number) => void;
+
+  // Assets
+  addAsset: () => void;
+  updateAsset: (index: number, data: Partial<Asset>) => void;
+  removeAsset: (index: number) => void;
+
+  // Challenges
+  addChallenge: () => void;
+  updateChallenge: (index: number, data: Partial<Challenge>) => void;
+  removeChallenge: (index: number) => void;
+
+  // ISO Controls
+  updateISOControl: (index: number, field: 'currentApplied' | 'previousApplied', value: number) => void;
 }
 
 function uuid() {
@@ -49,7 +62,7 @@ export const useReportStore = create<ReportStore>((set, get) => ({
   isDirty: false,
 
   setReport: (report) => set({ report, isDirty: false }),
-  setStep: (step) => set({ currentStep: Math.max(0, Math.min(6, step)) }),
+  setStep: (step) => set({ currentStep: Math.max(0, Math.min(9, step)) }),
   setSaving: (saving) => set({ isSaving: saving }),
   setLastSaved: (date) => set({ lastSaved: date }),
   setDirty: (dirty) => set({ isDirty: dirty }),
@@ -160,5 +173,84 @@ export const useReportStore = create<ReportStore>((set, get) => ({
     const { report } = get();
     if (!report) return;
     set({ report: { ...report, recommendations: report.recommendations.filter((_, i) => i !== index) }, isDirty: true });
+  },
+
+  // Assets
+  addAsset: () => {
+    const { report } = get();
+    if (!report) return;
+    const newAsset: Asset = {
+      id: uuid(),
+      name: '',
+      value: '',
+      protectionLevel: 50,
+      gaps: '',
+      sortOrder: report.assets.length,
+    };
+    set({ report: { ...report, assets: [...report.assets, newAsset] }, isDirty: true });
+  },
+
+  updateAsset: (index, data) => {
+    const { report } = get();
+    if (!report) return;
+    const assets = [...report.assets];
+    assets[index] = { ...assets[index], ...data };
+    set({ report: { ...report, assets }, isDirty: true });
+  },
+
+  removeAsset: (index) => {
+    const { report } = get();
+    if (!report) return;
+    set({ report: { ...report, assets: report.assets.filter((_, i) => i !== index) }, isDirty: true });
+  },
+
+  // Challenges
+  addChallenge: () => {
+    const { report } = get();
+    if (!report) return;
+    const newChal: Challenge = {
+      id: uuid(),
+      title: '',
+      type: 'budget',
+      rootCause: '',
+      requirement: '',
+      sortOrder: report.challenges.length,
+    };
+    set({ report: { ...report, challenges: [...report.challenges, newChal] }, isDirty: true });
+  },
+
+  updateChallenge: (index, data) => {
+    const { report } = get();
+    if (!report) return;
+    const challenges = [...report.challenges];
+    challenges[index] = { ...challenges[index], ...data };
+    set({ report: { ...report, challenges }, isDirty: true });
+  },
+
+  removeChallenge: (index) => {
+    const { report } = get();
+    if (!report) return;
+    set({ report: { ...report, challenges: report.challenges.filter((_, i) => i !== index) }, isDirty: true });
+  },
+
+  // ISO Controls
+  updateISOControl: (index, field, value) => {
+    const { report } = get();
+    if (!report) return;
+    const controls = [...report.isoControls];
+    controls[index] = { ...controls[index], [field]: value };
+    // Auto-calculate compliance percentages
+    const totalControls = 93;
+    const currentApplied = controls.reduce((s, c) => s + c.currentApplied, 0);
+    const previousApplied = controls.reduce((s, c) => s + c.previousApplied, 0);
+    set({
+      report: {
+        ...report,
+        isoControls: controls,
+        kpiCompliance: Math.round((currentApplied / totalControls) * 100),
+        prevCompliance: Math.round((previousApplied / totalControls) * 100),
+      },
+      isDirty: true,
+    });
   },
 }));

@@ -90,6 +90,7 @@ export default function AIReviewModal({ report, isOpen, onClose }: Props) {
           {[
             { type: 'full', icon: '🔍', label: 'مراجعة شاملة' },
             { type: 'exec', icon: '👔', label: 'منظور الإدارة' },
+            { type: 'board', icon: '🏛️', label: 'مجلس الإدارة' },
             { type: 'risk', icon: '⚠️', label: 'تحليل المخاطر' },
             { type: 'gaps', icon: '🕳️', label: 'الثغرات المفقودة' },
           ].map((btn) => (

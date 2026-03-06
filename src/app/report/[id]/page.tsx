@@ -8,21 +8,27 @@ import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import GeneralInfoForm from '@/components/forms/GeneralInfoForm';
 import ExecutiveSummaryForm from '@/components/forms/ExecutiveSummaryForm';
+import AssetProtectionForm from '@/components/forms/AssetProtectionForm';
 import KPIForm from '@/components/forms/KPIForm';
+import ROIBenchmarkForm from '@/components/forms/ROIBenchmarkForm';
 import SLAForm from '@/components/forms/SLAForm';
 import RisksForm from '@/components/forms/RisksForm';
 import MaturityForm from '@/components/forms/MaturityForm';
+import ChallengesForm from '@/components/forms/ChallengesForm';
 import RecommendationsForm from '@/components/forms/RecommendationsForm';
 import AIReviewModal from '@/components/ai/AIReviewModal';
 
 const FORM_SECTIONS = [
-  GeneralInfoForm,
-  ExecutiveSummaryForm,
-  KPIForm,
-  SLAForm,
-  RisksForm,
-  MaturityForm,
-  RecommendationsForm,
+  GeneralInfoForm,        // 0: معلومات التقرير
+  ExecutiveSummaryForm,   // 1: الملخص التنفيذي
+  AssetProtectionForm,    // 2: حماية الأصول الحيوية
+  KPIForm,                // 3: المؤشرات والاتجاهات
+  ROIBenchmarkForm,       // 4: فعالية الاستثمار
+  SLAForm,                // 5: مقاييس الاستجابة
+  RisksForm,              // 6: المخاطر الرئيسية
+  MaturityForm,           // 7: مستوى النضج
+  ChallengesForm,         // 8: التحديات والعوائق
+  RecommendationsForm,    // 9: التوصيات
 ];
 
 export default function ReportEditorPage() {
