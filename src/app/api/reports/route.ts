@@ -11,6 +11,7 @@ export async function GET() {
         recommendations: { orderBy: { sortOrder: 'asc' } },
         assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
+        efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },
       orderBy: { updatedAt: 'desc' },
     });
@@ -50,6 +51,7 @@ export async function POST() {
               budget: '150,000',
               department: 'المدير المالي',
               timeline: 'فوري',
+              owner: 'الرئيس التنفيذي',
               sortOrder: 0,
             },
           ],
@@ -57,9 +59,9 @@ export async function POST() {
 
         risks: {
           create: [
-            { description: 'ثغرة RDP تسمح بالوصول غير المصرح به', system: 'خوادم Windows', severity: 'critical', status: 'open', probability: 5, impact: 5, sortOrder: 0 },
-            { description: 'غياب تشفير البيانات أثناء النقل الداخلي', system: 'شبكة LAN', severity: 'critical', status: 'open', probability: 4, impact: 5, sortOrder: 1 },
-            { description: 'كلمات مرور ضعيفة لحسابات المدراء', system: 'Active Directory', severity: 'high', status: 'inprogress', probability: 4, impact: 4, sortOrder: 2 },
+            { description: 'ثغرة RDP تسمح بالوصول غير المصرح به', system: 'خوادم Windows', severity: 'critical', status: 'open', probability: 5, impact: 5, worstCase: 'توقف تام للخوادم وتسريب بيانات حساسة', sortOrder: 0 },
+            { description: 'غياب تشفير البيانات أثناء النقل الداخلي', system: 'شبكة LAN', severity: 'critical', status: 'open', probability: 4, impact: 5, worstCase: 'اعتراض البيانات وسرقتها', sortOrder: 1 },
+            { description: 'كلمات مرور ضعيفة لحسابات المدراء', system: 'Active Directory', severity: 'high', status: 'inprogress', probability: 4, impact: 4, worstCase: 'اختراق حسابات بصلاحيات عالية', sortOrder: 2 },
           ],
         },
 
@@ -78,8 +80,8 @@ export async function POST() {
 
         recommendations: {
           create: [
-            { title: 'تطبيق MFA على جميع الحسابات الإدارية', description: 'تفعيل المصادقة الثنائية فوراً لجميع الحسابات ذات الصلاحيات العالية.', priority: 'high', department: 'تقنية المعلومات', timeline: '30 يوماً', sortOrder: 0 },
-            { title: 'إغلاق ثغرة RDP وتحديث الأنظمة', description: 'تطبيق التحديثات الأمنية وتقييد الوصول عبر RDP.', priority: 'high', department: 'البنية التحتية', timeline: '7 أيام', sortOrder: 1 },
+            { title: 'تطبيق MFA على جميع الحسابات الإدارية', description: 'تفعيل المصادقة الثنائية فوراً لجميع الحسابات ذات الصلاحيات العالية.', priority: 'high', department: 'تقنية المعلومات', timeline: '30 يوماً', owner: 'مدير تقنية المعلومات', sortOrder: 0 },
+            { title: 'إغلاق ثغرة RDP وتحديث الأنظمة', description: 'تطبيق التحديثات الأمنية وتقييد الوصول عبر RDP.', priority: 'high', department: 'البنية التحتية', timeline: '7 أيام', owner: 'مدير البنية التحتية', sortOrder: 1 },
           ],
         },
 
@@ -97,6 +99,15 @@ export async function POST() {
             { title: 'وقت الاحتواء يتجاوز الهدف بمقدار الضعف', type: 'tech', rootCause: 'عدم وجود أتمتة في عمليات الاستجابة', requirement: 'تفعيل منصة SOAR واعتماد playbooks جاهزة', sortOrder: 1 },
           ],
         },
+
+        efficiencyKPIs: {
+          create: [
+            { title: 'معدل اكتشاف التهديدات', val: 78, target: 90, unit: '%', description: 'نسبة التهديدات المكتشفة من إجمالي التهديدات الفعلية', lowerBetter: false, sortOrder: 0 },
+            { title: 'متوسط وقت الاكتشاف (MTTD)', val: 4.2, target: 2, unit: 'ساعة', description: 'متوسط الوقت اللازم لاكتشاف الحادثة', lowerBetter: true, sortOrder: 1 },
+            { title: 'معدل الإغلاق في الوقت المحدد', val: 72, target: 85, unit: '%', description: 'نسبة الحوادث المغلقة ضمن الإطار الزمني المستهدف', lowerBetter: false, sortOrder: 2 },
+            { title: 'فعالية أدوات الأمن', val: 81, target: 90, unit: '%', description: 'نسبة الأدوات الأمنية العاملة بكفاءة كاملة', lowerBetter: false, sortOrder: 3 },
+          ],
+        },
       },
       include: {
         decisions: { orderBy: { sortOrder: 'asc' } },
@@ -105,6 +116,7 @@ export async function POST() {
         recommendations: { orderBy: { sortOrder: 'asc' } },
         assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
+        efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },
     });
 

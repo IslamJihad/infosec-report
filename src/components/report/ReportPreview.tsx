@@ -1,17 +1,15 @@
-'use client';
+﻿'use client';
 
+import { useRef, useEffect } from 'react';
 import type { ReportData } from '@/types/report';
 import {
   formatArabicDate,
-  getScoreColorClass,
   getDeltaInfo,
   SEVERITY_MAP,
   STATUS_MAP,
   PRIORITY_MAP,
-  MATURITY_LEVELS,
   HEATMAP_COLORS,
   getHeatmapClass,
-  getRiskScoreClass,
   PROBABILITY_LABELS,
   IMPACT_LABELS,
   CHALLENGE_TYPES,
@@ -21,27 +19,218 @@ interface Props {
   report: ReportData;
 }
 
+const MAT_NAMES = ['مبتدئ', 'أساسي', 'متوسط', 'متقدم', 'نموذجي'];
+const MAT_COLORS = ['#991b1b', '#d97706', '#ca8a04', '#16a34a', '#15803d'];
+
+function drawKpiComboChart(canvas: HTMLCanvasElement, r: ReportData) {
+  const DPR = 2;
+  const W = canvas.offsetWidth || 680;
+  const H = 200;
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.scale(DPR, DPR);
+
+  const labels = ['حوادث حرجة', 'ثغرات مكتشفة', 'إجمالي الحوادث', 'امتثال ISO%'];
+  const cur = [r.kpiCritical, r.kpiVuln, r.kpiTotal, r.kpiCompliance];
+  const prev = [r.prevCritical, r.prevVuln, r.prevTotal, r.prevCompliance];
+  const curColors = ['#dc2626', '#d97706', '#1e3a5f', '#16a34a'];
+
+  const PAD = { top: 28, right: 20, bottom: 52, left: 36 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top - PAD.bottom;
+  const N = labels.length;
+  const grpW = cW / N;
+  const barW = Math.min(28, Math.floor((grpW - 14) / 2));
+  const maxVal = Math.max(...cur, ...prev, 1);
+
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+
+  for (let v = 0; v <= 4; v++) {
+    const y = PAD.top + cH * (1 - v / 4);
+    ctx.strokeStyle = v === 0 ? '#cbd5e1' : '#f1f5f9';
+    ctx.lineWidth = v === 0 ? 1 : 0.5;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
+    ctx.fillStyle = '#94a3b8'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(String(Math.round(maxVal * v / 4)), PAD.left - 4, y + 3);
+  }
+
+  labels.forEach((lbl, gi) => {
+    const gx = PAD.left + gi * grpW;
+    const cx = gx + grpW / 2;
+    const sx = cx - barW - 2;
+
+    // prev bar
+    const pHgt = Math.max(2, (prev[gi] / maxVal) * cH);
+    const pY = PAD.top + cH - pHgt;
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(sx, pY, barW, pHgt);
+    ctx.fillStyle = '#94a3b8'; ctx.font = '8px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(String(prev[gi]), sx + barW / 2, pY - 3);
+
+    // current bar
+    const cHgt = Math.max(2, (cur[gi] / maxVal) * cH);
+    const cY = PAD.top + cH - cHgt;
+    ctx.fillStyle = curColors[gi];
+    ctx.fillRect(sx + barW + 4, cY, barW, cHgt);
+    ctx.fillStyle = curColors[gi]; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(String(cur[gi]), sx + barW + 4 + barW / 2, cY - 3);
+
+    ctx.fillStyle = '#334155'; ctx.font = 'bold 8.5px sans-serif'; ctx.textAlign = 'center';
+    const words = lbl.split(' ');
+    ctx.fillText(words.slice(0, Math.ceil(words.length / 2)).join(' '), cx, H - PAD.bottom + 14);
+    if (words.length > 2) ctx.fillText(words.slice(Math.ceil(words.length / 2)).join(' '), cx, H - PAD.bottom + 25);
+    else if (words.length === 2 && lbl.length > 6) ctx.fillText(words[1], cx, H - PAD.bottom + 25);
+  });
+}
+
+function drawMaturityChart(canvas: HTMLCanvasElement, r: ReportData) {
+  const DPR = 2;
+  const W = canvas.offsetWidth || 680;
+  const mats = r.maturityDomains;
+  const N = mats.length;
+  if (N === 0) return;
+  const H = 240;
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.scale(DPR, DPR);
+
+  const PAD = { top: 28, right: 56, bottom: 66, left: 30 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top - PAD.bottom;
+  const barW = Math.min(30, Math.floor(cW / N - 12));
+
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  const LVL = ['مبتدئ', 'أساسي', 'متوسط', 'متقدم', 'نموذجي'];
+  for (let v = 0; v <= 5; v++) {
+    const y = PAD.top + cH * (1 - v / 5);
+    ctx.strokeStyle = v === 0 ? '#cbd5e1' : '#f1f5f9';
+    ctx.lineWidth = v === 0 ? 1 : 0.5;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
+    ctx.fillStyle = '#94a3b8'; ctx.font = '7px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(String(v), PAD.left - 4, y + 3);
+    if (v > 0) {
+      ctx.fillStyle = '#cbd5e1'; ctx.font = '6.5px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(LVL[v - 1], PAD.left + cW + 4, y + 3);
+    }
+  }
+
+  // Average dashed line
+  const avg = mats.reduce((a, m) => a + m.score, 0) / N;
+  const avgY = PAD.top + cH * (1 - avg / 5);
+  ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(PAD.left, avgY); ctx.lineTo(PAD.left + cW, avgY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  mats.forEach((m, gi) => {
+    const cx = PAD.left + (gi + 0.5) * (cW / N);
+    const sx = cx - barW / 2;
+    const bH = Math.max(3, (m.score / 5) * cH);
+    const bY = PAD.top + cH - bH;
+    ctx.fillStyle = MAT_COLORS[m.score - 1] ?? '#94a3b8';
+    ctx.fillRect(sx, bY, barW, bH);
+    ctx.fillStyle = '#1e293b'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`${m.score}/5`, cx, bY - 3);
+
+    const words = m.name.split(' ');
+    const mid = Math.ceil(words.length / 2);
+    ctx.fillStyle = '#334155'; ctx.font = '7.5px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(words.slice(0, mid).join(' '), cx, H - PAD.bottom + 16);
+    if (words.length > 1) ctx.fillText(words.slice(mid).join(' '), cx, H - PAD.bottom + 26);
+  });
+}
+
 export default function ReportPreview({ report }: Props) {
   const r = report;
   const dateF = formatArabicDate(r.issueDate);
-  const scoreColor = getScoreColorClass(r.securityScore);
+  const kpiChartRef = useRef<HTMLCanvasElement>(null);
+  const matChartRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const el = kpiChartRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(() => { if (kpiChartRef.current) drawKpiComboChart(kpiChartRef.current, r); });
+    obs.observe(el);
+    drawKpiComboChart(el, r);
+    return () => obs.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [r]);
+
+  useEffect(() => {
+    const el = matChartRef.current;
+    if (!el || !r.showMaturity) return;
+    const obs = new ResizeObserver(() => { if (matChartRef.current) drawMaturityChart(matChartRef.current, r); });
+    obs.observe(el);
+    drawMaturityChart(el, r);
+    return () => obs.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [r]);
+
   const totalVuln = r.vulnCritical + r.vulnHigh + r.vulnMedium + r.vulnLow || 1;
+  const sortedRisks = [...r.risks].sort((a, b) => b.probability * b.impact - a.probability * a.impact);
+  const critRisks = sortedRisks.filter(risk => risk.probability * risk.impact >= 15).length;
+  const avgProt = r.assets.length ? Math.round(r.assets.reduce((s, a) => s + a.protectionLevel, 0) / r.assets.length) : 70;
   const avgMat = r.maturityDomains.length > 0
     ? (r.maturityDomains.reduce((a, m) => a + m.score, 0) / r.maturityDomains.length).toFixed(1)
     : '0';
-  const sortedRisks = [...r.risks].sort((a, b) => b.probability * b.impact - a.probability * a.impact);
+  const trendUp = r.trend.includes('↑') || r.trend.includes('↗');
+  const trendDown = r.trend.includes('↓') || r.trend.includes('↘');
+  const effKPIs = r.efficiencyKPIs ?? [];
 
-  let sectionNum = 0;
-  function nextSection(icon: string, title: string) {
-    sectionNum++;
-    return (
-      <div className="flex items-center gap-0 mb-4 border-b-2 border-navy-950 pb-2">
-        <span className="bg-navy-950 text-white text-[10px] font-[800] py-0.5 px-2.5 tracking-wider">0{sectionNum}</span>
-        <span className="text-[13px] font-[800] text-navy-950 py-0.5 px-3 flex-1">{title}</span>
-        <span className="text-[13px] ml-1.5">{icon}</span>
-      </div>
-    );
-  }
+  const scoreColor = (s: number) => s >= 75 ? '#16a34a' : s >= 50 ? '#d97706' : '#dc2626';
+  const ragColor = (rag: string) => rag === 'r' ? '#dc2626' : rag === 'a' ? '#f59e0b' : rag === 'g' ? '#22c55e' : '#94a3b8';
+  const ragLabel = (rag: string) => rag === 'r' ? 'يستوجب تدخلاً' : rag === 'a' ? 'يستوجب متابعة' : rag === 'g' ? 'وضع جيد' : '';
+  const ragBg   = (rag: string) => rag === 'r' ? '#fef2f2' : rag === 'a' ? '#fffbeb' : rag === 'g' ? '#f0fdf4' : '#f8fafc';
+  const ragBorder = (rag: string) => rag === 'r' ? 'rgba(220,38,38,.15)' : rag === 'a' ? 'rgba(120,53,15,.12)' : 'rgba(20,83,45,.12)';
+
+  const slaOk = r.slaMTTD <= r.slaMTTDTarget && r.slaMTTR <= r.slaMTTRTarget && r.slaMTTC <= r.slaMTTCTarget;
+
+  // Precompute which sections are shown → ordinal numbers
+  type SecId = 'exec' | 'risks' | 'assets' | 'ind' | 'eff' | 'sla' | 'act' | 'mat';
+  const shownSections: SecId[] = [
+    'exec', 'risks',
+    ...(r.assets.length > 0 ? ['assets' as SecId] : []),
+    'ind',
+    ...(effKPIs.length > 0 ? ['eff' as SecId] : []),
+    ...(r.showSLA ? ['sla' as SecId] : []),
+    'act',
+    ...(r.showMaturity && r.maturityDomains.length > 0 ? ['mat' as SecId] : []),
+  ];
+  const secNum = (id: SecId) => shownSections.indexOf(id) + 1;
+
+  // TOC items
+  const toc = shownSections.map(id => {
+    const map: Record<SecId, { title: string; rag: string }> = {
+      exec:   { title: 'الملخص التنفيذي',             rag: r.securityScore >= 75 ? 'g' : r.securityScore >= 50 ? 'a' : 'r' },
+      risks:  { title: 'المخاطر الرئيسية',             rag: critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r' },
+      assets: { title: 'الأصول الحيوية',               rag: avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r' },
+      ind:    { title: 'مؤشرات الأداء',               rag: r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r' },
+      eff:    { title: 'الكفاءة التشغيلية',            rag: 'a' },
+      sla:    { title: 'مقاييس الاستجابة',             rag: slaOk ? 'g' : 'r' },
+      act:    { title: 'التوصيات والاعتمادات',         rag: r.recommendations.length > 0 ? 'g' : 'n' },
+      mat:    { title: 'تقييم مستوى النضج',            rag: parseFloat(avgMat) >= 4 ? 'g' : parseFloat(avgMat) >= 3 ? 'a' : 'r' },
+    };
+    return { ...map[id], num: secNum(id) };
+  });
+
+  // Section header helper
+  const SH = (id: SecId, title: string, rag?: string) => (
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
+      <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: '#94a3b8', minWidth: 28 }}>{String(secNum(id)).padStart(2, '0')}</span>
+      <span style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', flex: 1, letterSpacing: -0.3 }}>{title}</span>
+      {rag && (
+        <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 9, fontWeight: 800, letterSpacing: 0.5, padding: '3px 10px', borderRadius: 2, background: ragBg(rag), color: ragColor(rag), border: `1px solid ${ragBorder(rag)}` }}>
+          {ragLabel(rag)}
+        </span>
+      )}
+    </div>
+  );
 
   // Heatmap grid
   const hmRows: Array<{ p: number; cells: Array<{ cls: string; cnt: number; score: number }> }> = [];
@@ -55,513 +244,216 @@ export default function ReportPreview({ report }: Props) {
   }
 
   return (
-    <div className="report-page max-w-[900px] mx-auto bg-white shadow-[0_4px_32px_rgba(0,0,0,0.18)]">
+    <div className="max-w-[820px] mx-auto bg-white shadow-lg" dir="rtl">
       {/* ═══════ COVER PAGE ═══════ */}
-      <div className="report-cover bg-navy-950 text-white min-h-[380px] flex flex-col relative overflow-hidden">
-        {/* Accent strip */}
-        <div className="absolute top-0 right-0 w-[6px] h-full bg-gradient-to-b from-navy-600 to-navy-700" />
-        {/* Bottom line */}
-        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-navy-600 via-navy-700 to-navy-950" />
-        {/* Watermark */}
-        <div className="absolute bottom-8 left-8 text-[90px] font-[900] text-white/[0.03] tracking-[-4px] pointer-events-none select-none">
-          SECURITY
-        </div>
-
-        {/* Top row */}
-        <div className="flex items-start justify-between px-11 pt-8 relative z-10">
+      {/* ═══════ COVER PAGE ═══════ */}
+      <div style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', minHeight: 520, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 15% 80%,rgba(26,92,46,.06) 0%,transparent 50%),radial-gradient(circle at 85% 20%,rgba(201,162,39,.07) 0%,transparent 50%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: 0, right: 0, width: 6, height: '100%', background: 'linear-gradient(180deg,#1a5c2e 0%,#c9a227 55%,rgba(201,162,39,.15) 100%)' }} />
+        <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(26,92,46,.04)', top: -80, left: -80, pointerEvents: 'none', zIndex: 1 }} />
+        <div style={{ position: 'absolute', width: 180, height: 180, borderRadius: '50%', background: 'rgba(201,162,39,.05)', bottom: 80, right: -50, pointerEvents: 'none', zIndex: 1 }} />
+        <div style={{ position: 'relative', zIndex: 2, padding: '40px 52px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            {r.logoBase64 ? (
-              <img src={r.logoBase64} alt="شعار" className="max-h-[60px] max-w-[160px] object-contain brightness-110" />
-            ) : (
-              <div className="text-[10px] opacity-30 border border-white/15 px-3 py-1.5 rounded">{r.orgName}</div>
-            )}
+            {r.logoBase64 ? <img src={r.logoBase64} alt="شعار" style={{ maxHeight: 52, maxWidth: 160, objectFit: 'contain' }} /> : <div style={{ fontSize: 10, color: '#1a5c2e', border: '1px solid rgba(26,92,46,.25)', padding: '6px 14px', borderRadius: 6, letterSpacing: 0.5, background: 'rgba(255,255,255,.8)', fontWeight: 600 }}>{r.orgName}</div>}
           </div>
-          <div className="bg-red-500/15 border border-red-500/40 rounded px-3 py-1 text-[9px] font-[800] tracking-[2px] text-red-300 uppercase">
-            🔒 {r.classification}
+          <div style={{ border: '1px solid rgba(26,92,46,.3)', borderRadius: 20, padding: '4px 14px', fontSize: 8, fontWeight: 800, letterSpacing: 2, color: '#1a5c2e', background: 'rgba(26,92,46,.06)' }}>{r.classification}</div>
+        </div>
+        <div style={{ flex: 1, position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 80px 30px' }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 5, color: '#1a5c2e', opacity: 0.75, textTransform: 'uppercase', marginBottom: 18 }}>Information Security Report</div>
+          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1.1, letterSpacing: -2, marginBottom: 6, color: '#1a3a1f' }}>تقرير أمن المعلومات<br /><span style={{ color: '#c9a227' }}>{r.period}</span></div>
+          <div style={{ fontSize: 12, color: '#5a7a5e', marginBottom: 36, letterSpacing: 0.5 }}>{dateF}</div>
+          <div style={{ width: 200, height: 1.5, background: 'linear-gradient(90deg,transparent,#c9a227,rgba(26,92,46,.4),transparent)', margin: '0 auto 28px' }} />
+          <div style={{ fontSize: 10, color: '#5a7a5e', marginBottom: 5 }}>مُعدّ ومقدَّم إلى</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a3a1f', marginBottom: 4 }}>{r.recipientName}</div>
+          <div style={{ fontSize: 11, color: '#5a7a5e' }}>{r.orgName}</div>
+        </div>
+        <div style={{ position: 'relative', zIndex: 2, borderTop: '1px solid rgba(26,92,46,.12)', padding: '14px 52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,.6)' }}>
+          <div style={{ fontSize: 10, color: '#5a7a5e', lineHeight: 1.8 }}>مقدَّم من<br /><strong style={{ color: '#1a3a1f' }}>{r.author}</strong></div>
+          <div style={{ fontSize: 9, color: '#8aaa8e', fontFamily: 'monospace' }}>v{r.version} · {dateF}</div>
+        </div>
+      </div>
+      {/* ═══════ CISO NOTE ═══════ */}
+      {r.chairNote && (
+        <div style={{ background: 'linear-gradient(135deg,#f4faf0,#fdf8ec)', borderBottom: '1px solid #d4e8cc', padding: '18px 44px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ width: 32, height: 32, background: '#1a5c2e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0, marginTop: 2 }}>C</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 8, letterSpacing: 2, color: '#8aaa8e', textTransform: 'uppercase', marginBottom: 5 }}>ملاحظة CISO — ما الجديد مقارنةً بالتقرير السابق</div>
+              <div style={{ fontSize: 12, color: '#2d4a31', lineHeight: 2 }}>{r.chairNote}</div>
+              <div style={{ fontSize: 9, color: '#8aaa8e', marginTop: 5 }}>{r.author} · {dateF}</div>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Body */}
-        <div className="px-11 pt-9 relative z-10 flex-1">
-          <div className="text-[9px] opacity-35 tracking-[3px] uppercase mb-2.5">Information Security Report</div>
-          <div className="text-[32px] font-[900] leading-tight mb-1.5 tracking-[-0.5px]">
-            تقرير<br />أمن المعلومات
-          </div>
-          <div className="w-12 h-[3px] bg-navy-600 my-3.5" />
-          <div className="text-xs opacity-60 mb-1">
-            مُقدَّم إلى: <strong className="opacity-100 text-white">{r.recipientName}</strong>
-          </div>
-          <div className="text-[11px] opacity-40">{r.orgName}</div>
+      {/* ═══════ TOC ═══════ */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '18px 44px' }}>
+        <div style={{ fontSize: 8, letterSpacing: 2.5, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 10, fontWeight: 700 }}>فهرس التقرير — الحالة الراهنة</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+          {toc.map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 8px', borderRadius: 3 }}>
+              <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: '#94a3b8', minWidth: 22 }}>{String(item.num).padStart(2, '0')}</span>
+              <span style={{ fontSize: 11, flex: 1, color: '#475569' }}>{item.title}</span>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: ragColor(item.rag), flexShrink: 0 }} />
+              <span style={{ fontSize: 9, fontWeight: 700, minWidth: 80, color: ragColor(item.rag) }}>{ragLabel(item.rag)}</span>
+            </div>
+          ))}
         </div>
-
-        {/* Bottom bar */}
-        <div className="mt-auto border-t border-white/[0.08] px-11 py-4 flex justify-between items-center relative z-10 flex-wrap gap-2">
-          <div className="flex gap-5 text-[10px] opacity-45 flex-wrap">
-            <span>📅 {dateF}</span>
-            <span>📋 {r.period}</span>
-            <span>👤 {r.author}</span>
-            <span>📄 الإصدار: v{r.version}</span>
-            <span>📈 {r.securityLevel} – {r.trend}</span>
-          </div>
-          <div className="flex gap-px">
-            {[
-              ['درجة الأمن', `${r.securityScore}/100`],
-              ['الامتثال', `${r.kpiCompliance}%`],
-              ['المخاطر', `${r.kpiVuln}`],
-              ['الحوادث', `${r.kpiTotal}`],
-            ].map(([label, val]) => (
-              <div key={label} className="bg-white/[0.06] px-3.5 py-2 text-center border-l border-white/[0.08] last:border-l-0">
-                <div className="text-[8px] opacity-50 mb-0.5 tracking-wider">{label}</div>
-                <div className="text-[15px] font-[900] text-navy-500">{val}</div>
-              </div>
-            ))}
-          </div>
+        <div style={{ display: 'flex', gap: 16, marginTop: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
+          {([['#dc2626', 'يستوجب تدخلاً فورياً'], ['#f59e0b', 'يستوجب متابعة'], ['#22c55e', 'وضع جيد']] as [string, string][]).map(([col, lbl]) => (
+            <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, color: '#94a3b8' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: col, display: 'inline-block' }} />{lbl}
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* ═══════ SCORE BAR ═══════ */}
-      <div className="bg-navy-50 border-b-2 border-border px-11 py-4 flex items-center gap-5">
-        <div className={`w-[76px] h-[76px] rounded-full flex flex-col items-center justify-center font-[900] flex-shrink-0 border-[3px] ${scoreColor.ring} ${scoreColor.bg}`}>
-          <div className={`text-[22px] leading-none ${scoreColor.text}`}>{r.securityScore}</div>
-          <div className="text-[8px] opacity-60">/ 100</div>
-        </div>
-        <div className="flex-1">
-          <h3 className="text-xs font-[800] text-navy-950 mb-1.5">المستوى الأمني العام للمؤسسة: {r.securityLevel}</h3>
-          <div className="flex gap-4 flex-wrap">
-            {[
-              ['حوادث حرجة', r.kpiCritical, '#c0392b'],
-              ['ثغرات مكتشفة', r.kpiVuln, '#d35400'],
-              ['إجمالي الحوادث', r.kpiTotal, '#1a3a7c'],
-              ['نسبة الامتثال', `${r.kpiCompliance}%`, '#1b5e20'],
-              ['متوسط النضج', `${avgMat}/5`, '#1a3a7c'],
-              ['التزام SLA', `${r.slaRate}%`, '#1b5e20'],
-            ].map(([label, val, color]) => (
-              <div key={label as string} className="text-center px-2.5 py-1.5 bg-white border border-border rounded-md min-w-[60px]">
-                <div className="text-[15px] font-[900]" style={{ color: color as string }}>{val}</div>
-                <div className="text-[9px] text-text-muted">{label}</div>
-              </div>
-            ))}
+      {/* ═══════ EXEC SUMMARY ═══════ */}
+      <div className="px-11 py-7 border-b border-gray-100">
+        {SH('exec', 'الملخص التنفيذي', r.securityScore >= 75 ? 'g' : r.securityScore >= 50 ? 'a' : 'r')}
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 20, marginBottom: 18, alignItems: 'start' }}>
+          <div style={{ background: '#1e293b', color: '#fff', borderRadius: 4, padding: '18px 22px', textAlign: 'center', minWidth: 110 }}>
+            <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: -2, color: scoreColor(r.securityScore) }}>{r.securityScore}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 2 }}>/ 100</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', marginTop: 7, paddingTop: 7, borderTop: '1px solid rgba(255,255,255,.1)' }}>{r.securityScore >= 75 ? 'وضع جيد' : r.securityScore >= 50 ? 'يستوجب الانتباه' : 'خطر مرتفع'}</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+              {([
+                { label: 'حوادث حرجة', val: r.kpiCritical, prev: r.prevCritical, color: '#dc2626', lower: true },
+                { label: 'ثغرات مكتشفة', val: r.kpiVuln, prev: r.prevVuln, color: '#d97706', lower: true },
+                { label: 'إجمالي الحوادث', val: r.kpiTotal, prev: r.prevTotal, color: '#1e293b', lower: true },
+                { label: 'امتثال ISO', val: r.kpiCompliance, prev: r.prevCompliance, color: '#2563eb', lower: false, suffix: '%' },
+              ] as Array<{ label: string; val: number; prev: number; color: string; lower: boolean; suffix?: string }>).map((kpi) => {
+                const info = getDeltaInfo(kpi.val, kpi.prev, kpi.lower);
+                const isGood = info.colorClass.includes('success');
+                const isBad = info.colorClass.includes('danger');
+                return (
+                  <div key={kpi.label} style={{ background: '#fff', padding: '10px 8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, marginBottom: 2, color: kpi.color }}>{kpi.val}{kpi.suffix ?? ''}</div>
+                    <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600, marginBottom: 3 }}>{kpi.label}</div>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 2, background: isGood ? '#f0fdf4' : isBad ? '#fef2f2' : '#f1f5f9', color: isGood ? '#16a34a' : isBad ? '#dc2626' : '#94a3b8' }}>{info.arrow} {info.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 2, fontSize: 10, fontWeight: 700, background: trendUp ? '#f0fdf4' : trendDown ? '#fef2f2' : '#f1f5f9', color: trendUp ? '#16a34a' : trendDown ? '#dc2626' : '#94a3b8' }}>{trendUp ? '↑' : trendDown ? '↓' : '→'} {r.trend}</span>
+              <span style={{ fontSize: 11, color: '#475569', lineHeight: 1.9, flex: 1 }}>{r.summary}</span>
+            </div>
           </div>
         </div>
-        <div className="flex flex-col items-center gap-0.5 px-3.5 py-2 bg-white border border-border rounded-[7px]">
-          <div className="text-[22px]">{r.trend.includes('↑') || r.trend.includes('↗') ? '📈' : r.trend.includes('↘') ? '📉' : '➡️'}</div>
-          <div className="text-[9px] text-text-muted whitespace-nowrap">{r.trend}</div>
-        </div>
-      </div>
-
-      {/* ═══════ SECTION 01: EXECUTIVE SUMMARY ═══════ */}
-      <div className="report-section px-11 py-6 border-b border-gray-100">
-        {nextSection('📋', 'الملخص التنفيذي')}
-        <div className="text-xs leading-[2.2] text-text-secondary p-3.5 bg-surface border-r-4 border-r-navy-950 rounded-l-md mb-3.5">
-          {r.summary}
-        </div>
-
         {r.decisions.length > 0 && (
-          <div className="border border-border rounded-md overflow-hidden mt-1">
-            <div className="bg-navy-950 text-white px-3.5 py-2 text-[11px] font-bold flex items-center gap-1.5">
-              ⚠️ قرارات مطلوبة من الإدارة العليا
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ background: '#dc2626', color: '#fff', padding: '8px 14px', fontSize: 10, fontWeight: 800, display: 'flex', justifyContent: 'space-between' }}>
+              <span>الاعتمادات المطلوبة من الإدارة العليا</span>
+              <span style={{ opacity: 0.6, fontWeight: 400 }}>{r.decisions.length} قرار معلّق</span>
             </div>
-            <div className="p-3.5">
-              {r.decisions.map((dec, i) => (
-                <div key={dec.id} className="flex gap-2.5 py-2 border-b border-gray-100 last:border-b-0 items-start">
-                  <div className="bg-navy-800 text-white w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-[800] flex-shrink-0 mt-0.5">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-[11px] font-[800] text-navy-950 mb-0.5">{dec.title}</div>
-                    <div className="text-[10px] text-text-secondary leading-relaxed">{dec.description}</div>
-                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                      {dec.budget && <span className="text-[9px] px-2 py-0.5 rounded bg-danger-100 text-danger-700 font-bold">💰 {dec.budget} ₪</span>}
-                      {dec.department && <span className="text-[9px] px-2 py-0.5 rounded bg-navy-100 text-navy-800 font-bold">🏢 {dec.department}</span>}
-                      {dec.timeline && <span className="text-[9px] px-2 py-0.5 rounded bg-success-100 text-success-700 font-bold">⏱️ {dec.timeline}</span>}
-                    </div>
-                  </div>
+            {r.decisions.map((dec, i) => (
+              <div key={dec.id} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto', gap: 12, padding: '11px 14px', borderBottom: '1px solid #e2e8f0', alignItems: 'start' }}>
+                <div style={{ width: 20, height: 20, background: '#dc2626', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, flexShrink: 0 }}>{i + 1}</div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, marginBottom: 3 }}>{dec.title}</div>
+                  <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{dec.description}</div>
                 </div>
-              ))}
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', minWidth: 120 }}>
+                  {dec.owner && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: '#fef2f2', color: '#dc2626' }}>صاحب القرار: {dec.owner}</span>}
+                  {dec.budget && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: '#eff6ff', color: '#2563eb' }}>{dec.budget}</span>}
+                  {dec.timeline && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: '#f0fdf4', color: '#16a34a' }}>⏱ {dec.timeline}</span>}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* ═══════ SECTION 02: ASSET PROTECTION ═══════ */}
-      {r.assets.length > 0 && (
-        <div className="report-section px-11 py-6 border-b border-gray-100">
-          {nextSection('🏛️', 'مستوى حماية الأصول الحيوية')}
-
-          <div className="space-y-3">
-            {r.assets.map((asset) => {
-              const pct = asset.protectionLevel;
-              const barColor = pct >= 70 ? 'bg-success-700' : pct >= 40 ? 'bg-warning-500' : 'bg-danger-500';
-              const badgeClass = pct >= 70 ? 'bg-success-100 text-success-700' : pct >= 40 ? 'bg-warning-100 text-warning-700' : 'bg-danger-100 text-danger-500';
-              return (
-                <div key={asset.id} className="border border-border rounded-md p-3.5">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="text-[11px] font-[800] text-navy-950">{asset.name}</div>
-                      <div className="text-[10px] text-text-secondary mt-0.5">{asset.value}</div>
-                    </div>
-                    <span className={`text-[10px] font-[900] px-2 py-0.5 rounded ${badgeClass}`}>{pct}%</span>
-                  </div>
-                  <div className="bg-gray-100 rounded-sm h-2 overflow-hidden mb-2">
-                    <div className={`h-full rounded-sm ${barColor}`} style={{ width: `${pct}%` }} />
-                  </div>
-                  {asset.gaps && (
-                    <div className="text-[10px] text-danger-500 bg-danger-100/50 rounded px-2.5 py-1.5 border-r-2 border-r-danger-500">
-                      ⚠️ {asset.gaps}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+      {/* ═══════ RISKS ═══════ */}
+      <div className="px-11 py-7 border-b border-gray-100">
+        {SH('risks', 'المخاطر الرئيسية', critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r')}
+        {critRisks > 0 && (
+          <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.9, padding: '9px 13px', background: '#eff6ff', borderRight: '3px solid #2563eb', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>
+            {critRisks} مخاطر بدرجة 15 أو أعلى — تهديد مباشر لاستمرارية الأعمال يستوجب المعالجة قبل نهاية الربع.
           </div>
-        </div>
-      )}
-
-      {/* ═══════ SECTION 03: KPIs ═══════ */}
-      <div className="report-section px-11 py-6 border-b border-gray-100">
-        {nextSection('📊', 'لوحة المؤشرات والأداء')}
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-4 gap-px bg-border border border-border rounded-md overflow-hidden mb-3.5">
-          {[
-            { label: 'حوادث حرجة', val: r.kpiCritical, prev: r.prevCritical, color: 'text-danger-500', lower: true },
-            { label: 'ثغرات مكتشفة', val: r.kpiVuln, prev: r.prevVuln, color: 'text-warning-500', lower: true },
-            { label: 'إجمالي الحوادث', val: r.kpiTotal, prev: r.prevTotal, color: 'text-navy-800', lower: true },
-            { label: 'نسبة الامتثال', val: r.kpiCompliance, prev: r.prevCompliance, color: 'text-success-700', lower: false, suffix: '%' },
-          ].map((kpi) => {
-            const info = getDeltaInfo(kpi.val, kpi.prev, kpi.lower);
-            return (
-              <div key={kpi.label} className="bg-white p-3.5 text-center">
-                <div className={`text-[26px] font-[900] leading-none mb-1 ${kpi.color}`}>
-                  {kpi.val}{kpi.suffix || ''}
-                </div>
-                <div className="text-[9px] font-bold text-text-secondary mb-1">{kpi.label}</div>
-                <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded font-bold ${info.colorClass}`}>
-                  {info.arrow} {info.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Two column charts */}
-        <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-          {/* Vulnerability bars */}
-          <div className="border border-border rounded-md overflow-hidden">
-            <div className="bg-navy-800 text-white px-3 py-1.5 text-[10px] font-bold">توزيع الثغرات حسب الخطورة</div>
-            <div className="p-3">
-              {[
-                { label: 'حرجة', val: r.vulnCritical, color: 'bg-danger-500' },
-                { label: 'عالية', val: r.vulnHigh, color: 'bg-warning-500' },
-                { label: 'متوسطة', val: r.vulnMedium, color: 'bg-yellow-500' },
-                { label: 'منخفضة', val: r.vulnLow, color: 'bg-success-700' },
-              ].map((item) => (
-                <div key={item.label} className="mb-2">
-                  <div className="flex justify-between text-[10px] text-text-secondary mb-0.5">
-                    <span>{item.label}</span>
-                    <span>{item.val} ({Math.round((item.val / totalVuln) * 100)}%)</span>
-                  </div>
-                  <div className="bg-gray-100 rounded-sm h-2 overflow-hidden">
-                    <div className={`h-full rounded-sm ${item.color}`} style={{ width: `${Math.round((item.val / totalVuln) * 100)}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Incident status */}
-          <div className="border border-border rounded-md overflow-hidden">
-            <div className="bg-navy-800 text-white px-3 py-1.5 text-[10px] font-bold">حالة الحوادث الأمنية</div>
-            <div className="p-3">
-              <table className="w-full">
-                <tbody>
-                  {[
-                    { label: 'مفتوحة / غير معالجة', val: r.incOpen, dot: 'bg-danger-500' },
-                    { label: 'قيد المعالجة', val: r.incProgress, dot: 'bg-warning-500' },
-                    { label: 'مغلقة / تم الحل', val: r.incClosed, dot: 'bg-success-700' },
-                    { label: 'تحت المراقبة', val: r.incWatch, dot: 'bg-navy-800' },
-                  ].map((item) => (
-                    <tr key={item.label}>
-                      <td className="py-1.5 px-2 text-[10px] border-b border-gray-100">
-                        <span className={`inline-block w-2 h-2 rounded-full ml-1.5 ${item.dot}`} />
-                        {item.label}
-                      </td>
-                      <td className="py-1.5 px-2 text-[10px] font-[800] text-navy-950 border-b border-gray-100 text-left">{item.val}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Trend table */}
-        <table className="w-full border-collapse text-[11px]">
+        )}
+        <table className="w-full border-collapse text-[11px] mb-4">
           <thead>
-            <tr>
-              {['المؤشر', 'الفترة السابقة', 'الفترة الحالية', 'التغيير'].map((h) => (
-                <th key={h} className="bg-navy-950 text-white py-1.5 px-2.5 text-right font-bold text-[10px]">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { label: 'الحوادث الحرجة', prev: r.prevCritical, cur: r.kpiCritical, lower: true },
-              { label: 'الثغرات المكتشفة', prev: r.prevVuln, cur: r.kpiVuln, lower: true },
-              { label: 'إجمالي الحوادث', prev: r.prevTotal, cur: r.kpiTotal, lower: true },
-              { label: 'نسبة الامتثال (%)', prev: r.prevCompliance, cur: r.kpiCompliance, lower: false },
-            ].map((row, i) => {
-              const info = getDeltaInfo(row.cur, row.prev, row.lower);
-              return (
-                <tr key={row.label} className={i % 2 === 1 ? 'bg-surface' : ''}>
-                  <td className="py-1.5 px-2.5 border-b border-gray-100">{row.label}</td>
-                  <td className="py-1.5 px-2.5 border-b border-gray-100">{row.prev}</td>
-                  <td className="py-1.5 px-2.5 border-b border-gray-100 font-bold">{row.cur}</td>
-                  <td className="py-1.5 px-2.5 border-b border-gray-100">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${info.colorClass}`}>
-                      {info.arrow} {info.label}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ═══════ SECTION 04.5: ROI & BENCHMARK ═══════ */}
-      {(r.vulnResolved > 0 || r.bmScore > 0) && (
-        <div className="report-section px-11 py-6 border-b border-gray-100">
-          {nextSection('💰', 'فعالية الاستثمار الأمني — هل الأموال تحقق غرضها؟')}
-
-          <div className="grid grid-cols-2 gap-3 mb-3.5">
-            <div className="border border-border rounded-md p-3.5 text-center">
-              <div className="text-[22px] font-[900] text-success-700">{r.vulnResolved}</div>
-              <div className="text-[10px] text-text-muted">ثغرات تمت معالجتها هذه الفترة</div>
-            </div>
-            <div className="border border-border rounded-md p-3.5 text-center">
-              <div className={`text-[22px] font-[900] ${r.vulnRecurring === 0 ? 'text-success-700' : 'text-danger-500'}`}>{r.vulnRecurring}</div>
-              <div className="text-[10px] text-text-muted">حوادث متكررة من نوع سابق</div>
-            </div>
-          </div>
-
-          {r.bmScore > 0 && (
-            <>
-              <div className="text-[10px] font-[800] text-navy-950 mb-2 mt-4">📍 مقارنة بالقطاع (Benchmark)</div>
-              <table className="w-full border-collapse text-[11px] mb-2">
-                <thead>
-                  <tr>
-                    {['المؤشر', 'قيمتنا', 'متوسط القطاع', 'الموقف'].map((h) => (
-                      <th key={h} className="bg-navy-950 text-white py-1.5 px-2.5 text-right font-bold text-[10px]">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { label: 'درجة الأمن العامة', ours: r.securityScore, theirs: r.bmScore, lower: false },
-                    { label: 'نسبة الامتثال ISO 27001 %', ours: r.kpiCompliance, theirs: r.bmCompliance, lower: false },
-                    { label: 'وقت الاكتشاف MTTD (ساعة)', ours: r.slaMTTD, theirs: r.bmMTTD, lower: true },
-                    { label: 'وقت الاستجابة MTTR (ساعة)', ours: r.slaMTTR, theirs: r.bmMTTR, lower: true },
-                  ].map((row, i) => {
-                    const diff = row.ours - row.theirs;
-                    const isGood = row.lower ? diff <= 0 : diff >= 0;
-                    return (
-                      <tr key={row.label} className={i % 2 === 1 ? 'bg-surface' : ''}>
-                        <td className="py-1.5 px-2.5 border-b border-gray-100">{row.label}</td>
-                        <td className="py-1.5 px-2.5 border-b border-gray-100 font-bold">{row.ours}</td>
-                        <td className="py-1.5 px-2.5 border-b border-gray-100">{row.theirs}</td>
-                        <td className="py-1.5 px-2.5 border-b border-gray-100">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGood ? 'bg-success-100 text-success-700' : 'bg-danger-100 text-danger-500'}`}>
-                            {isGood ? '✅ أفضل' : '⚠️ أقل'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {r.bmSector && (
-                <div className="text-[9px] text-text-hint mt-1">📌 المصدر: {r.bmSector}</div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ═══════ SECTION 05: SLA ═══════ */}
-      {r.showSLA && (
-        <div className="report-section px-11 py-6 border-b border-gray-100">
-          {nextSection('⏱️', 'مقاييس الاستجابة للحوادث (SLA)')}
-
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            {[
-              { code: 'MTTD', label: 'وقت الاكتشاف', val: r.slaMTTD, target: r.slaMTTDTarget },
-              { code: 'MTTR', label: 'وقت الاستجابة', val: r.slaMTTR, target: r.slaMTTRTarget },
-              { code: 'MTTC', label: 'وقت الاحتواء', val: r.slaMTTC, target: r.slaMTTCTarget },
-            ].map((sla) => {
-              const ok = sla.val <= sla.target;
-              const pct = sla.target > 0 ? Math.min(100, Math.round((sla.val / sla.target) * 100)) : 0;
-              return (
-                <div key={sla.code} className="border border-border rounded-md overflow-hidden">
-                  <div className={`py-1.5 px-2.5 text-[9px] font-bold text-center tracking-wider ${ok ? 'bg-success-100 text-success-700 border-b-2 border-b-success-700' : 'bg-danger-100 text-danger-500 border-b-2 border-b-danger-500'}`}>
-                    {ok ? '✅ ضمن الهدف' : '⚠️ تجاوز الهدف'} – {sla.code}
-                  </div>
-                  <div className="p-2.5 text-center">
-                    <div className={`text-xl font-[900] ${ok ? 'text-success-700' : 'text-danger-500'}`}>{sla.val}</div>
-                    <div className="text-[9px] text-text-muted">ساعة</div>
-                    <div className="text-[9px] text-text-muted mt-0.5">{sla.label} | الهدف: ≤ {sla.target} ساعة</div>
-                    <div className="bg-gray-100 rounded-sm h-[5px] overflow-hidden mt-1.5">
-                      <div className={`h-full rounded-sm ${ok ? 'bg-success-700' : 'bg-danger-500'}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="border border-border rounded-md p-2.5 text-center">
-              <div className={`text-lg font-[900] ${r.slaRate >= 80 ? 'text-success-700' : 'text-danger-500'}`}>{r.slaRate}%</div>
-              <div className="text-[9px] text-text-muted">نسبة الحوادث المحلولة ضمن SLA</div>
-            </div>
-            <div className="border border-border rounded-md p-2.5 text-center">
-              <div className={`text-lg font-[900] ${r.slaBreach === 0 ? 'text-success-700' : 'text-danger-500'}`}>{r.slaBreach}</div>
-              <div className="text-[9px] text-text-muted">حوادث تجاوزت حدود SLA</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════ SECTION 04: TOP RISKS ═══════ */}
-      <div className="report-section px-11 py-6 border-b border-gray-100">
-        {nextSection('⚠️', 'أبرز المخاطر والثغرات')}
-
-        <table className="w-full border-collapse text-[11px] mb-3.5">
-          <thead>
-            <tr>
-              {['#', 'وصف الخطر / الثغرة', 'النظام المتأثر', 'الخطورة', 'الحالة', 'احتمالية', 'تأثير', 'درجة'].map((h) => (
-                <th key={h} className="bg-navy-950 text-white py-2 px-2.5 text-right font-bold text-[10px]">{h}</th>
-              ))}
-            </tr>
+            <tr>{['#', 'وصف المخاطرة والنظام المتأثر', 'الخطورة', 'الحالة', 'الدرجة', 'السيناريو الأسوأ'].map(h => (
+              <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
+            ))}</tr>
           </thead>
           <tbody>
             {sortedRisks.map((risk, i) => {
               const score = risk.probability * risk.impact;
               const sev = SEVERITY_MAP[risk.severity];
               const st = STATUS_MAP[risk.status];
+              const autoWC = score >= 20 ? 'توقف العمليات 48+ ساعة وخسائر مالية مباشرة' : score >= 15 ? 'اختراق بيانات وتبعات قانونية' : score >= 10 ? 'تعطل جزئي يؤثر على الإنتاجية' : 'تأثير محدود يمكن احتواؤه';
               return (
-                <tr key={risk.id} className={`${i % 2 === 1 ? 'bg-surface' : ''} hover:bg-navy-50 transition-colors`}>
-                  <td className="py-2 px-2.5 border-b border-gray-100 text-center font-[800] text-text-secondary text-[11px]">{i + 1}</td>
-                  <td className="py-2 px-2.5 border-b border-gray-100 font-semibold">{risk.description}</td>
-                  <td className="py-2 px-2.5 border-b border-gray-100 text-text-secondary">{risk.system}</td>
-                  <td className="py-2 px-2.5 border-b border-gray-100">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${sev?.bgClass}`}>{sev?.label}</span>
+                <tr key={risk.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontWeight: 600, marginBottom: 3 }}>{risk.description}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>{risk.system}</div></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${sev?.bgClass}`}>{sev?.label}</span></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${st?.bgClass}`}>{st?.label}</span></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 3, fontSize: 10, fontWeight: 900, fontFamily: 'monospace', background: score >= 20 ? '#450a0a' : score >= 15 ? '#fef2f2' : score >= 10 ? '#fffbeb' : '#f0fdf4', color: score >= 20 ? '#fff' : score >= 15 ? '#dc2626' : score >= 10 ? '#d97706' : '#16a34a' }}>{score}</span>
                   </td>
-                  <td className="py-2 px-2.5 border-b border-gray-100">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${st?.bgClass}`}>{st?.label}</span>
-                  </td>
-                  <td className="py-2 px-2.5 border-b border-gray-100 text-center">{risk.probability}</td>
-                  <td className="py-2 px-2.5 border-b border-gray-100 text-center">{risk.impact}</td>
-                  <td className="py-2 px-2.5 border-b border-gray-100 text-center">
-                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-[900] ${getRiskScoreClass(score)}`}>
-                      {score}
-                    </span>
-                  </td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: score >= 15 ? '#dc2626' : score >= 10 ? '#d97706' : '#94a3b8', fontWeight: score >= 15 ? 700 : 400, lineHeight: 1.8 }}>{risk.worstCase || autoWC}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-
-        {/* Heatmap */}
-        <div className="overflow-x-auto mt-3.5">
-          <div className="text-[10px] font-bold text-navy-950 mb-2">خريطة المخاطر الحرارية (Risk Heat Map)</div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>خريطة المخاطر الحرارية</div>
           <table className="border-collapse w-full text-[9px]">
             <thead>
               <tr>
-                <th className="bg-navy-800 text-white py-1.5 px-2 text-center font-bold">الاحتمالية / التأثير</th>
-                {IMPACT_LABELS.slice(1).map((label, i) => (
-                  <th key={i} className="bg-navy-800 text-white py-1.5 px-2 text-center font-bold">{i + 1} – {label}</th>
-                ))}
+                <th style={{ background: '#1e293b', color: '#fff', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>الاحتمالية / التأثير</th>
+                {IMPACT_LABELS.slice(1).map((label, i) => <th key={i} style={{ background: '#1e293b', color: '#fff', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>{i + 1} – {label}</th>)}
               </tr>
             </thead>
             <tbody>
               {hmRows.map((row) => (
                 <tr key={row.p}>
-                  <td className="bg-navy-50 text-navy-800 font-bold text-right py-1.5 px-2.5 whitespace-nowrap">
-                    {PROBABILITY_LABELS[row.p]} ({row.p})
-                  </td>
+                  <td style={{ background: '#f8fafc', color: '#1e3a5f', fontWeight: 700, textAlign: 'right', padding: '6px 10px', whiteSpace: 'nowrap' }}>{PROBABILITY_LABELS[row.p]} ({row.p})</td>
                   {row.cells.map((cell, ci) => {
                     const colors = HEATMAP_COLORS[cell.cls];
-                    return (
-                      <td key={ci} className="p-1">
-                        <div
-                          className="rounded h-7 flex items-center justify-center font-[800] text-[9px] gap-0.5"
-                          style={{ background: colors?.bg, color: colors?.text }}
-                        >
-                          {cell.cnt > 0 && <span>{cell.cnt}▪</span>}
-                          <span>{cell.score}</span>
-                        </div>
-                      </td>
-                    );
+                    return <td key={ci} className="p-1"><div style={{ background: colors?.bg, color: colors?.text, borderRadius: 4, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, gap: 2 }}>{cell.cnt > 0 && <span>{cell.cnt}▪</span>}<span>{cell.score}</span></div></td>;
                   })}
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="flex gap-2.5 mt-2 flex-wrap">
-            {[
-              ['hm1', 'منخفض (≤4)'],
-              ['hm2', 'متوسط (5-9)'],
-              ['hm3', 'عالٍ (10-16)'],
-              ['hm4', 'حرج (17-20)'],
-              ['hm5', 'كارثي (25)'],
-            ].map(([cls, label]) => {
-              const colors = HEATMAP_COLORS[cls];
-              return (
-                <div key={cls} className="flex items-center gap-1 text-[9px] text-text-secondary">
-                  <div className="w-3 h-3 rounded-sm" style={{ background: colors?.bg }} />
-                  {label}
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
 
-      {/* ═══════ SECTION 05: MATURITY ═══════ */}
-      {r.showMaturity && (
-        <div className="report-section px-11 py-6 border-b border-gray-100">
-          {nextSection('🧭', 'مستوى النضج الأمني للمؤسسة')}
-          <div className="text-[11px] text-text-secondary mb-3">
-            متوسط النضج الكلي: <strong className="text-navy-950">{avgMat} / 5</strong> – {parseFloat(avgMat) >= 4 ? 'متقدم' : parseFloat(avgMat) >= 3 ? 'متوسط' : 'يحتاج تحسيناً'}
-          </div>
+      {/* ═══════ ASSETS ═══════ */}
+      {r.assets.length > 0 && (
+        <div className="px-11 py-7 border-b border-gray-100">
+          {SH('assets', 'الأصول الحيوية', avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r')}
           <table className="w-full border-collapse text-[11px]">
             <thead>
-              <tr>
-                {['المجال الأمني', 'مستوى النضج', 'التقييم', 'التصنيف'].map((h) => (
-                  <th key={h} className="bg-navy-950 text-white py-1.5 px-2.5 text-right font-bold text-[10px]">{h}</th>
-                ))}
-              </tr>
+              <tr>{['الأصل الحيوي', 'الأهمية التشغيلية', 'مستوى الحماية', 'التقييم', 'الثغرات الرئيسية'].map(h => (
+                <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
+              ))}</tr>
             </thead>
             <tbody>
-              {r.maturityDomains.map((domain, i) => {
-                const level = MATURITY_LEVELS[domain.score] || MATURITY_LEVELS[1];
+              {r.assets.map((asset, i) => {
+                const pct = asset.protectionLevel;
+                const barC = pct >= 60 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626';
+                const badgeBg = pct >= 60 ? '#f0fdf4' : pct >= 40 ? '#fffbeb' : '#fef2f2';
+                const badgeLbl = pct >= 80 ? 'ممتاز' : pct >= 60 ? 'جيد' : pct >= 40 ? 'يحتاج تعزيزاً' : 'ضعيف';
                 return (
-                  <tr key={domain.id} className={i % 2 === 1 ? 'bg-surface' : ''}>
-                    <td className="py-2 px-2.5 border-b border-gray-100 font-semibold">{domain.name}</td>
-                    <td className="py-2 px-2.5 border-b border-gray-100">
-                      <div className="w-[120px]">
-                        <div className="bg-gray-100 rounded-sm h-[7px] overflow-hidden">
-                          <div className={`h-full rounded-sm ${level.barClass}`} style={{ width: `${(domain.score / 5) * 100}%` }} />
-                        </div>
-                        <div className="text-[10px] font-bold text-navy-950 mt-0.5">{domain.score} / 5</div>
+                  <tr key={asset.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 700 }}>{asset.name}</td>
+                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8' }}>{asset.value}</td>
+                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0', minWidth: 140 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, height: 5, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ height: '100%', borderRadius: 2, background: barC, width: `${pct}%` }} /></div>
+                        <span style={{ fontSize: 10, fontWeight: 800, minWidth: 32, fontFamily: 'monospace', color: barC }}>{pct}%</span>
                       </div>
                     </td>
-                    <td className="py-2 px-2.5 border-b border-gray-100">{level.label}</td>
-                    <td className="py-2 px-2.5 border-b border-gray-100">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${level.colorClass}`}>{level.label}</span>
-                    </td>
+                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0' }}><span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9, fontWeight: 700, background: badgeBg, color: barC }}>{badgeLbl}</span></td>
+                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8' }}>{asset.gaps || '—'}</td>
                   </tr>
                 );
               })}
@@ -570,36 +462,114 @@ export default function ReportPreview({ report }: Props) {
         </div>
       )}
 
-      {/* ═══════ SECTION 08: CHALLENGES ═══════ */}
-      {r.challenges.length > 0 && (
-        <div className="report-section px-11 py-6 border-b border-gray-100">
-          {nextSection('🚧', 'التحديات والعوائق — ما يمنع الفريق من النجاح')}
-          <div className="text-[10px] text-text-secondary mb-3 bg-surface border-r-4 border-r-warning-500 rounded-l-md p-2.5 leading-relaxed">
-            هذه التحديات هي الأسباب الجذرية لمعظم المشاكل الأمنية. تجاوزها يتطلب قرارات من الإدارة العليا.
-          </div>
-
-          <div className="space-y-2.5">
-            {r.challenges.map((chal, i) => {
-              const ct = CHALLENGE_TYPES[chal.type] || CHALLENGE_TYPES.tech;
+      {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
+      <div className="px-11 py-7 border-b border-gray-100">
+        {SH('ind', 'مؤشرات الأداء', r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r')}
+        <table className="w-full border-collapse text-[11px] mb-3">
+          <thead>
+            <tr>{['المؤشر', 'الفترة السابقة', 'الفترة الحالية', 'التغيير', 'مقارنة القطاع'].map(h => (
+              <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
+            ))}</tr>
+          </thead>
+          <tbody>
+            <tr><td colSpan={5} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>مؤشرات الحوادث والامتثال</td></tr>
+            {([
+              { label: 'الحوادث الحرجة', prev: r.prevCritical, cur: r.kpiCritical, lower: true, bm: false },
+              { label: 'الثغرات المكتشفة', prev: r.prevVuln, cur: r.kpiVuln, lower: true, bm: false },
+              { label: 'إجمالي الحوادث', prev: r.prevTotal, cur: r.kpiTotal, lower: true, bm: false },
+              { label: 'امتثال ISO 27001', prevStr: `${r.prevCompliance}%`, curStr: `${r.kpiCompliance}%`, prev: r.prevCompliance, cur: r.kpiCompliance, lower: false, bm: r.bmCompliance > 0, bmStr: `${r.bmCompliance}%`, bmOk: r.kpiCompliance >= r.bmCompliance },
+            ] as Array<{ label: string; prev: number; cur: number; lower: boolean; bm: boolean; prevStr?: string; curStr?: string; bmStr?: string; bmOk?: boolean }>).map((row, i) => {
+              const info = getDeltaInfo(row.cur, row.prev, row.lower);
+              const g = info.colorClass.includes('success'); const b = info.colorClass.includes('danger');
               return (
-                <div key={chal.id} className="border border-border rounded-md p-3.5">
-                  <div className="flex items-start gap-2.5">
-                    <div className="bg-navy-800 text-white w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-[800] flex-shrink-0 mt-0.5">
-                      {i + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="text-[11px] font-[800] text-navy-950">{chal.title}</div>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${ct.bgClass}`}>{ct.label}</span>
-                      </div>
-                      <div className="text-[10px] text-text-secondary mb-1">
-                        <strong className="text-navy-800">السبب الجذري:</strong> {chal.rootCause}
-                      </div>
-                      <div className="text-[10px] text-success-700 bg-success-100/50 rounded px-2 py-1 border-r-2 border-r-success-700">
-                        ✅ <strong>المطلوب:</strong> {chal.requirement}
-                      </div>
-                    </div>
+                <tr key={row.label} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 600 }}>{row.label}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8', fontFamily: 'monospace' }}>{row.prevStr ?? row.prev}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 800, fontFamily: 'monospace' }}>{row.curStr ?? row.cur}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 2, background: g ? '#f0fdf4' : b ? '#fef2f2' : '#f1f5f9', color: g ? '#16a34a' : b ? '#dc2626' : '#94a3b8' }}>{info.arrow} {info.label}</span></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>{row.bm ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9, fontWeight: 700, fontFamily: 'monospace', background: row.bmOk ? '#f0fdf4' : '#fef2f2', color: row.bmOk ? '#16a34a' : '#dc2626' }}>{row.bmStr}</span> : '—'}</td>
+                </tr>
+              );
+            })}
+            <tr><td colSpan={5} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>مقاييس الاستجابة</td></tr>
+            {([
+              { label: 'وقت الاكتشاف MTTD (ساعة)', cur: r.slaMTTD, bm: r.bmMTTD > 0, bmV: r.bmMTTD, bmOk: r.slaMTTD <= r.bmMTTD },
+              { label: 'وقت الاستجابة MTTR (ساعة)', cur: r.slaMTTR, bm: r.bmMTTR > 0, bmV: r.bmMTTR, bmOk: r.slaMTTR <= r.bmMTTR },
+              { label: 'درجة الأمن الكلية', cur: r.securityScore, bm: r.bmScore > 0, bmV: r.bmScore, bmOk: r.securityScore >= r.bmScore },
+            ] as Array<{ label: string; cur: number; bm: boolean; bmV: number; bmOk: boolean }>).map((row, i) => (
+              <tr key={row.label} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 600 }}>{row.label}</td>
+                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8' }}>—</td>
+                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 800, fontFamily: 'monospace' }}>{row.cur}</td>
+                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>—</td>
+                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>{row.bm ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9, fontWeight: 700, fontFamily: 'monospace', background: row.bmOk ? '#f0fdf4' : '#fef2f2', color: row.bmOk ? '#16a34a' : '#dc2626' }}>{row.bmV}</span> : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {r.bmSector && <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 12, padding: '6px 10px', background: '#f8fafc', borderRadius: 2 }}>المرجع: {r.bmSector}</div>}
+
+        {/* KPI Combo Chart */}
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ background: '#f8fafc', padding: '9px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#1e293b' }}>مقارنة المؤشرات — الفترة الحالية vs السابقة</span>
+            <div style={{ display: 'flex', gap: 14 }}>
+              {([['#cbd5e1', 'الفترة السابقة'], ['#1e3a5f', 'الفترة الحالية']] as [string, string][]).map(([col, lbl]) => (
+                <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, color: '#94a3b8' }}><span style={{ width: 10, height: 10, borderRadius: 2, background: col, display: 'inline-block' }} />{lbl}</span>
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: '16px 20px', background: '#fff' }}>
+            <canvas ref={kpiChartRef} width={680} height={200} style={{ width: '100%', display: 'block' }} />
+          </div>
+        </div>
+
+        {/* Vuln + Incidents mini-block */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ background: '#fff', padding: '14px 16px' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: '#94a3b8', marginBottom: 10 }}>توزيع الثغرات</div>
+            {([['حرجة', r.vulnCritical, '#dc2626'], ['عالية', r.vulnHigh, '#d97706'], ['متوسطة', r.vulnMedium, '#ca8a04'], ['منخفضة', r.vulnLow, '#16a34a']] as [string, number, string][]).map(([lbl, val, col]) => (
+              <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                <div style={{ fontSize: 10, minWidth: 50, color: '#475569' }}>{lbl}</div>
+                <div style={{ flex: 1, height: 5, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${Math.round(val / totalVuln * 100)}%`, height: '100%', borderRadius: 2, background: col }} /></div>
+                <div style={{ fontSize: 10, fontWeight: 700, minWidth: 20, fontFamily: 'monospace' }}>{val}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: '#fff', padding: '14px 16px' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: '#94a3b8', marginBottom: 10 }}>حالة الحوادث</div>
+            {([['مفتوحة', r.incOpen, '#dc2626'], ['قيد المعالجة', r.incProgress, '#d97706'], ['مغلقة', r.incClosed, '#16a34a'], ...(r.incWatch > 0 ? [['مراقبة', r.incWatch, '#2563eb']] : [])] as [string, number, string][]).map(([lbl, val, col]) => (
+              <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid #e2e8f0', fontSize: 10 }}>
+                <span style={{ color: '#475569' }}>{lbl}</span>
+                <span style={{ fontWeight: 800, fontFamily: 'monospace', color: col }}>{val}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════ EFFICIENCY ═══════ */}
+      {effKPIs.length > 0 && (
+        <div className="px-11 py-7 border-b border-gray-100">
+          {SH('eff', 'الكفاءة التشغيلية', 'a')}
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, effKPIs.length)},1fr)`, gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+            {effKPIs.map((e) => {
+              const good = e.lowerBetter ? e.val <= e.target : e.val >= e.target;
+              const pct = Math.min(100, Math.round(Math.abs(e.val) / Math.max(e.target, 1) * 100));
+              const mc = good ? '#16a34a' : '#dc2626';
+              return (
+                <div key={e.id} style={{ background: '#fff', padding: '16px 18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#1e293b' }}>{e.title}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: good ? '#f0fdf4' : '#fef2f2', color: mc }}>{good ? 'ضمن الهدف' : 'دون الهدف'}</span>
                   </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
+                    <span style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontFamily: 'monospace', color: mc }}>{e.val}</span>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{e.unit}</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 6 }}>الهدف: {e.target}{e.unit}</div>
+                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: mc }} /></div>
+                  {e.description && <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 6, lineHeight: 1.7 }}>{e.description}</div>}
                 </div>
               );
             })}
@@ -607,36 +577,73 @@ export default function ReportPreview({ report }: Props) {
         </div>
       )}
 
-      {/* ═══════ SECTION 09: RECOMMENDATIONS ═══════ */}
-      <div className="report-section px-11 py-6 border-b border-gray-100">
-        {nextSection('✅', 'التوصيات وخارطة طريق العلاج')}
+      {/* ═══════ SLA ═══════ */}
+      {r.showSLA && (
+        <div className="px-11 py-7 border-b border-gray-100">
+          {SH('sla', 'مقاييس الاستجابة للحوادث', slaOk ? 'g' : 'r')}
+          {!slaOk && <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.9, padding: '9px 13px', background: '#eff6ff', borderRight: '3px solid #2563eb', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>مؤشرات الاستجابة تجاوزت الحد المقبول — التأخر يُطيل نافذة الهجوم ويُضاعف الأضرار.</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+            {([['MTTD', 'وقت الاكتشاف', r.slaMTTD, r.slaMTTDTarget], ['MTTR', 'وقت الاستجابة', r.slaMTTR, r.slaMTTRTarget], ['MTTC', 'وقت الاحتواء', r.slaMTTC, r.slaMTTCTarget]] as [string, string, number, number][]).map(([code, lbl, val, tgt]) => {
+              const ok = val <= tgt;
+              return (
+                <div key={code} style={{ background: '#fff', padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, marginBottom: 6, fontFamily: 'monospace' }}>{code}</div>
+                  <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontFamily: 'monospace', color: ok ? '#16a34a' : '#dc2626' }}>{val}</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3, marginBottom: 6 }}>ساعة — {lbl}</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>الهدف ≤ {tgt} ساعة</div>
+                  <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 8, fontWeight: 700, marginTop: 6, background: ok ? '#f0fdf4' : '#fef2f2', color: ok ? '#16a34a' : '#dc2626' }}>{ok ? 'ضمن الهدف' : 'تجاوز الهدف'}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ background: '#fff', padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: r.slaRate >= 80 ? '#16a34a' : '#dc2626' }}>{r.slaRate}%</div>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3 }}>محلولة ضمن SLA</div>
+            </div>
+            <div style={{ background: '#fff', padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: r.slaBreach === 0 ? '#16a34a' : '#dc2626' }}>{r.slaBreach}</div>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3 }}>تجاوزت الاتفاقية</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ ACTIONS (Recs + Challenges merged) ═══════ */}
+      <div className="px-11 py-7 border-b border-gray-100">
+        {SH('act', 'التوصيات والاعتمادات', r.recommendations.length > 0 ? 'g' : 'n')}
         <table className="w-full border-collapse text-[11px]">
           <thead>
-            <tr>
-              {['#', 'التوصية', 'الأولوية', 'الجهة', 'الجدول الزمني'].map((h) => (
-                <th key={h} className="bg-navy-950 text-white py-1.5 px-2.5 text-right font-bold text-[10px]">{h}</th>
-              ))}
-            </tr>
+            <tr>{['#', 'التوصية / الاعتماد', 'الأولوية / النوع', 'صاحب القرار'].map(h => (
+              <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
+            ))}</tr>
           </thead>
           <tbody>
+            {r.recommendations.length > 0 && (
+              <tr><td colSpan={4} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>توصيات تشغيلية</td></tr>
+            )}
             {r.recommendations.map((rec, i) => {
               const pri = PRIORITY_MAP[rec.priority];
               return (
-                <tr key={rec.id} className={`${i % 2 === 1 ? 'bg-surface' : ''} hover:bg-navy-50 transition-colors`}>
-                  <td className="py-2 px-2.5 border-b border-gray-100 text-center font-[800] text-text-secondary">{i + 1}</td>
-                  <td className="py-2 px-2.5 border-b border-gray-100">
-                    <div className="font-bold text-navy-950 mb-0.5">{rec.title}</div>
-                    <div className="text-[10px] text-text-secondary">{rec.description}</div>
-                  </td>
-                  <td className="py-2 px-2.5 border-b border-gray-100">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${pri?.bgClass}`}>{pri?.label}</span>
-                  </td>
-                  <td className="py-2 px-2.5 border-b border-gray-100">
-                    {rec.department ? <span className="bg-navy-50 text-navy-950 text-[9px] px-1.5 py-0.5 rounded font-semibold border border-border">{rec.department}</span> : '-'}
-                  </td>
-                  <td className="py-2 px-2.5 border-b border-gray-100">
-                    {rec.timeline ? <span className="bg-gray-100 text-navy-800 text-[9px] px-1.5 py-0.5 rounded font-bold">⏱️ {rec.timeline}</span> : '-'}
-                  </td>
+                <tr key={rec.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{rec.title}</div><div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{rec.description}</div></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${pri?.bgClass}`}>{pri?.label}</span></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>{rec.owner ? <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' }}>{rec.owner}</span> : '—'}</td>
+                </tr>
+              );
+            })}
+            {r.challenges.length > 0 && (
+              <tr><td colSpan={4} style={{ background: '#fffbeb', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>اعتمادات استراتيجية تستوجب قراراً من الإدارة</td></tr>
+            )}
+            {r.challenges.map((chal, i) => {
+              const ct = CHALLENGE_TYPES[chal.type] || CHALLENGE_TYPES.tech;
+              return (
+                <tr key={chal.id} style={{ background: '#fffbeb' }}>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{String.fromCharCode(65 + i)}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{chal.title}</div><div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{chal.rootCause}</div></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${ct.bgClass}`}>{ct.label}</span></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#2563eb', fontWeight: 700 }}>{chal.requirement}</td>
                 </tr>
               );
             })}
@@ -644,11 +651,47 @@ export default function ReportPreview({ report }: Props) {
         </table>
       </div>
 
+      {/* ═══════ MATURITY ═══════ */}
+      {r.showMaturity && r.maturityDomains.length > 0 && (
+        <div className="px-11 py-7 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+          {SH('mat', 'تقييم مستوى النضج — ملحق تقييمي', parseFloat(avgMat) >= 4 ? 'g' : parseFloat(avgMat) >= 3 ? 'a' : 'r')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14, padding: '12px 16px', background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0' }}>
+            <div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>متوسط النضج</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#1e293b', fontFamily: 'monospace' }}>{avgMat}<span style={{ fontSize: 12, color: '#94a3b8' }}> / 5</span></div>
+            </div>
+            <span style={{ fontSize: 10, color: '#94a3b8' }}>{parseFloat(avgMat) >= 4 ? 'مستوى متقدم' : parseFloat(avgMat) >= 3 ? 'مستوى متوسط' : parseFloat(avgMat) >= 2 ? 'مستوى ناشئ' : 'مستوى مبتدئ'}</span>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 14 }}>
+            {r.maturityDomains.map((domain) => (
+              <div key={domain.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 11, flex: 1 }}>{domain.name}</div>
+                <div style={{ width: 140, height: 5, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${(domain.score / 5) * 100}%`, height: '100%', borderRadius: 2, background: MAT_COLORS[domain.score - 1] ?? '#94a3b8' }} /></div>
+                <div style={{ fontSize: 10, fontWeight: 700, minWidth: 100, color: '#475569', fontFamily: 'monospace' }}>{domain.score}/5 — {MAT_NAMES[domain.score - 1]}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ background: '#f8fafc', padding: '9px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#1e293b' }}>رسم بياني — مستوى النضج حسب المجال</span>
+              <div style={{ display: 'flex', gap: 14 }}>
+                {([['#c9a227', '— المتوسط الكلي'], ['#2563eb', 'الدرجة الحالية']] as [string, string][]).map(([col, lbl]) => (
+                  <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, color: '#94a3b8' }}><span style={{ width: lbl.startsWith('—') ? 12 : 10, height: lbl.startsWith('—') ? 2 : 10, borderRadius: lbl.startsWith('—') ? 1 : 2, background: col, display: 'inline-block' }} />{lbl}</span>
+                ))}
+              </div>
+            </div>
+            <div style={{ padding: '16px 20px', background: '#fff' }}>
+              <canvas ref={matChartRef} width={680} height={240} style={{ width: '100%', display: 'block' }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══════ FOOTER ═══════ */}
-      <div className="bg-navy-950 text-white/50 flex justify-between items-center px-11 py-2.5 text-[9px] flex-wrap gap-1.5">
-        <span><strong className="text-white">{r.classification}</strong> – للمستلم المحدد فقط</span>
-        <span>{r.orgName} &nbsp;|&nbsp; {r.author}</span>
-        <span>{dateF} &nbsp;|&nbsp; الإصدار v{r.version}</span>
+      <div style={{ background: '#1e293b', color: 'rgba(255,255,255,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 44px', fontSize: 9, flexWrap: 'wrap', gap: 6, fontFamily: 'monospace' }}>
+        <span><strong style={{ color: 'rgba(255,255,255,.55)' }}>{r.classification}</strong> · للمستلم المحدد فقط</span>
+        <span>{r.orgName} · {r.author}</span>
+        <span>{dateF} · v{r.version}</span>
       </div>
     </div>
   );

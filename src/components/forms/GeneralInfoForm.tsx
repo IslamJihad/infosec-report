@@ -47,6 +47,19 @@ export default function GeneralInfoForm() {
           </div>
         </div>
       </FormCard>
+
+      <FormCard icon="📝" title="كلمة رئيس مجلس الإدارة / كبار المسؤولين">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl py-3 px-4 text-sm text-amber-800 mb-4">
+          ✍️ هذه الفقرة تظهر في التقرير النهائي مباشرة بعد صفحة الغلاف.
+        </div>
+        <textarea
+          value={report.chairNote || ''}
+          onChange={(e) => updateField('chairNote', e.target.value)}
+          rows={4}
+          className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] resize-y min-h-[90px] hover:border-navy-200"
+          placeholder="مثال: نرى أهمية بالغة في الاستثمار المستمر في الأمن السيبراني كركيزة لحماية أصولنا ومصالح أطراف العمل..."
+        />
+      </FormCard>
     </div>
   );
 }

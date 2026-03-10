@@ -13,6 +13,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         recommendations: { orderBy: { sortOrder: 'asc' } },
         assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
+        efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },
     });
     if (!report) return NextResponse.json({ error: 'التقرير غير موجود' }, { status: 404 });
@@ -29,7 +30,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const data = await req.json();
 
     // Separate nested relations from scalar fields
-    const { decisions, risks, maturityDomains, recommendations, assets, challenges, id: _id, createdAt: _c, updatedAt: _u, ...scalarData } = data;
+    const { decisions, risks, maturityDomains, recommendations, assets, challenges, efficiencyKPIs, id: _id, createdAt: _c, updatedAt: _u, ...scalarData } = data;
+
+    // Stringify JSON-serialized array fields before writing to SQLite
+    if (Array.isArray(scalarData.isoControls)) {
+      scalarData.isoControls = JSON.stringify(scalarData.isoControls);
+    }
 
     // Update scalar fields
     await prisma.report.update({
@@ -50,6 +56,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             budget: d.budget || '',
             department: d.department || '',
             timeline: d.timeline || '',
+            owner: d.owner || '',
             sortOrder: i,
           })),
         });
@@ -70,6 +77,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             status: r.status || 'open',
             probability: r.probability || 3,
             impact: r.impact || 3,
+            worstCase: r.worstCase || '',
             sortOrder: i,
           })),
         });
@@ -105,6 +113,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             priority: r.priority || 'medium',
             department: r.department || '',
             timeline: r.timeline || '',
+            owner: r.owner || '',
             sortOrder: i,
           })),
         });
@@ -147,6 +156,26 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
+    // Update efficiency KPIs
+    if (efficiencyKPIs) {
+      await prisma.efficiencyKPI.deleteMany({ where: { reportId: id } });
+      if (efficiencyKPIs.length > 0) {
+        await prisma.efficiencyKPI.createMany({
+          data: efficiencyKPIs.map((e: Record<string, unknown>, i: number) => ({
+            id: (e.id as string)?.startsWith?.('new-') ? undefined : e.id,
+            reportId: id,
+            title: e.title || '',
+            val: (e.val as number) || 0,
+            target: (e.target as number) || 100,
+            unit: (e.unit as string) || '%',
+            description: e.description || '',
+            lowerBetter: Boolean(e.lowerBetter),
+            sortOrder: i,
+          })),
+        });
+      }
+    }
+
     // Return updated report
     const updated = await prisma.report.findUnique({
       where: { id },
@@ -157,6 +186,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         recommendations: { orderBy: { sortOrder: 'asc' } },
         assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
+        efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },
     });
 

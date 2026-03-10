@@ -65,7 +65,7 @@ export default function RisksForm() {
                     max={5}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 mb-3">
                   <FormField
                     label="التأثير (1-5)"
                     value={risk.impact}
@@ -81,6 +81,11 @@ export default function RisksForm() {
                     </div>
                   </div>
                 </div>
+                <FormField
+                  label="أسوأ سيناريو محتمل"
+                  value={risk.worstCase || ''}
+                  onChange={(v) => updateRisk(i, { worstCase: v })}
+                />
               </div>
             </div>
           );

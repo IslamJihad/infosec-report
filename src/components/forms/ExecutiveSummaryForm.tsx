@@ -97,9 +97,10 @@ export default function ExecutiveSummaryForm() {
                   className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] resize-y min-h-[64px] hover:border-navy-200 transition-all duration-200"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <FormField label="الميزانية (₪)" value={dec.budget} onChange={(v) => updateDecision(i, { budget: v })} />
                 <FormField label="الإطار الزمني" value={dec.timeline} onChange={(v) => updateDecision(i, { timeline: v })} />
+                <FormField label="المسؤول المباشر" value={dec.owner || ''} onChange={(v) => updateDecision(i, { owner: v })} />
               </div>
             </div>
           </div>

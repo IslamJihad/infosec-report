@@ -23,6 +23,7 @@ model Report {
   securityScore  Int      @default(0)
   trend          String   @default("مستقر →")
   status         String   @default("draft")
+  chairNote      String   @default("")
 
   // KPI current
   kpiCritical    Int @default(0)
@@ -83,6 +84,7 @@ model Report {
   recommendations Recommendation[]
   assets          Asset[]
   challenges      Challenge[]
+  efficiencyKPIs  EfficiencyKPI[]
   aiConversations AIConversation[]
 }
 
@@ -95,6 +97,7 @@ model Decision {
   budget      String @default("")
   department  String @default("")
   timeline    String @default("")
+  owner       String @default("")
   sortOrder   Int    @default(0)
 }
 
@@ -102,13 +105,14 @@ model Risk {
   id          String @id @default(uuid())
   reportId    String
   report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  description String @default("")
-  system      String @default("")
-  severity    String @default("medium")
-  status      String @default("open")
-  probability Int    @default(3)
-  impact      Int    @default(3)
-  sortOrder   Int    @default(0)
+  description  String @default("")
+  system       String @default("")
+  severity     String @default("medium")
+  status       String @default("open")
+  probability  Int    @default(3)
+  impact       Int    @default(3)
+  worstCase    String @default("")
+  sortOrder    Int    @default(0)
 }
 
 model MaturityDomain {
@@ -129,7 +133,21 @@ model Recommendation {
   priority    String @default("medium")
   department  String @default("")
   timeline    String @default("")
+  owner       String @default("")
   sortOrder   Int    @default(0)
+}
+
+model EfficiencyKPI {
+  id          String  @id @default(uuid())
+  reportId    String
+  report      Report  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  title       String  @default("")
+  val         Float   @default(0)
+  target      Float   @default(100)
+  unit        String  @default("%")
+  description String  @default("")
+  lowerBetter Boolean @default(false)
+  sortOrder   Int     @default(0)
 }
 
 model AIConversation {

@@ -14,6 +14,7 @@ export interface ReportData {
   securityScore: number;
   trend: string;
   status: string;
+  chairNote: string;
 
   kpiCritical: number;
   kpiVuln: number;
@@ -67,6 +68,7 @@ export interface ReportData {
   recommendations: Recommendation[];
   assets: Asset[];
   challenges: Challenge[];
+  efficiencyKPIs: EfficiencyKPI[];
 }
 
 export interface Decision {
@@ -77,6 +79,7 @@ export interface Decision {
   budget: string;
   department: string;
   timeline: string;
+  owner: string;
   sortOrder: number;
 }
 
@@ -89,6 +92,7 @@ export interface Risk {
   status: 'open' | 'inprogress' | 'closed';
   probability: number;
   impact: number;
+  worstCase: string;
   sortOrder: number;
 }
 
@@ -108,6 +112,19 @@ export interface Recommendation {
   priority: 'high' | 'medium' | 'low';
   department: string;
   timeline: string;
+  owner: string;
+  sortOrder: number;
+}
+
+export interface EfficiencyKPI {
+  id: string;
+  reportId?: string;
+  title: string;
+  val: number;
+  target: number;
+  unit: string;
+  description: string;
+  lowerBetter: boolean;
   sortOrder: number;
 }
 

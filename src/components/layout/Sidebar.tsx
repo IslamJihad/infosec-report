@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function Sidebar() {
   const { currentStep, setStep, report } = useReportStore();
 
-  const progress = Math.round(((currentStep + 1) / 10) * 100);
+  const progress = Math.round(((currentStep + 1) / 9) * 100);
 
   return (
     <aside className="w-[280px] bg-gradient-to-b from-navy-950 via-navy-950 to-[#060e1f] text-white flex-shrink-0 fixed h-screen overflow-y-auto flex flex-col z-50 shadow-2xl">

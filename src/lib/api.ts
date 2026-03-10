@@ -1,21 +1,32 @@
 import type { ReportData } from '@/types/report';
 
+// isoControls is stored as a JSON string in SQLite; parse it back to an array on every read.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseReport(raw: any): ReportData {
+  return {
+    ...raw,
+    isoControls: typeof raw.isoControls === 'string'
+      ? JSON.parse(raw.isoControls || '[]')
+      : (raw.isoControls ?? []),
+  };
+}
+
 export async function fetchReports(): Promise<ReportData[]> {
   const res = await fetch('/api/reports', { cache: 'no-store' });
   if (!res.ok) throw new Error('فشل في تحميل التقارير');
-  return res.json();
+  return (await res.json()).map(parseReport);
 }
 
 export async function fetchReport(id: string): Promise<ReportData> {
   const res = await fetch(`/api/reports/${id}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('فشل في تحميل التقرير');
-  return res.json();
+  return parseReport(await res.json());
 }
 
 export async function createReport(): Promise<ReportData> {
   const res = await fetch('/api/reports', { method: 'POST' });
   if (!res.ok) throw new Error('فشل في إنشاء التقرير');
-  return res.json();
+  return parseReport(await res.json());
 }
 
 export async function updateReport(id: string, data: Partial<ReportData>): Promise<ReportData> {
@@ -25,7 +36,7 @@ export async function updateReport(id: string, data: Partial<ReportData>): Promi
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error('فشل في حفظ التقرير');
-  return res.json();
+  return parseReport(await res.json());
 }
 
 export async function deleteReport(id: string): Promise<void> {
@@ -36,7 +47,7 @@ export async function deleteReport(id: string): Promise<void> {
 export async function duplicateReport(id: string): Promise<ReportData> {
   const res = await fetch(`/api/reports/${id}/duplicate`, { method: 'POST' });
   if (!res.ok) throw new Error('فشل في نسخ التقرير');
-  return res.json();
+  return parseReport(await res.json());
 }
 
 export async function fetchSettings() {

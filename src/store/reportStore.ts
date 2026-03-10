@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Asset, Challenge, ISOControl } from '@/types/report';
+import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Asset, Challenge, ISOControl, EfficiencyKPI } from '@/types/report';
 
 interface ReportStore {
   report: ReportData | null;
@@ -46,6 +46,11 @@ interface ReportStore {
   updateChallenge: (index: number, data: Partial<Challenge>) => void;
   removeChallenge: (index: number) => void;
 
+  // Efficiency KPIs
+  addEfficiencyKPI: () => void;
+  updateEfficiencyKPI: (index: number, data: Partial<EfficiencyKPI>) => void;
+  removeEfficiencyKPI: (index: number) => void;
+
   // ISO Controls
   updateISOControl: (index: number, field: 'currentApplied' | 'previousApplied', value: number) => void;
 }
@@ -62,7 +67,7 @@ export const useReportStore = create<ReportStore>((set, get) => ({
   isDirty: false,
 
   setReport: (report) => set({ report, isDirty: false }),
-  setStep: (step) => set({ currentStep: Math.max(0, Math.min(9, step)) }),
+  setStep: (step) => set({ currentStep: Math.max(0, Math.min(8, step)) }),
   setSaving: (saving) => set({ isSaving: saving }),
   setLastSaved: (date) => set({ lastSaved: date }),
   setDirty: (dirty) => set({ isDirty: dirty }),
@@ -89,6 +94,7 @@ export const useReportStore = create<ReportStore>((set, get) => ({
       budget: '',
       department: '',
       timeline: '',
+      owner: '',
       sortOrder: report.decisions.length,
     };
     set({ report: { ...report, decisions: [...report.decisions, newDec] }, isDirty: true });
@@ -119,6 +125,7 @@ export const useReportStore = create<ReportStore>((set, get) => ({
       status: 'open',
       probability: 3,
       impact: 3,
+      worstCase: '',
       sortOrder: report.risks.length,
     };
     set({ report: { ...report, risks: [...report.risks, newRisk] }, isDirty: true });
@@ -156,6 +163,7 @@ export const useReportStore = create<ReportStore>((set, get) => ({
       priority: 'medium',
       department: '',
       timeline: '',
+      owner: '',
       sortOrder: report.recommendations.length,
     };
     set({ report: { ...report, recommendations: [...report.recommendations, newRec] }, isDirty: true });
@@ -231,6 +239,37 @@ export const useReportStore = create<ReportStore>((set, get) => ({
     const { report } = get();
     if (!report) return;
     set({ report: { ...report, challenges: report.challenges.filter((_, i) => i !== index) }, isDirty: true });
+  },
+
+  // Efficiency KPIs
+  addEfficiencyKPI: () => {
+    const { report } = get();
+    if (!report) return;
+    const newKPI: EfficiencyKPI = {
+      id: uuid(),
+      title: '',
+      val: 0,
+      target: 100,
+      unit: '%',
+      description: '',
+      lowerBetter: false,
+      sortOrder: (report.efficiencyKPIs || []).length,
+    };
+    set({ report: { ...report, efficiencyKPIs: [...(report.efficiencyKPIs || []), newKPI] }, isDirty: true });
+  },
+
+  updateEfficiencyKPI: (index, data) => {
+    const { report } = get();
+    if (!report) return;
+    const efficiencyKPIs = [...(report.efficiencyKPIs || [])];
+    efficiencyKPIs[index] = { ...efficiencyKPIs[index], ...data };
+    set({ report: { ...report, efficiencyKPIs }, isDirty: true });
+  },
+
+  removeEfficiencyKPI: (index) => {
+    const { report } = get();
+    if (!report) return;
+    set({ report: { ...report, efficiencyKPIs: (report.efficiencyKPIs || []).filter((_, i) => i !== index) }, isDirty: true });
   },
 
   // ISO Controls
