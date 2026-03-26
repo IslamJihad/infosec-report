@@ -66,10 +66,6 @@ export default function SLAForm() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="نسبة الحل ضمن SLA %" value={report.slaRate} onChange={(v) => updateField('slaRate', parseFloat(v) || 0)} type="number" />
-          <FormField label="حوادث تجاوزت SLA" value={report.slaBreach} onChange={(v) => updateField('slaBreach', parseInt(v) || 0)} type="number" />
-        </div>
       </FormCard>
     </div>
   );

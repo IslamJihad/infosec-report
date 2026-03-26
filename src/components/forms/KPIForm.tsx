@@ -2,7 +2,7 @@
 
 import { useReportStore } from '@/store/reportStore';
 import { FormCard, FormField } from './GeneralInfoForm';
-import { getDeltaInfo, ISO_27001_DOMAINS } from '@/lib/constants';
+import { getDeltaInfo } from '@/lib/constants';
 
 export default function KPIForm() {
   const { report, updateField, updateISOControl } = useReportStore();
@@ -161,62 +161,6 @@ export default function KPIForm() {
         </div>
       </FormCard>
 
-      <FormCard icon="📍" title="موقعنا مقارنةً بالقطاع (Benchmark)">
-        <div className="bg-navy-100 border border-blue-200 rounded-xl py-3 px-4 text-sm text-navy-800 mb-4">
-          📊 بدون سياق، الأرقام لا تعني شيئاً. قارن أداءك بمتوسط القطاع لتظهر الفجوات والميزات التنافسية.
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <FormField
-            label="ثغرات تمت معالجتها هذه الفترة"
-            value={report.vulnResolved}
-            onChange={(v) => updateField('vulnResolved', parseInt(v) || 0)}
-            type="number"
-            hint="من إجمالي الثغرات المكتشفة"
-          />
-          <FormField
-            label="حوادث متكررة (نفس النوع)"
-            value={report.vulnRecurring}
-            onChange={(v) => updateField('vulnRecurring', parseInt(v) || 0)}
-            type="number"
-            hint="يقيس ما إذا كنا نحل الجذور"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <FormField
-            label="متوسط درجة الأمن في القطاع (/ 100)"
-            value={report.bmScore}
-            onChange={(v) => updateField('bmScore', parseInt(v) || 0)}
-            type="number"
-          />
-          <FormField
-            label="متوسط نسبة الامتثال في القطاع %"
-            value={report.bmCompliance}
-            onChange={(v) => updateField('bmCompliance', parseInt(v) || 0)}
-            type="number"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <FormField
-            label="متوسط وقت الاكتشاف في القطاع (ساعة)"
-            value={report.bmMTTD}
-            onChange={(v) => updateField('bmMTTD', parseFloat(v) || 0)}
-            type="number"
-          />
-          <FormField
-            label="متوسط وقت الاستجابة في القطاع (ساعة)"
-            value={report.bmMTTR}
-            onChange={(v) => updateField('bmMTTR', parseFloat(v) || 0)}
-            type="number"
-          />
-        </div>
-        <FormField
-          label="مصدر المقارنة / اسم القطاع"
-          value={report.bmSector}
-          onChange={(v) => updateField('bmSector', v)}
-        />
-      </FormCard>
     </div>
   );
 }
