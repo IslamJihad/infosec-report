@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Asset, Challenge, ISOControl, EfficiencyKPI } from '@/types/report';
+import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Asset, Challenge, EfficiencyKPI } from '@/types/report';
 
 interface ReportStore {
   report: ReportData | null;
@@ -29,7 +29,9 @@ interface ReportStore {
   removeRisk: (index: number) => void;
 
   // Maturity
-  updateMaturity: (index: number, score: number) => void;
+  updateMaturity: (index: number, data: Partial<Pick<MaturityDomain, 'name' | 'score'>>) => void;
+  addMaturity: () => void;
+  removeMaturity: (index: number) => void;
 
   // Recommendations
   addRecommendation: () => void;
@@ -59,6 +61,14 @@ function uuid() {
   return crypto.randomUUID?.() || Math.random().toString(36).slice(2);
 }
 
+function normalizeMaturityScore(score: number) {
+  const parsed = Number(score);
+  if (!Number.isFinite(parsed)) return 0;
+  // Backward compatibility: old values were 1..5 and are converted to 20..100.
+  if (parsed > 0 && parsed <= 5) return Math.round(parsed * 20);
+  return Math.max(0, Math.min(100, Math.round(parsed)));
+}
+
 export const useReportStore = create<ReportStore>((set, get) => ({
   report: null,
   currentStep: 0,
@@ -66,7 +76,16 @@ export const useReportStore = create<ReportStore>((set, get) => ({
   lastSaved: null,
   isDirty: false,
 
-  setReport: (report) => set({ report, isDirty: false }),
+  setReport: (report) => set({
+    report: {
+      ...report,
+      maturityDomains: (report.maturityDomains || []).map((domain) => ({
+        ...domain,
+        score: normalizeMaturityScore(domain.score),
+      })),
+    },
+    isDirty: false,
+  }),
   setStep: (step) => set({ currentStep: Math.max(0, Math.min(8, step)) }),
   setSaving: (saving) => set({ isSaving: saving }),
   setLastSaved: (date) => set({ lastSaved: date }),
@@ -145,12 +164,36 @@ export const useReportStore = create<ReportStore>((set, get) => ({
     set({ report: { ...report, risks: report.risks.filter((_, i) => i !== index) }, isDirty: true });
   },
 
-  updateMaturity: (index, score) => {
+  updateMaturity: (index, data) => {
     const { report } = get();
     if (!report) return;
     const domains = [...report.maturityDomains];
-    domains[index] = { ...domains[index], score };
+    if (!domains[index]) return;
+    domains[index] = {
+      ...domains[index],
+      ...(typeof data.name === 'string' ? { name: data.name } : {}),
+      ...(typeof data.score === 'number' ? { score: normalizeMaturityScore(data.score) } : {}),
+    };
     set({ report: { ...report, maturityDomains: domains }, isDirty: true });
+  },
+
+  addMaturity: () => {
+    const { report } = get();
+    if (!report) return;
+    const next: MaturityDomain = {
+      id: uuid(),
+      name: '',
+      score: 0,
+      sortOrder: report.maturityDomains.length,
+    };
+    set({ report: { ...report, maturityDomains: [...report.maturityDomains, next] }, isDirty: true });
+  },
+
+  removeMaturity: (index) => {
+    const { report } = get();
+    if (!report) return;
+    const filtered = report.maturityDomains.filter((_, i) => i !== index).map((item, i) => ({ ...item, sortOrder: i }));
+    set({ report: { ...report, maturityDomains: filtered }, isDirty: true });
   },
 
   addRecommendation: () => {

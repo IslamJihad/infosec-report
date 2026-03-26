@@ -92,8 +92,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           data: maturityDomains.map((m: Record<string, unknown>, i: number) => ({
             id: (m.id as string)?.startsWith?.('new-') ? undefined : m.id,
             reportId: id,
-            name: m.name || '',
-            score: m.score || 1,
+            name: (typeof m.name === 'string' && m.name.trim()) ? m.name.trim() : `بند ${i + 1}`,
+            score: (() => {
+              const raw = Number(m.score);
+              if (!Number.isFinite(raw)) return 0;
+              if (raw > 0 && raw <= 5) return Math.round(raw * 20);
+              return Math.max(0, Math.min(100, Math.round(raw)));
+            })(),
             sortOrder: i,
           })),
         });

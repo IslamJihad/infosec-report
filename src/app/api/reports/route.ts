@@ -67,14 +67,14 @@ export async function POST() {
 
         maturityDomains: {
           create: [
-            { name: 'أمن الشبكة', score: 3, sortOrder: 0 },
-            { name: 'إدارة الهوية والوصول', score: 2, sortOrder: 1 },
-            { name: 'حماية البيانات', score: 3, sortOrder: 2 },
-            { name: 'أمن التطبيقات', score: 2, sortOrder: 3 },
-            { name: 'الاستجابة للحوادث', score: 3, sortOrder: 4 },
-            { name: 'الوعي الأمني', score: 2, sortOrder: 5 },
-            { name: 'الامتثال والحوكمة', score: 4, sortOrder: 6 },
-            { name: 'إدارة الثغرات', score: 3, sortOrder: 7 },
+            { name: 'أمن الشبكة', score: 60, sortOrder: 0 },
+            { name: 'إدارة الهوية والوصول', score: 40, sortOrder: 1 },
+            { name: 'حماية البيانات', score: 60, sortOrder: 2 },
+            { name: 'أمن التطبيقات', score: 40, sortOrder: 3 },
+            { name: 'الاستجابة للحوادث', score: 60, sortOrder: 4 },
+            { name: 'الوعي الأمني', score: 40, sortOrder: 5 },
+            { name: 'الامتثال والحوكمة', score: 80, sortOrder: 6 },
+            { name: 'إدارة الثغرات', score: 60, sortOrder: 7 },
           ],
         },
 

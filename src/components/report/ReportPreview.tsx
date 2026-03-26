@@ -19,9 +19,6 @@ interface Props {
   report: ReportData;
 }
 
-const MAT_NAMES = ['مبتدئ', 'أساسي', 'متوسط', 'متقدم', 'نموذجي'];
-const MAT_COLORS = ['#991b1b', '#d97706', '#ca8a04', '#16a34a', '#15803d'];
-
 function drawKpiComboChart(canvas: HTMLCanvasElement, r: ReportData) {
   const DPR = 2;
   const W = canvas.offsetWidth || 680;
@@ -86,71 +83,10 @@ function drawKpiComboChart(canvas: HTMLCanvasElement, r: ReportData) {
   });
 }
 
-function drawMaturityChart(canvas: HTMLCanvasElement, r: ReportData) {
-  const DPR = 2;
-  const W = canvas.offsetWidth || 680;
-  const mats = r.maturityDomains;
-  const N = mats.length;
-  if (N === 0) return;
-  const H = 240;
-  canvas.width = W * DPR;
-  canvas.height = H * DPR;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  ctx.scale(DPR, DPR);
-
-  const PAD = { top: 28, right: 56, bottom: 66, left: 30 };
-  const cW = W - PAD.left - PAD.right;
-  const cH = H - PAD.top - PAD.bottom;
-  const barW = Math.min(30, Math.floor(cW / N - 12));
-
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
-
-  const LVL = ['مبتدئ', 'أساسي', 'متوسط', 'متقدم', 'نموذجي'];
-  for (let v = 0; v <= 5; v++) {
-    const y = PAD.top + cH * (1 - v / 5);
-    ctx.strokeStyle = v === 0 ? '#cbd5e1' : '#f1f5f9';
-    ctx.lineWidth = v === 0 ? 1 : 0.5;
-    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
-    ctx.fillStyle = '#94a3b8'; ctx.font = '7px sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText(String(v), PAD.left - 4, y + 3);
-    if (v > 0) {
-      ctx.fillStyle = '#cbd5e1'; ctx.font = '6.5px sans-serif'; ctx.textAlign = 'left';
-      ctx.fillText(LVL[v - 1], PAD.left + cW + 4, y + 3);
-    }
-  }
-
-  // Average dashed line
-  const avg = mats.reduce((a, m) => a + m.score, 0) / N;
-  const avgY = PAD.top + cH * (1 - avg / 5);
-  ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 1.5;
-  ctx.setLineDash([4, 3]);
-  ctx.beginPath(); ctx.moveTo(PAD.left, avgY); ctx.lineTo(PAD.left + cW, avgY); ctx.stroke();
-  ctx.setLineDash([]);
-
-  mats.forEach((m, gi) => {
-    const cx = PAD.left + (gi + 0.5) * (cW / N);
-    const sx = cx - barW / 2;
-    const bH = Math.max(3, (m.score / 5) * cH);
-    const bY = PAD.top + cH - bH;
-    ctx.fillStyle = MAT_COLORS[m.score - 1] ?? '#94a3b8';
-    ctx.fillRect(sx, bY, barW, bH);
-    ctx.fillStyle = '#1e293b'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(`${m.score}/5`, cx, bY - 3);
-
-    const words = m.name.split(' ');
-    const mid = Math.ceil(words.length / 2);
-    ctx.fillStyle = '#334155'; ctx.font = '7.5px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(words.slice(0, mid).join(' '), cx, H - PAD.bottom + 16);
-    if (words.length > 1) ctx.fillText(words.slice(mid).join(' '), cx, H - PAD.bottom + 26);
-  });
-}
-
 export default function ReportPreview({ report }: Props) {
   const r = report;
   const dateF = formatArabicDate(r.issueDate);
   const kpiChartRef = useRef<HTMLCanvasElement>(null);
-  const matChartRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const el = kpiChartRef.current;
@@ -159,17 +95,6 @@ export default function ReportPreview({ report }: Props) {
     obs.observe(el);
     drawKpiComboChart(el, r);
     return () => obs.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [r]);
-
-  useEffect(() => {
-    const el = matChartRef.current;
-    if (!el || !r.showMaturity) return;
-    const obs = new ResizeObserver(() => { if (matChartRef.current) drawMaturityChart(matChartRef.current, r); });
-    obs.observe(el);
-    drawMaturityChart(el, r);
-    return () => obs.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [r]);
 
   const totalVuln = r.vulnCritical + r.vulnHigh + r.vulnMedium + r.vulnLow || 1;
@@ -214,7 +139,7 @@ export default function ReportPreview({ report }: Props) {
       eff:    { title: 'الكفاءة التشغيلية',            rag: 'a' },
       sla:    { title: 'مقاييس الاستجابة',             rag: slaOk ? 'g' : 'r' },
       act:    { title: 'التوصيات والاعتمادات',         rag: r.recommendations.length > 0 ? 'g' : 'n' },
-      mat:    { title: 'تقييم مستوى النضج',            rag: parseFloat(avgMat) >= 4 ? 'g' : parseFloat(avgMat) >= 3 ? 'a' : 'r' },
+      mat:    { title: 'تقييم مستوى الامتثال',         rag: parseFloat(avgMat) >= 80 ? 'g' : parseFloat(avgMat) >= 60 ? 'a' : 'r' },
     };
     return { ...map[id], num: secNum(id) };
   });
@@ -654,35 +579,22 @@ export default function ReportPreview({ report }: Props) {
       {/* ═══════ MATURITY ═══════ */}
       {r.showMaturity && r.maturityDomains.length > 0 && (
         <div className="px-11 py-7 border-b border-gray-100" style={{ background: '#f8fafc' }}>
-          {SH('mat', 'تقييم مستوى النضج — ملحق تقييمي', parseFloat(avgMat) >= 4 ? 'g' : parseFloat(avgMat) >= 3 ? 'a' : 'r')}
+          {SH('mat', 'تقييم مستوى الامتثال — ملحق تقييمي', parseFloat(avgMat) >= 80 ? 'g' : parseFloat(avgMat) >= 60 ? 'a' : 'r')}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14, padding: '12px 16px', background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0' }}>
             <div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>متوسط النضج</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#1e293b', fontFamily: 'monospace' }}>{avgMat}<span style={{ fontSize: 12, color: '#94a3b8' }}> / 5</span></div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>متوسط الامتثال</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#1e293b', fontFamily: 'monospace' }}>{avgMat}<span style={{ fontSize: 12, color: '#94a3b8' }}> %</span></div>
             </div>
-            <span style={{ fontSize: 10, color: '#94a3b8' }}>{parseFloat(avgMat) >= 4 ? 'مستوى متقدم' : parseFloat(avgMat) >= 3 ? 'مستوى متوسط' : parseFloat(avgMat) >= 2 ? 'مستوى ناشئ' : 'مستوى مبتدئ'}</span>
+            <span style={{ fontSize: 10, color: '#94a3b8' }}>{parseFloat(avgMat) >= 85 ? 'امتثال ممتاز' : parseFloat(avgMat) >= 70 ? 'امتثال جيد' : parseFloat(avgMat) >= 50 ? 'امتثال متوسط' : 'يحتاج تحسيناً'}</span>
           </div>
           <div style={{ background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 14 }}>
             {r.maturityDomains.map((domain) => (
               <div key={domain.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderBottom: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: 11, flex: 1 }}>{domain.name}</div>
-                <div style={{ width: 140, height: 5, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${(domain.score / 5) * 100}%`, height: '100%', borderRadius: 2, background: MAT_COLORS[domain.score - 1] ?? '#94a3b8' }} /></div>
-                <div style={{ fontSize: 10, fontWeight: 700, minWidth: 100, color: '#475569', fontFamily: 'monospace' }}>{domain.score}/5 — {MAT_NAMES[domain.score - 1]}</div>
+                <div style={{ width: 180, height: 6, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${domain.score}%`, height: '100%', borderRadius: 2, background: domain.score >= 85 ? '#15803d' : domain.score >= 70 ? '#16a34a' : domain.score >= 50 ? '#d97706' : '#dc2626' }} /></div>
+                <div style={{ fontSize: 10, fontWeight: 700, minWidth: 86, color: '#475569', fontFamily: 'monospace' }}>{domain.score}%</div>
               </div>
             ))}
-          </div>
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ background: '#f8fafc', padding: '9px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#1e293b' }}>رسم بياني — مستوى النضج حسب المجال</span>
-              <div style={{ display: 'flex', gap: 14 }}>
-                {([['#c9a227', '— المتوسط الكلي'], ['#2563eb', 'الدرجة الحالية']] as [string, string][]).map(([col, lbl]) => (
-                  <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, color: '#94a3b8' }}><span style={{ width: lbl.startsWith('—') ? 12 : 10, height: lbl.startsWith('—') ? 2 : 10, borderRadius: lbl.startsWith('—') ? 1 : 2, background: col, display: 'inline-block' }} />{lbl}</span>
-                ))}
-              </div>
-            </div>
-            <div style={{ padding: '16px 20px', background: '#fff' }}>
-              <canvas ref={matChartRef} width={680} height={240} style={{ width: '100%', display: 'block' }} />
-            </div>
           </div>
         </div>
       )}
