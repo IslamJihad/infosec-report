@@ -39,7 +39,7 @@ export default function TopBar({ onPreview, onAIReview }: TopBarProps) {
 
         <button
           onClick={() => setStep(currentStep + 1)}
-          disabled={currentStep === 6}
+          disabled={currentStep === 8}
           className="py-2 px-5 rounded-xl border-none bg-gradient-to-l from-navy-800 to-navy-900 text-white text-sm font-bold transition-all duration-200 hover:from-navy-700 hover:to-navy-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-sm"
         >
           التالي ←
