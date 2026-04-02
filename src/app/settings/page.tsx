@@ -1,33 +1,57 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchSettings, updateSettings } from '@/lib/api';
+import { fetchSettings, testAIConnection, updateSettings } from '@/lib/api';
 import Link from 'next/link';
+import type { AppSettings } from '@/types/report';
+import {
+  AI_MODEL_OPTIONS,
+  AI_PROVIDER_OPTIONS,
+  getDefaultModelForProvider,
+  getProviderMeta,
+  normalizeAIModel,
+  normalizeAIProvider,
+  type AIProvider,
+} from '@/lib/ai/models';
+
+const DEFAULT_SETTINGS: AppSettings = {
+  id: 'singleton',
+  aiProvider: 'gemini',
+  aiModel: getDefaultModelForProvider('gemini'),
+  geminiApiKey: '',
+  nvidiaApiKey: '',
+  aiApiKey: '',
+  defaultOrgName: '',
+  defaultAuthor: '',
+};
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState({
-    aiApiKey: '',
-    aiModel: 'gemini-2.5-flash',
-    defaultOrgName: '',
-    defaultAuthor: '',
-  });
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
+  const providerMeta = getProviderMeta(settings.aiProvider);
+  const modelOptions = AI_MODEL_OPTIONS[settings.aiProvider];
+  const activeApiKey = settings.aiProvider === 'nvidia' ? settings.nvidiaApiKey : settings.geminiApiKey;
 
   useEffect(() => {
     async function load() {
       try {
         const data = await fetchSettings();
-        // Migrate old Perplexity model values to Gemini default
-        if (data.aiModel && !geminiModels.includes(data.aiModel)) {
-          data.aiModel = 'gemini-2.5-flash';
-        }
-        setSettings(data);
+        const aiProvider = normalizeAIProvider(data.aiProvider);
+        const aiModel = normalizeAIModel(aiProvider, data.aiModel);
+
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...data,
+          aiProvider,
+          aiModel,
+          geminiApiKey: data.geminiApiKey || data.aiApiKey || '',
+          nvidiaApiKey: data.nvidiaApiKey || '',
+        });
       } catch (e) {
         console.error(e);
       } finally {
@@ -37,11 +61,37 @@ export default function SettingsPage() {
     load();
   }, []);
 
+  function setProvider(provider: AIProvider) {
+    setSettings((prev) => ({
+      ...prev,
+      aiProvider: provider,
+      aiModel: normalizeAIModel(provider, prev.aiModel),
+    }));
+    setTestResult(null);
+  }
+
+  function setActiveProviderKey(value: string) {
+    setSettings((prev) => (
+      prev.aiProvider === 'nvidia'
+        ? { ...prev, nvidiaApiKey: value }
+        : { ...prev, geminiApiKey: value, aiApiKey: value }
+    ));
+    setTestResult(null);
+  }
+
   async function handleSave() {
     setSaving(true);
     setSaved(false);
     try {
-      await updateSettings(settings);
+      await updateSettings({
+        aiProvider: settings.aiProvider,
+        aiModel: normalizeAIModel(settings.aiProvider, settings.aiModel),
+        geminiApiKey: settings.geminiApiKey,
+        nvidiaApiKey: settings.nvidiaApiKey,
+        aiApiKey: settings.geminiApiKey,
+        defaultOrgName: settings.defaultOrgName,
+        defaultAuthor: settings.defaultAuthor,
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
@@ -52,32 +102,22 @@ export default function SettingsPage() {
   }
 
   async function handleTestConnection() {
-    if (!settings.aiApiKey) {
-      setTestResult('❌ يرجى إدخال مفتاح API أولاً');
+    if (!activeApiKey) {
+      setTestResult(`❌ يرجى إدخال مفتاح API لمزود ${providerMeta.label} أولاً`);
       return;
     }
+
     setTestResult('⏳ جاري الاختبار...');
     try {
-      const modelToTest = geminiModels.includes(settings.aiModel) ? settings.aiModel : 'gemini-2.5-flash';
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelToTest}:generateContent?key=${settings.aiApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: 'مرحباً، أجب بكلمة واحدة: تجربة' }] }],
-            generationConfig: { maxOutputTokens: 20 },
-          }),
-        }
-      );
-      if (res.ok) {
-        setTestResult('✅ الاتصال ناجح! Gemini API يعمل بشكل صحيح.');
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setTestResult(`❌ خطأ ${res.status}: ${JSON.stringify(err).slice(0, 100)}`);
-      }
-    } catch {
-      setTestResult('❌ فشل الاتصال بالخادم');
+      const result = await testAIConnection({
+        aiProvider: settings.aiProvider,
+        aiModel: settings.aiModel,
+        geminiApiKey: settings.geminiApiKey,
+        nvidiaApiKey: settings.nvidiaApiKey,
+      });
+      setTestResult(`✅ ${result.message || 'الاتصال ناجح'}`);
+    } catch (e: unknown) {
+      setTestResult(`❌ ${(e as Error).message || 'فشل الاتصال بالخادم'}`);
     }
   }
 
@@ -111,18 +151,32 @@ export default function SettingsPage() {
         {/* AI Settings */}
         <div className="bg-white rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md">
           <div className="bg-gradient-to-l from-purple-800 to-purple-900 text-white px-6 py-4 text-base font-bold flex items-center gap-2.5">
-            🤖 إعدادات الذكاء الاصطناعي (Google Gemini)
+            🤖 إعدادات الذكاء الاصطناعي
           </div>
           <div className="p-6">
             <div className="mb-5">
-              <label className="text-sm font-bold text-text-secondary block mb-2">مفتاح API – Google Gemini</label>
+              <label className="text-sm font-bold text-text-secondary block mb-2">مزود الذكاء الاصطناعي</label>
+              <select
+                value={settings.aiProvider}
+                onChange={(e) => setProvider(e.target.value as AIProvider)}
+                className="border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] bg-white w-full hover:border-purple-200 transition-all duration-200"
+              >
+                {AI_PROVIDER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-text-hint mt-2">يمكنك حفظ مفاتيح Gemini وNVIDIA بشكل منفصل والتبديل بينهما بأي وقت.</p>
+            </div>
+
+            <div className="mb-5">
+              <label className="text-sm font-bold text-text-secondary block mb-2">{providerMeta.keyLabel}</label>
               <div className="flex gap-2.5">
                 <input
                   type={showKey ? 'text' : 'password'}
-                  value={settings.aiApiKey}
-                  onChange={(e) => setSettings({ ...settings, aiApiKey: e.target.value })}
+                  value={activeApiKey}
+                  onChange={(e) => setActiveProviderKey(e.target.value)}
                   className="flex-1 border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] hover:border-purple-200 transition-all duration-200"
-                  placeholder="AIza..."
+                  placeholder={providerMeta.keyPlaceholder}
                 />
                 <button
                   onClick={() => setShowKey(!showKey)}
@@ -133,8 +187,16 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-text-hint mt-2">
                 احصل على مفتاح API من{' '}
-                <a href="https://aistudio.google.com/apikey" target="_blank" className="text-purple-800 underline font-semibold">Google AI Studio</a>
+                <a href={providerMeta.keyHelpUrl} target="_blank" className="text-purple-800 underline font-semibold">{providerMeta.keyHelpText}</a>
               </p>
+              <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                  Gemini: {settings.geminiApiKey ? '✅ محفوظ' : '⚪ غير محفوظ'}
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                  NVIDIA: {settings.nvidiaApiKey ? '✅ محفوظ' : '⚪ غير محفوظ'}
+                </div>
+              </div>
             </div>
 
             <div className="mb-5">
@@ -144,9 +206,9 @@ export default function SettingsPage() {
                 onChange={(e) => setSettings({ ...settings, aiModel: e.target.value })}
                 className="border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] bg-white w-full hover:border-purple-200 transition-all duration-200"
               >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (5 RPM - متقدم)</option>
-                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (10 RPM - أسرع)</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash (الأحدث)</option>
+                {modelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
             </div>
 

@@ -8,8 +8,6 @@ export default function SLAForm() {
   if (!report) return null;
 
   const slaItems = [
-    { code: 'MTTD', label: 'وقت الاكتشاف', val: report.slaMTTD, target: report.slaMTTDTarget, valKey: 'slaMTTD' as const, tgtKey: 'slaMTTDTarget' as const, hint: 'الهدف: < 2 ساعة' },
-    { code: 'MTTR', label: 'وقت الاستجابة', val: report.slaMTTR, target: report.slaMTTRTarget, valKey: 'slaMTTR' as const, tgtKey: 'slaMTTRTarget' as const, hint: 'الهدف: < 8 ساعات' },
     { code: 'MTTC', label: 'وقت الاحتواء', val: report.slaMTTC, target: report.slaMTTCTarget, valKey: 'slaMTTC' as const, tgtKey: 'slaMTTCTarget' as const, hint: 'الهدف: < 24 ساعة' },
   ];
 

@@ -25,6 +25,10 @@ export default function GeneralInfoForm() {
           <FormField label="المدير العام / المستلم" value={report.recipientName} onChange={(v) => updateField('recipientName', v)} />
         </div>
 
+        <div className="grid grid-cols-1 gap-4 mb-4">
+          <FormField label="الموضوع" value={report.subject} onChange={(v) => updateField('subject', v)} />
+        </div>
+
         <div className="grid grid-cols-3 gap-4 mb-4">
           <FormField label="الفترة الزمنية" value={report.period} onChange={(v) => updateField('period', v)} />
           <FormField label="تاريخ الإصدار" value={report.issueDate} onChange={(v) => updateField('issueDate', v)} type="date" />

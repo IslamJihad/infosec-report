@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getProviderMeta, normalizeAIModel, normalizeAIProvider } from '@/lib/ai/models';
+import { generateProviderReply, type ProviderMessage } from '@/lib/ai/providers';
+import { getPersistedAppSettings } from '@/lib/db/appSettings';
+
+const SYSTEM_PROMPT = 'أنت خبير أمن معلومات محترف. ردودك دقيقة ومبنية على البيانات المقدمة. تستخدم تنسيق Markdown باللغة العربية. تقدم تحليلات قابلة للتنفيذ.';
+
+function toProviderHistory(history: unknown): ProviderMessage[] {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .filter((message): message is { role: string; content: string } => {
+      if (!message || typeof message !== 'object') return false;
+      const candidate = message as { role?: unknown; content?: unknown };
+      return typeof candidate.role === 'string' && typeof candidate.content === 'string';
+    })
+    .filter((message) => message.role === 'user' || message.role === 'assistant')
+    .map((message) => ({
+      role: message.role as 'user' | 'assistant',
+      content: message.content,
+    }));
+}
 
 export async function POST(req: Request) {
   try {
@@ -8,42 +28,26 @@ export async function POST(req: Request) {
     const { reportId, reviewType, reportData, followUp, question, history } = body;
 
     // Get API key from settings
-    const settings = await prisma.appSettings.findUnique({ where: { id: 'singleton' } });
-    if (!settings?.aiApiKey) {
+    const settings = await getPersistedAppSettings();
+    const provider = normalizeAIProvider(settings?.aiProvider);
+    const providerMeta = getProviderMeta(provider);
+    const modelName = normalizeAIModel(provider, settings?.aiModel);
+    const apiKey = provider === 'nvidia'
+      ? (settings?.nvidiaApiKey || '')
+      : (settings?.geminiApiKey || settings?.aiApiKey || '');
+
+    if (!apiKey) {
       return NextResponse.json(
-        { error: 'مفتاح API غير مُعدّ. يرجى إضافته من صفحة الإعدادات.' },
+        { error: `مفتاح API غير مُعدّ لمزود ${providerMeta.label}. يرجى إضافته من صفحة الإعدادات.` },
         { status: 400 }
       );
     }
 
-    const apiKey = settings.aiApiKey;
-    const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
-    const modelName = (settings.aiModel && geminiModels.includes(settings.aiModel)) ? settings.aiModel : 'gemini-2.5-flash';
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      systemInstruction: {
-        role: 'user',
-        parts: [{ text: 'أنت خبير أمن معلومات محترف. ردودك دقيقة ومبنية على البيانات المقدمة. تستخدم تنسيق Markdown باللغة العربية. تقدم تحليلات قابلة للتنفيذ.' }],
-      },
-      generationConfig: {
-        maxOutputTokens: 2000,
-        temperature: 0.3,
-      },
-    });
-
-    let geminiHistory: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+    let providerHistory: ProviderMessage[] = [];
     let userMessage: string;
 
     if (followUp && history) {
-      // Convert previous messages to Gemini format (skip system messages)
-      geminiHistory = history
-        .filter((m: { role: string }) => m.role !== 'system')
-        .map((m: { role: string; content: string }) => ({
-          role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-          parts: [{ text: m.content }],
-        }));
+      providerHistory = toProviderHistory(history);
       userMessage = question;
     } else {
       // Build prompt based on review type
@@ -59,17 +63,20 @@ export async function POST(req: Request) {
       userMessage = prompts[reviewType] || prompts.full;
     }
 
-    // Call Gemini API
-    const chat = model.startChat({
-      history: geminiHistory,
+    const assistantMessage = await generateProviderReply({
+      provider,
+      apiKey,
+      model: modelName,
+      systemPrompt: SYSTEM_PROMPT,
+      history: providerHistory,
+      userMessage,
+      maxOutputTokens: 2000,
+      temperature: 0.3,
     });
-
-    const response = await chat.sendMessage(userMessage);
-    const assistantMessage = response.response.text() || 'لا يوجد رد';
 
     // Save conversation
     if (reportId) {
-      const existingMsgs = followUp && history ? history : [];
+      const existingMsgs = followUp ? providerHistory : [];
       const allMessages = [
         ...existingMsgs,
         ...(followUp ? [{ role: 'user', content: question }] : [{ role: 'user', content: `مراجعة: ${reviewType}` }]),
@@ -92,15 +99,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       content: assistantMessage,
-      messages: followUp && history
-        ? [...history, { role: 'user', content: question }, { role: 'assistant', content: assistantMessage }]
+      messages: followUp
+        ? [...providerHistory, { role: 'user', content: question }, { role: 'assistant', content: assistantMessage }]
         : [{ role: 'user', content: `مراجعة: ${reviewType}` }, { role: 'assistant', content: assistantMessage }],
     });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('Gemini API error:', errMsg);
+    console.error('AI provider error:', errMsg);
     return NextResponse.json(
-      { error: `خطأ من Gemini: ${errMsg.slice(0, 200)}` },
+      { error: `خطأ من مزود الذكاء الاصطناعي: ${errMsg.slice(0, 200)}` },
       { status: 500 }
     );
   }

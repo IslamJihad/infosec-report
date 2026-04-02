@@ -1,22 +1,52 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import {
+  getDefaultModelForProvider,
+  normalizeAIModel,
+  normalizeAIProvider,
+} from '@/lib/ai/models';
+import {
+  getPersistedAppSettings,
+  upsertPersistedAppSettings,
+  type PersistedAppSettings,
+} from '@/lib/db/appSettings';
 
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
+type SettingsBody = {
+  aiApiKey?: string;
+  aiProvider?: string;
+  geminiApiKey?: string;
+  nvidiaApiKey?: string;
+  aiModel?: string;
+  defaultOrgName?: string;
+  defaultAuthor?: string;
+};
+
+function normalizeOutgoingSettings(settings: PersistedAppSettings) {
+  const aiProvider = normalizeAIProvider(settings.aiProvider);
+  const geminiApiKey = settings.geminiApiKey || settings.aiApiKey || '';
+  const aiModel = normalizeAIModel(aiProvider, settings.aiModel);
+
+  return {
+    id: settings.id,
+    aiProvider,
+    aiModel,
+    aiApiKey: geminiApiKey,
+    geminiApiKey,
+    nvidiaApiKey: settings.nvidiaApiKey || '',
+    defaultOrgName: settings.defaultOrgName || '',
+    defaultAuthor: settings.defaultAuthor || '',
+  };
+}
+
+function hasOwnField<T extends object>(obj: T, key: keyof T): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
 
 export async function GET() {
   try {
-    let settings = await prisma.appSettings.findUnique({ where: { id: 'singleton' } });
-    if (!settings) {
-      settings = await prisma.appSettings.create({
-        data: { id: 'singleton' },
-      });
-    }
-    // Migrate old model values to Gemini default
-    const response = { ...settings } as Record<string, unknown>;
-    if (settings.aiModel && !GEMINI_MODELS.includes(settings.aiModel)) {
-      response.aiModel = 'gemini-2.5-flash';
-    }
-    return NextResponse.json(response);
+    const settings = await getPersistedAppSettings();
+
+    const normalized = normalizeOutgoingSettings(settings);
+    return NextResponse.json(normalized);
   } catch (error) {
     console.error('Error fetching settings:', error);
     return NextResponse.json({ error: 'خطأ' }, { status: 500 });
@@ -25,13 +55,46 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const data = await req.json();
-    const settings = await prisma.appSettings.upsert({
-      where: { id: 'singleton' },
-      update: data,
-      create: { id: 'singleton', ...data },
-    });
-    return NextResponse.json(settings);
+    const body = (await req.json()) as SettingsBody;
+    const current = await getPersistedAppSettings();
+
+    const currentProvider = normalizeAIProvider(current?.aiProvider);
+    const requestedProvider = hasOwnField(body, 'aiProvider')
+      ? normalizeAIProvider(body.aiProvider)
+      : currentProvider;
+
+    const currentGeminiKey = current?.geminiApiKey || current?.aiApiKey || '';
+    const geminiApiKey = hasOwnField(body, 'geminiApiKey')
+      ? (body.geminiApiKey ?? '')
+      : hasOwnField(body, 'aiApiKey')
+        ? (body.aiApiKey ?? '')
+        : currentGeminiKey;
+
+    const nvidiaApiKey = hasOwnField(body, 'nvidiaApiKey')
+      ? (body.nvidiaApiKey ?? '')
+      : (current?.nvidiaApiKey || '');
+
+    const aiModel = hasOwnField(body, 'aiModel')
+      ? normalizeAIModel(requestedProvider, body.aiModel)
+      : normalizeAIModel(requestedProvider, current?.aiModel || getDefaultModelForProvider(requestedProvider));
+
+    const updatePayload = {
+      aiProvider: requestedProvider,
+      aiModel,
+      aiApiKey: geminiApiKey,
+      geminiApiKey,
+      nvidiaApiKey,
+      defaultOrgName: hasOwnField(body, 'defaultOrgName')
+        ? (body.defaultOrgName ?? '')
+        : (current?.defaultOrgName || ''),
+      defaultAuthor: hasOwnField(body, 'defaultAuthor')
+        ? (body.defaultAuthor ?? '')
+        : (current?.defaultAuthor || ''),
+    };
+
+    const settings = await upsertPersistedAppSettings(updatePayload);
+
+    return NextResponse.json(normalizeOutgoingSettings(settings));
   } catch (error) {
     console.error('Error updating settings:', error);
     return NextResponse.json({ error: 'خطأ' }, { status: 500 });

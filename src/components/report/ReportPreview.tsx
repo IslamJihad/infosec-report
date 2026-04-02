@@ -8,10 +8,6 @@ import {
   SEVERITY_MAP,
   STATUS_MAP,
   PRIORITY_MAP,
-  HEATMAP_COLORS,
-  getHeatmapClass,
-  PROBABILITY_LABELS,
-  IMPACT_LABELS,
   CHALLENGE_TYPES,
 } from '@/lib/constants';
 
@@ -114,15 +110,16 @@ export default function ReportPreview({ report }: Props) {
   const ragBg   = (rag: string) => rag === 'r' ? '#fef2f2' : rag === 'a' ? '#fffbeb' : rag === 'g' ? '#f0fdf4' : '#f8fafc';
   const ragBorder = (rag: string) => rag === 'r' ? 'rgba(220,38,38,.15)' : rag === 'a' ? 'rgba(120,53,15,.12)' : 'rgba(20,83,45,.12)';
 
-  const slaOk = r.slaMTTD <= r.slaMTTDTarget && r.slaMTTR <= r.slaMTTRTarget && r.slaMTTC <= r.slaMTTCTarget;
+  const slaOk = r.slaMTTC <= r.slaMTTCTarget;
 
   // Precompute which sections are shown → ordinal numbers
   type SecId = 'exec' | 'risks' | 'assets' | 'ind' | 'eff' | 'sla' | 'act' | 'mat';
   const shownSections: SecId[] = [
-    'exec', 'risks',
+    'exec',
+    ...(effKPIs.length > 0 ? ['eff' as SecId] : []),
+    'risks',
     ...(r.assets.length > 0 ? ['assets' as SecId] : []),
     'ind',
-    ...(effKPIs.length > 0 ? ['eff' as SecId] : []),
     ...(r.showSLA ? ['sla' as SecId] : []),
     'act',
     ...(r.showMaturity && r.maturityDomains.length > 0 ? ['mat' as SecId] : []),
@@ -157,49 +154,48 @@ export default function ReportPreview({ report }: Props) {
     </div>
   );
 
-  // Heatmap grid
-  const hmRows: Array<{ p: number; cells: Array<{ cls: string; cnt: number; score: number }> }> = [];
-  for (let p = 5; p >= 1; p--) {
-    const cells = [];
-    for (let im = 1; im <= 5; im++) {
-      const cnt = r.risks.filter((risk) => risk.probability === p && risk.impact === im).length;
-      cells.push({ cls: getHeatmapClass(p * im), cnt, score: p * im });
-    }
-    hmRows.push({ p, cells });
-  }
-
   return (
     <div className="max-w-[820px] mx-auto bg-white shadow-lg" dir="rtl">
       {/* ═══════ COVER PAGE ═══════ */}
-      {/* ═══════ COVER PAGE ═══════ */}
-      <div style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', minHeight: 520, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0' }}>
+      <div className="report-cover" style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', height: '1123px', maxHeight: '1123px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0', pageBreakAfter: 'always', boxSizing: 'border-box', margin: 0, padding: 0 }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 15% 80%,rgba(26,92,46,.06) 0%,transparent 50%),radial-gradient(circle at 85% 20%,rgba(201,162,39,.07) 0%,transparent 50%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, right: 0, width: 6, height: '100%', background: 'linear-gradient(180deg,#1a5c2e 0%,#c9a227 55%,rgba(201,162,39,.15) 100%)' }} />
         <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(26,92,46,.04)', top: -80, left: -80, pointerEvents: 'none', zIndex: 1 }} />
         <div style={{ position: 'absolute', width: 180, height: 180, borderRadius: '50%', background: 'rgba(201,162,39,.05)', bottom: 80, right: -50, pointerEvents: 'none', zIndex: 1 }} />
-        <div style={{ position: 'relative', zIndex: 2, padding: '40px 52px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ position: 'relative', zIndex: 2, padding: '24px 40px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            {r.logoBase64 ? <img src={r.logoBase64} alt="شعار" style={{ maxHeight: 52, maxWidth: 160, objectFit: 'contain' }} /> : <div style={{ fontSize: 10, color: '#1a5c2e', border: '1px solid rgba(26,92,46,.25)', padding: '6px 14px', borderRadius: 6, letterSpacing: 0.5, background: 'rgba(255,255,255,.8)', fontWeight: 600 }}>{r.orgName}</div>}
+            {r.logoBase64 ? <img src={r.logoBase64} alt="شعار" style={{ maxHeight: 40, maxWidth: 140, objectFit: 'contain' }} /> : <div style={{ fontSize: 9, color: '#1a5c2e', border: '1px solid rgba(26,92,46,.25)', padding: '4px 10px', borderRadius: 6, letterSpacing: 0.5, background: 'rgba(255,255,255,.8)', fontWeight: 600 }}>{r.orgName}</div>}
           </div>
-          <div style={{ border: '1px solid rgba(26,92,46,.3)', borderRadius: 20, padding: '4px 14px', fontSize: 8, fontWeight: 800, letterSpacing: 2, color: '#1a5c2e', background: 'rgba(26,92,46,.06)' }}>{r.classification}</div>
+          <div style={{ border: '1px solid rgba(26,92,46,.3)', borderRadius: 20, padding: '3px 10px', fontSize: 7, fontWeight: 800, letterSpacing: 1.5, color: '#1a5c2e', background: 'rgba(26,92,46,.06)' }}>{r.classification}</div>
         </div>
-        <div style={{ flex: 1, position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 80px 30px' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 5, color: '#1a5c2e', opacity: 0.75, textTransform: 'uppercase', marginBottom: 18 }}>Information Security Report</div>
-          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1.1, letterSpacing: -2, marginBottom: 6, color: '#1a3a1f' }}>تقرير أمن المعلومات<br /><span style={{ color: '#c9a227' }}>{r.period}</span></div>
-          <div style={{ fontSize: 12, color: '#5a7a5e', marginBottom: 36, letterSpacing: 0.5 }}>{dateF}</div>
-          <div style={{ width: 200, height: 1.5, background: 'linear-gradient(90deg,transparent,#c9a227,rgba(26,92,46,.4),transparent)', margin: '0 auto 28px' }} />
-          <div style={{ fontSize: 10, color: '#5a7a5e', marginBottom: 5 }}>مُعدّ ومقدَّم إلى</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a3a1f', marginBottom: 4 }}>{r.recipientName}</div>
-          <div style={{ fontSize: 11, color: '#5a7a5e' }}>{r.orgName}</div>
+        <div style={{ height: '920px', position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '12px 50px 10px', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 4, color: '#1a5c2e', opacity: 0.75, textTransform: 'uppercase', marginBottom: 12 }}>Information Security Report</div>
+          <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1.15, letterSpacing: -1.5, marginBottom: 4, color: '#1a3a1f' }}>تقرير أمن المعلومات<br /><span style={{ color: '#c9a227' }}>{r.period}</span></div>
+          <div style={{ fontSize: 11, color: '#5a7a5e', marginBottom: 20, letterSpacing: 0.5 }}>{dateF}</div>
+          <div style={{ width: 180, height: 1.2, background: 'linear-gradient(90deg,transparent,#c9a227,rgba(26,92,46,.4),transparent)', margin: '0 auto 16px' }} />
+          <div style={{ fontSize: 9, color: '#5a7a5e', marginBottom: 3 }}>مُعدّ ومقدَّم إلى</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1a3a1f', marginBottom: 2 }}>{r.recipientName}</div>
+          <div style={{ fontSize: 10, color: '#5a7a5e' }}>{r.orgName}</div>
+          {r.subject && (
+            <div style={{ marginTop: 22, width: '100%', maxWidth: 540, display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: '100%', position: 'relative', borderRadius: 18, padding: '12px 16px 14px', background: 'linear-gradient(135deg,rgba(255,255,255,.8),rgba(240,248,237,.92))', border: '1px solid rgba(26,92,46,.2)', boxShadow: '0 10px 28px rgba(26,92,46,.08), inset 0 1px 0 rgba(255,255,255,.55)' }}>
+                <div style={{ fontSize: 8, letterSpacing: 2, color: '#6b8f71', textTransform: 'uppercase', marginBottom: 7 }}>الموضوع</div>
+                <div style={{ width: 120, height: 1.5, margin: '0 auto 8px', background: 'linear-gradient(90deg,transparent,rgba(201,162,39,.9),transparent)' }} />
+                <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.95, color: '#1a3a1f', background: 'rgba(255,255,255,.55)', border: '1px solid rgba(26,92,46,.12)', borderRadius: 12, padding: '9px 13px' }}>
+                  {r.subject}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-        <div style={{ position: 'relative', zIndex: 2, borderTop: '1px solid rgba(26,92,46,.12)', padding: '14px 52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,.6)' }}>
-          <div style={{ fontSize: 10, color: '#5a7a5e', lineHeight: 1.8 }}>مقدَّم من<br /><strong style={{ color: '#1a3a1f' }}>{r.author}</strong></div>
-          <div style={{ fontSize: 9, color: '#8aaa8e', fontFamily: 'monospace' }}>v{r.version} · {dateF}</div>
+        <div style={{ position: 'absolute', zIndex: 2, left: '40px', right: '40px', bottom: '12px', borderTop: '1px solid rgba(26,92,46,.12)', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,.6)', pageBreakInside: 'avoid' }}>
+          <div style={{ fontSize: 9, color: '#5a7a5e', lineHeight: 1.6 }}>مقدَّم من<br /><strong style={{ color: '#1a3a1f', fontSize: '10px' }}>{r.author}</strong></div>
+          <div style={{ fontSize: 8, color: '#8aaa8e', fontFamily: 'monospace' }}>v{r.version} · {dateF}</div>
         </div>
       </div>
       {/* ═══════ CISO NOTE ═══════ */}
       {r.chairNote && (
-        <div style={{ background: 'linear-gradient(135deg,#f4faf0,#fdf8ec)', borderBottom: '1px solid #d4e8cc', padding: '18px 44px' }}>
+        <div style={{ background: 'linear-gradient(135deg,#f4faf0,#fdf8ec)', borderBottom: '1px solid #d4e8cc', padding: '18px 44px', pageBreakBefore: 'avoid', pageBreakAfter: 'avoid' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
             <div style={{ width: 32, height: 32, background: '#1a5c2e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0, marginTop: 2 }}>C</div>
             <div style={{ flex: 1 }}>
@@ -211,27 +207,60 @@ export default function ReportPreview({ report }: Props) {
         </div>
       )}
 
-      {/* ═══════ TOC ═══════ */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '18px 44px' }}>
-        <div style={{ fontSize: 8, letterSpacing: 2.5, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 10, fontWeight: 700 }}>فهرس التقرير — الحالة الراهنة</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
-          {toc.map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 8px', borderRadius: 3 }}>
-              <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: '#94a3b8', minWidth: 22 }}>{String(item.num).padStart(2, '0')}</span>
-              <span style={{ fontSize: 11, flex: 1, color: '#475569' }}>{item.title}</span>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: ragColor(item.rag), flexShrink: 0 }} />
-              <span style={{ fontSize: 9, fontWeight: 700, minWidth: 80, color: ragColor(item.rag) }}>{ragLabel(item.rag)}</span>
-            </div>
-          ))}
+{/* ═══════ TOC ═══════ */}
+
+      <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '24px 44px', minHeight: '100vh', display: 'flex', flexDirection: 'column', pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
+
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: '#94a3b8', marginBottom: 16, textTransform: 'uppercase' }}>فهرس التقرير — الحالة الراهنة</div>
+
+        <div style={{ flex: 1, overflow: 'auto' }}>
+        <table className="w-full border-collapse text-[10px]">
+
+          <tbody>
+
+            {toc.map((s, i) => (
+
+              <tr key={i} style={{ background: i % 2 === 1 ? '#fff' : 'transparent' }}>
+
+                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontWeight: 700, color: '#94a3b8' }}>{String(s.num).padStart(2, '0')}</td>
+
+                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 600, flex: 1 }}>{s.title}</td>
+
+                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
+
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: ragColor(s.rag) }} />
+
+                </td>
+
+                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: ragColor(s.rag) }}>{ragLabel(s.rag)}</td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
         </div>
-        <div style={{ display: 'flex', gap: 16, marginTop: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
-          {([['#dc2626', 'يستوجب تدخلاً فورياً'], ['#f59e0b', 'يستوجب متابعة'], ['#22c55e', 'وضع جيد']] as [string, string][]).map(([col, lbl]) => (
-            <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, color: '#94a3b8' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: col, display: 'inline-block' }} />{lbl}
-            </span>
-          ))}
+
+        <div style={{ display: 'flex', gap: 20, marginTop: 'auto', fontSize: 9, color: '#94a3b8', paddingTop: 16 }}>
+
+          <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#dc2626', marginRight: 4 }} /> يستوجب تدخلاً فورياً</span>
+
+          <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', marginRight: 4 }} /> يستوجب متابعة</span>
+
+          <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#22c55e', marginRight: 4 }} /> وضع جيد</span>
+
         </div>
+
       </div>
+
+
+
+
+
+
+      
 
       {/* ═══════ EXEC SUMMARY ═══════ */}
       <div className="px-11 py-7 border-b border-gray-100">
@@ -268,32 +297,39 @@ export default function ReportPreview({ report }: Props) {
             </div>
           </div>
         </div>
-        {r.decisions.length > 0 && (
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ background: '#dc2626', color: '#fff', padding: '8px 14px', fontSize: 10, fontWeight: 800, display: 'flex', justifyContent: 'space-between' }}>
-              <span>الاعتمادات المطلوبة من الإدارة العليا</span>
-              <span style={{ opacity: 0.6, fontWeight: 400 }}>{r.decisions.length} قرار معلّق</span>
-            </div>
-            {r.decisions.map((dec, i) => (
-              <div key={dec.id} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto', gap: 12, padding: '11px 14px', borderBottom: '1px solid #e2e8f0', alignItems: 'start' }}>
-                <div style={{ width: 20, height: 20, background: '#dc2626', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, flexShrink: 0 }}>{i + 1}</div>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, marginBottom: 3 }}>{dec.title}</div>
-                  <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{dec.description}</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', minWidth: 120 }}>
-                  {dec.owner && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: '#fef2f2', color: '#dc2626' }}>صاحب القرار: {dec.owner}</span>}
-                  {dec.budget && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: '#eff6ff', color: '#2563eb' }}>{dec.budget}</span>}
-                  {dec.timeline && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: '#f0fdf4', color: '#16a34a' }}>⏱ {dec.timeline}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
+      {/* ═══════ EFFICIENCY ═══════ */}
+      {effKPIs.length > 0 && (
+        <div className="px-11 py-7 border-b border-gray-100">
+          {SH('eff', 'الكفاءة التشغيلية', 'a')}
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, effKPIs.length)},1fr)`, gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+            {effKPIs.map((e) => {
+              const good = e.lowerBetter ? e.val <= e.target : e.val >= e.target;
+              const pct = Math.min(100, Math.round(Math.abs(e.val) / Math.max(e.target, 1) * 100));
+              const mc = good ? '#16a34a' : '#dc2626';
+              return (
+                <div key={e.id} style={{ background: '#fff', padding: '16px 18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#1e293b' }}>{e.title}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: good ? '#f0fdf4' : '#fef2f2', color: mc }}>{good ? 'ضمن الهدف' : 'دون الهدف'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
+                    <span style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontFamily: 'monospace', color: mc }}>{e.val}</span>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{e.unit}</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 6 }}>الهدف: {e.target}{e.unit}</div>
+                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: mc }} /></div>
+                  {e.description && <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 6, lineHeight: 1.7 }}>{e.description}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ═══════ RISKS ═══════ */}
-      <div className="px-11 py-7 border-b border-gray-100">
+      <div className="px-11 py-7 border-b border-gray-100" style={{ pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
         {SH('risks', 'المخاطر الرئيسية', critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r')}
         {critRisks > 0 && (
           <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.9, padding: '9px 13px', background: '#eff6ff', borderRight: '3px solid #2563eb', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>
@@ -302,7 +338,7 @@ export default function ReportPreview({ report }: Props) {
         )}
         <table className="w-full border-collapse text-[11px] mb-4">
           <thead>
-            <tr>{['#', 'وصف المخاطرة والنظام المتأثر', 'الخطورة', 'الحالة', 'الدرجة', 'السيناريو الأسوأ'].map(h => (
+            <tr>{['#', 'وصف المخاطرة والنظام المتأثر', 'الخطورة', 'الحالة', 'الدرجة', 'السيناريو الأسوأ', 'الضوابط المطلوبة', 'الاصول الحيوية المتاثرة'].map(h => (
               <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
             ))}</tr>
           </thead>
@@ -322,82 +358,25 @@ export default function ReportPreview({ report }: Props) {
                     <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 3, fontSize: 10, fontWeight: 900, fontFamily: 'monospace', background: score >= 20 ? '#450a0a' : score >= 15 ? '#fef2f2' : score >= 10 ? '#fffbeb' : '#f0fdf4', color: score >= 20 ? '#fff' : score >= 15 ? '#dc2626' : score >= 10 ? '#d97706' : '#16a34a' }}>{score}</span>
                   </td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: score >= 15 ? '#dc2626' : score >= 10 ? '#d97706' : '#94a3b8', fontWeight: score >= 15 ? 700 : 400, lineHeight: 1.8 }}>{risk.worstCase || autoWC}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{risk.requiredControls || '–'}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{risk.affectedAssets || '–'}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>خريطة المخاطر الحرارية</div>
-          <table className="border-collapse w-full text-[9px]">
-            <thead>
-              <tr>
-                <th style={{ background: '#1e293b', color: '#fff', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>الاحتمالية / التأثير</th>
-                {IMPACT_LABELS.slice(1).map((label, i) => <th key={i} style={{ background: '#1e293b', color: '#fff', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>{i + 1} – {label}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {hmRows.map((row) => (
-                <tr key={row.p}>
-                  <td style={{ background: '#f8fafc', color: '#1e3a5f', fontWeight: 700, textAlign: 'right', padding: '6px 10px', whiteSpace: 'nowrap' }}>{PROBABILITY_LABELS[row.p]} ({row.p})</td>
-                  {row.cells.map((cell, ci) => {
-                    const colors = HEATMAP_COLORS[cell.cls];
-                    return <td key={ci} className="p-1"><div style={{ background: colors?.bg, color: colors?.text, borderRadius: 4, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, gap: 2 }}>{cell.cnt > 0 && <span>{cell.cnt}▪</span>}<span>{cell.score}</span></div></td>;
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
-
-      {/* ═══════ ASSETS ═══════ */}
-      {r.assets.length > 0 && (
-        <div className="px-11 py-7 border-b border-gray-100">
-          {SH('assets', 'الأصول الحيوية', avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r')}
-          <table className="w-full border-collapse text-[11px]">
-            <thead>
-              <tr>{['الأصل الحيوي', 'الأهمية التشغيلية', 'مستوى الحماية', 'التقييم', 'الثغرات الرئيسية'].map(h => (
-                <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {r.assets.map((asset, i) => {
-                const pct = asset.protectionLevel;
-                const barC = pct >= 60 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626';
-                const badgeBg = pct >= 60 ? '#f0fdf4' : pct >= 40 ? '#fffbeb' : '#fef2f2';
-                const badgeLbl = pct >= 80 ? 'ممتاز' : pct >= 60 ? 'جيد' : pct >= 40 ? 'يحتاج تعزيزاً' : 'ضعيف';
-                return (
-                  <tr key={asset.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
-                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 700 }}>{asset.name}</td>
-                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8' }}>{asset.value}</td>
-                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0', minWidth: 140 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ flex: 1, height: 5, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ height: '100%', borderRadius: 2, background: barC, width: `${pct}%` }} /></div>
-                        <span style={{ fontSize: 10, fontWeight: 800, minWidth: 32, fontFamily: 'monospace', color: barC }}>{pct}%</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0' }}><span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9, fontWeight: 700, background: badgeBg, color: barC }}>{badgeLbl}</span></td>
-                    <td style={{ padding: '11px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8' }}>{asset.gaps || '—'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
+     {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
       <div className="px-11 py-7 border-b border-gray-100">
         {SH('ind', 'مؤشرات الأداء', r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r')}
         <table className="w-full border-collapse text-[11px] mb-3">
           <thead>
-            <tr>{['المؤشر', 'الفترة السابقة', 'الفترة الحالية', 'التغيير', 'مقارنة القطاع'].map(h => (
+            <tr>{['المؤشر', 'الفترة السابقة', 'الفترة الحالية', 'التغيير'].map(h => (
               <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
             ))}</tr>
           </thead>
           <tbody>
-            <tr><td colSpan={5} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>مؤشرات الحوادث والامتثال</td></tr>
+            <tr><td colSpan={4} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>مؤشرات الحوادث والامتثال</td></tr>
             {([
               { label: 'الحوادث الحرجة', prev: r.prevCritical, cur: r.kpiCritical, lower: true, bm: false },
               { label: 'الثغرات المكتشفة', prev: r.prevVuln, cur: r.kpiVuln, lower: true, bm: false },
@@ -412,27 +391,22 @@ export default function ReportPreview({ report }: Props) {
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8', fontFamily: 'monospace' }}>{row.prevStr ?? row.prev}</td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 800, fontFamily: 'monospace' }}>{row.curStr ?? row.cur}</td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 2, background: g ? '#f0fdf4' : b ? '#fef2f2' : '#f1f5f9', color: g ? '#16a34a' : b ? '#dc2626' : '#94a3b8' }}>{info.arrow} {info.label}</span></td>
-                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>{row.bm ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9, fontWeight: 700, fontFamily: 'monospace', background: row.bmOk ? '#f0fdf4' : '#fef2f2', color: row.bmOk ? '#16a34a' : '#dc2626' }}>{row.bmStr}</span> : '—'}</td>
                 </tr>
               );
             })}
-            <tr><td colSpan={5} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>مقاييس الاستجابة</td></tr>
+            <tr><td colSpan={4} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>مقاييس الاستجابة</td></tr>
             {([
-              { label: 'وقت الاكتشاف MTTD (ساعة)', cur: r.slaMTTD, bm: r.bmMTTD > 0, bmV: r.bmMTTD, bmOk: r.slaMTTD <= r.bmMTTD },
-              { label: 'وقت الاستجابة MTTR (ساعة)', cur: r.slaMTTR, bm: r.bmMTTR > 0, bmV: r.bmMTTR, bmOk: r.slaMTTR <= r.bmMTTR },
-              { label: 'درجة الأمن الكلية', cur: r.securityScore, bm: r.bmScore > 0, bmV: r.bmScore, bmOk: r.securityScore >= r.bmScore },
-            ] as Array<{ label: string; cur: number; bm: boolean; bmV: number; bmOk: boolean }>).map((row, i) => (
+              { label: 'وقت الاحتواء MTTC (ساعة)', cur: r.slaMTTC, bm: false },
+            ] as Array<{ label: string; cur: number; bm: boolean }>).map((row, i) => (
               <tr key={row.label} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
                 <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 600 }}>{row.label}</td>
                 <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8' }}>—</td>
                 <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 800, fontFamily: 'monospace' }}>{row.cur}</td>
                 <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>—</td>
-                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>{row.bm ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 9, fontWeight: 700, fontFamily: 'monospace', background: row.bmOk ? '#f0fdf4' : '#fef2f2', color: row.bmOk ? '#16a34a' : '#dc2626' }}>{row.bmV}</span> : '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {r.bmSector && <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 12, padding: '6px 10px', background: '#f8fafc', borderRadius: 2 }}>المرجع: {r.bmSector}</div>}
 
         {/* KPI Combo Chart */}
         <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden', marginBottom: 14 }}>
@@ -473,66 +447,6 @@ export default function ReportPreview({ report }: Props) {
         </div>
       </div>
 
-      {/* ═══════ EFFICIENCY ═══════ */}
-      {effKPIs.length > 0 && (
-        <div className="px-11 py-7 border-b border-gray-100">
-          {SH('eff', 'الكفاءة التشغيلية', 'a')}
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, effKPIs.length)},1fr)`, gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-            {effKPIs.map((e) => {
-              const good = e.lowerBetter ? e.val <= e.target : e.val >= e.target;
-              const pct = Math.min(100, Math.round(Math.abs(e.val) / Math.max(e.target, 1) * 100));
-              const mc = good ? '#16a34a' : '#dc2626';
-              return (
-                <div key={e.id} style={{ background: '#fff', padding: '16px 18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#1e293b' }}>{e.title}</span>
-                    <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: good ? '#f0fdf4' : '#fef2f2', color: mc }}>{good ? 'ضمن الهدف' : 'دون الهدف'}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-                    <span style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontFamily: 'monospace', color: mc }}>{e.val}</span>
-                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{e.unit}</span>
-                  </div>
-                  <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 6 }}>الهدف: {e.target}{e.unit}</div>
-                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: mc }} /></div>
-                  {e.description && <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 6, lineHeight: 1.7 }}>{e.description}</div>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ═══════ SLA ═══════ */}
-      {r.showSLA && (
-        <div className="px-11 py-7 border-b border-gray-100">
-          {SH('sla', 'مقاييس الاستجابة للحوادث', slaOk ? 'g' : 'r')}
-          {!slaOk && <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.9, padding: '9px 13px', background: '#eff6ff', borderRight: '3px solid #2563eb', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>مؤشرات الاستجابة تجاوزت الحد المقبول — التأخر يُطيل نافذة الهجوم ويُضاعف الأضرار.</div>}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-            {([['MTTD', 'وقت الاكتشاف', r.slaMTTD, r.slaMTTDTarget], ['MTTR', 'وقت الاستجابة', r.slaMTTR, r.slaMTTRTarget], ['MTTC', 'وقت الاحتواء', r.slaMTTC, r.slaMTTCTarget]] as [string, string, number, number][]).map(([code, lbl, val, tgt]) => {
-              const ok = val <= tgt;
-              return (
-                <div key={code} style={{ background: '#fff', padding: 16, textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, marginBottom: 6, fontFamily: 'monospace' }}>{code}</div>
-                  <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontFamily: 'monospace', color: ok ? '#16a34a' : '#dc2626' }}>{val}</div>
-                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3, marginBottom: 6 }}>ساعة — {lbl}</div>
-                  <div style={{ fontSize: 9, color: '#94a3b8' }}>الهدف ≤ {tgt} ساعة</div>
-                  <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 2, fontSize: 8, fontWeight: 700, marginTop: 6, background: ok ? '#f0fdf4' : '#fef2f2', color: ok ? '#16a34a' : '#dc2626' }}>{ok ? 'ضمن الهدف' : 'تجاوز الهدف'}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ background: '#fff', padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: r.slaRate >= 80 ? '#16a34a' : '#dc2626' }}>{r.slaRate}%</div>
-              <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3 }}>محلولة ضمن SLA</div>
-            </div>
-            <div style={{ background: '#fff', padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: r.slaBreach === 0 ? '#16a34a' : '#dc2626' }}>{r.slaBreach}</div>
-              <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3 }}>تجاوزت الاتفاقية</div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ═══════ ACTIONS (Recs + Challenges merged) ═══════ */}
       <div className="px-11 py-7 border-b border-gray-100">

@@ -51,20 +51,6 @@ export default function ROIBenchmarkForm() {
             type="number"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <FormField
-            label="متوسط وقت الاكتشاف في القطاع (ساعة)"
-            value={report.bmMTTD}
-            onChange={(v) => updateField('bmMTTD', parseInt(v) || 0)}
-            type="number"
-          />
-          <FormField
-            label="متوسط وقت الاستجابة في القطاع (ساعة)"
-            value={report.bmMTTR}
-            onChange={(v) => updateField('bmMTTR', parseInt(v) || 0)}
-            type="number"
-          />
-        </div>
         <FormField
           label="مصدر المقارنة / اسم القطاع"
           value={report.bmSector}

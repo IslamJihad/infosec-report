@@ -86,6 +86,16 @@ export default function RisksForm() {
                   value={risk.worstCase || ''}
                   onChange={(v) => updateRisk(i, { worstCase: v })}
                 />
+                <FormField
+                  label="الضوابط المطلوبة"
+                  value={risk.requiredControls || ''}
+                  onChange={(v) => updateRisk(i, { requiredControls: v })}
+                />
+                <FormField
+                  label="الاصول الحيوية المتاثرة"
+                  value={risk.affectedAssets || ''}
+                  onChange={(v) => updateRisk(i, { affectedAssets: v })}
+                />
               </div>
             </div>
           );

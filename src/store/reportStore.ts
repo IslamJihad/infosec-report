@@ -145,6 +145,8 @@ export const useReportStore = create<ReportStore>((set, get) => ({
       probability: 3,
       impact: 3,
       worstCase: '',
+      requiredControls: '',
+      affectedAssets: '',
       sortOrder: report.risks.length,
     };
     set({ report: { ...report, risks: [...report.risks, newRisk] }, isDirty: true });
@@ -321,16 +323,10 @@ export const useReportStore = create<ReportStore>((set, get) => ({
     if (!report) return;
     const controls = [...report.isoControls];
     controls[index] = { ...controls[index], [field]: value };
-    // Auto-calculate compliance percentages
-    const totalControls = 93;
-    const currentApplied = controls.reduce((s, c) => s + c.currentApplied, 0);
-    const previousApplied = controls.reduce((s, c) => s + c.previousApplied, 0);
     set({
       report: {
         ...report,
         isoControls: controls,
-        kpiCompliance: Math.round((currentApplied / totalControls) * 100),
-        prevCompliance: Math.round((previousApplied / totalControls) * 100),
       },
       isDirty: true,
     });

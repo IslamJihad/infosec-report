@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { getPersistedAppSettings } from '@/lib/db/appSettings';
 
 export async function GET() {
   try {
@@ -25,7 +26,7 @@ export async function GET() {
 export async function POST() {
   try {
     // Get default settings
-    const settings = await prisma.appSettings.findUnique({ where: { id: 'singleton' } });
+    const settings = await getPersistedAppSettings();
 
     const report = await prisma.report.create({
       data: {

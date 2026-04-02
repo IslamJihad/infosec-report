@@ -2,6 +2,7 @@ export interface ReportData {
   id: string;
   title: string;
   orgName: string;
+  subject: string;
   recipientName: string;
   period: string;
   issueDate: string;
@@ -35,11 +36,7 @@ export interface ReportData {
   incClosed: number;
   incWatch: number;
 
-  slaMTTD: number;
-  slaMTTR: number;
   slaMTTC: number;
-  slaMTTDTarget: number;
-  slaMTTRTarget: number;
   slaMTTCTarget: number;
   slaRate: number;
   slaBreach: number;
@@ -49,8 +46,6 @@ export interface ReportData {
   vulnRecurring: number;
   bmScore: number;
   bmCompliance: number;
-  bmMTTD: number;
-  bmMTTR: number;
   bmSector: string;
 
   // ISO Controls (JSON-serialized array of 14 domains)
@@ -93,6 +88,8 @@ export interface Risk {
   probability: number;
   impact: number;
   worstCase: string;
+  requiredControls: string;
+  affectedAssets: string;
   sortOrder: number;
 }
 
@@ -158,8 +155,11 @@ export interface ISOControl {
 
 export interface AppSettings {
   id: string;
-  aiApiKey: string;
+  aiProvider: 'gemini' | 'nvidia';
   aiModel: string;
+  geminiApiKey: string;
+  nvidiaApiKey: string;
+  aiApiKey?: string; // legacy compatibility
   defaultOrgName: string;
   defaultAuthor: string;
 }

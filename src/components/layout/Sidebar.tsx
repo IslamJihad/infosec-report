@@ -77,6 +77,9 @@ export default function Sidebar() {
         <Link href="/" className="flex items-center gap-2.5 text-xs text-white/45 hover:text-white/80 transition-colors py-1.5 no-underline">
           <span>📊</span> لوحة التقارير
         </Link>
+        <Link href="/analytics" className="flex items-center gap-2.5 text-xs text-white/45 hover:text-white/80 transition-colors py-1.5 no-underline">
+          <span>📈</span> التحليلات
+        </Link>
         <Link href="/settings" className="flex items-center gap-2.5 text-xs text-white/45 hover:text-white/80 transition-colors py-1.5 no-underline">
           <span>⚙️</span> الإعدادات
         </Link>

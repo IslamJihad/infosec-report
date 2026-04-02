@@ -25,7 +25,13 @@ export default function KPIForm() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField label="إجمالي الحوادث" value={report.kpiTotal} onChange={(v) => updateField('kpiTotal', parseInt(v) || 0)} type="number" />
-              <FormField label="نسبة الامتثال ISO 27001 %" value={report.kpiCompliance} onChange={() => {}} type="number" readOnly hint="تُحسب تلقائياً من الضوابط أدناه" />
+              <FormField
+                label="نسبة الامتثال ISO 27001 %"
+                value={report.kpiCompliance}
+                onChange={(v) => updateField('kpiCompliance', Math.min(100, Math.max(0, parseInt(v) || 0)))}
+                type="number"
+                hint="أدخل عددًا صحيحًا من 0 إلى 100"
+              />
             </div>
           </div>
 
@@ -38,7 +44,13 @@ export default function KPIForm() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField label="إجمالي الحوادث" value={report.prevTotal} onChange={(v) => updateField('prevTotal', parseInt(v) || 0)} type="number" />
-              <FormField label="نسبة الامتثال — سابقة %" value={report.prevCompliance} onChange={() => {}} type="number" readOnly hint="تُحسب تلقائياً من الضوابط أدناه" />
+              <FormField
+                label="نسبة الامتثال — سابقة %"
+                value={report.prevCompliance}
+                onChange={(v) => updateField('prevCompliance', Math.min(100, Math.max(0, parseInt(v) || 0)))}
+                type="number"
+                hint="أدخل عددًا صحيحًا من 0 إلى 100"
+              />
             </div>
           </div>
         </div>

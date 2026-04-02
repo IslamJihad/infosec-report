@@ -37,7 +37,7 @@ export default function MaturityForm() {
 
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <div className="bg-linear-to-l from-navy-950 to-[#0a1628] rounded-2xl px-5 py-3 text-white shadow-lg min-w-55">
-            <div className="text-xs opacity-60 mb-1 font-semibold">متوسط الامتثال الكلي</div>
+            <div className="text-xs opacity-60 mb-1 font-semibold">{"متوسط الامتثال الكلي\n"}</div>
             <div className="text-3xl font-black leading-none">{avg}%</div>
             <div className="text-xs opacity-80 mt-1.5">{avgLabel}</div>
           </div>

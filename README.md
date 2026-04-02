@@ -138,7 +138,7 @@ docker cp infosec-report-app-1:/app/data/infosec.db ./backup-infosec.db
 | 📊 **لوحة تحكم ذكية** | عرض جميع التقارير بإحصائيات مجمعة (عدد التقارير، متوسط الأمان، بيانات المخاطر) |
 | 📝 **محرر تقارير متقدم** | 7 أقسام إدخال منظمة مع حفظ تلقائي كل ثانيتين |
 | 🖨️ **تصدير احترافي** | معاينة كاملة بغلاف رسمي + تصدير PDF مباشرة من المتصفح |
-| 🤖 **مراجعة AI** | 4 أنواع مراجعة ذكية باستخدام Perplexity AI |
+| 🤖 **مراجعة AI** | 5 أنواع مراجعة ذكية مع اختيار المزود (Google Gemini أو NVIDIA NIM) |
 | 💾 **حفظ تلقائي** | كل تغيير يُحفظ تلقائياً بدون تدخل المستخدم |
 | 📋 **نسخ التقارير** | استنساخ أي تقرير بضغطة واحدة |
 | 🗺️ **خريطة مخاطر حرارية** | Risk Heat Map مصفوفة 5×5 |
@@ -174,12 +174,11 @@ docker run -d \
   -v infosec-data:/app/data \
   islamjihad/infosec-report:latest
 
-# تشغيل مع Perplexity AI
+# تشغيل مع AI (المفاتيح من داخل صفحة الإعدادات)
 docker run -d \
   --name infosec-report \
   -p 3000:3000 \
   -v infosec-data:/app/data \
-  -e PERPLEXITY_API_KEY="pplx-xxxxxxxxxxxx" \
   islamjihad/infosec-report:latest
 ```
 
@@ -207,8 +206,6 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:/app/data/infosec.db
-      # اختياري — مفتاح Perplexity AI:
-      # - PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxx
     restart: unless-stopped
 
 volumes:
@@ -292,7 +289,7 @@ docker run -d -p 3000:3000 -v infosec-data:/app/data infosec-report
 | **Styling** | Tailwind CSS | 4.x |
 | **Database** | SQLite + Prisma ORM | Prisma 7.x |
 | **State Management** | Zustand | 5.x |
-| **AI Integration** | Perplexity AI API | — |
+| **AI Integration** | Google Gemini + NVIDIA NIM (قابل للتبديل من الإعدادات) | — |
 | **Charts** | Recharts | 3.x |
 | **Animations** | Framer Motion | 12.x |
 | **Container** | Docker (Alpine) | — |
