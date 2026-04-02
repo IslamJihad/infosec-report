@@ -7,3 +7,10 @@ node_modules
 data/
 prisma/*.db
 prisma/*.db-journal
+
+# local sqlite databases and backups
+*.db
+*.db-*
+*backup*.db
+*restore*.db
+
