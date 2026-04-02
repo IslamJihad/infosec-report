@@ -170,3 +170,20 @@ export interface AIMessage {
 }
 
 export type ReviewType = 'full' | 'exec' | 'board' | 'risk' | 'gaps';
+
+export interface AIConversationHistoryItem {
+  id: string;
+  reportId: string;
+  reviewType: string;
+  createdAt: string;
+  messageCount: number;
+  lastUserMessage: string;
+  lastAssistantMessage: string;
+  messages: AIMessage[];
+}
+
+export interface AIReviewResponse {
+  content: string;
+  messages: AIMessage[];
+  conversationId: string | null;
+}

@@ -1,6 +1,12 @@
-import type { ReportData } from '@/types/report';
+import type {
+  AIConversationHistoryItem,
+  AIMessage,
+  AIReviewResponse,
+  AppSettings,
+  ReportData,
+  ReviewType,
+} from '@/types/report';
 import type { AnalyticsQueryOptions, AnalyticsResponse } from '@/types/analytics';
-import type { AppSettings } from '@/types/report';
 
 // isoControls is stored as a JSON string in SQLite; parse it back to an array on every read.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,7 +89,11 @@ export async function testAIConnection(data: Pick<AppSettings, 'aiProvider' | 'a
   return payload;
 }
 
-export async function aiReview(reportId: string, reviewType: string, reportData: Partial<ReportData>) {
+export async function aiReview(
+  reportId: string,
+  reviewType: ReviewType,
+  reportData: Partial<ReportData>
+): Promise<AIReviewResponse> {
   const res = await fetch('/api/ai/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -96,17 +106,36 @@ export async function aiReview(reportId: string, reviewType: string, reportData:
   return res.json();
 }
 
-export async function aiFollowUp(reportId: string, question: string, history: Array<{ role: string; content: string }>) {
+export async function aiFollowUp(
+  reportId: string,
+  question: string,
+  history: AIMessage[],
+  conversationId?: string | null
+): Promise<AIReviewResponse> {
   const res = await fetch('/api/ai/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reportId, followUp: true, question, history }),
+    body: JSON.stringify({ reportId, followUp: true, question, history, conversationId }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'خطأ' }));
     throw new Error(err.error);
   }
   return res.json();
+}
+
+export async function fetchAIHistory(reportId: string): Promise<AIConversationHistoryItem[]> {
+  const res = await fetch(`/api/ai/history?reportId=${encodeURIComponent(reportId)}`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'فشل في جلب سجل المحادثات' }));
+    throw new Error(err.error || 'فشل في جلب سجل المحادثات');
+  }
+
+  const payload = await res.json();
+  return Array.isArray(payload.conversations) ? payload.conversations : [];
 }
 
 export async function fetchAnalytics(options: AnalyticsQueryOptions = {}): Promise<AnalyticsResponse> {
