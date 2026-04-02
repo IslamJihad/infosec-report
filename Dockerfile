@@ -29,6 +29,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Needed to drop privileges after root-only volume permission fixups.
+RUN apk add --no-cache su-exec
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
@@ -57,8 +60,6 @@ ENV DATABASE_URL="file:/app/data/infosec.db"
 # Copy entrypoint
 COPY --from=builder /app/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
-
-USER nextjs
 
 EXPOSE 3000
 
