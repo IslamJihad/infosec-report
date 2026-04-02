@@ -10,8 +10,8 @@
 
 services:
   app:
+    container_name: infosec-app
     image: islamjihad/infosec-report:latest
-    build: .
     ports:
       - "3000:3000"
     volumes:
@@ -19,6 +19,16 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:/app/data/infosec.db
+    restart: unless-stopped
+
+  watchtower:
+    container_name: infosec-watchtower
+    image: containrrr/watchtower:latest
+    environment:
+      - DOCKER_API_VERSION=1.41
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup --rolling-restart infosec-app
     restart: unless-stopped
 
 volumes:

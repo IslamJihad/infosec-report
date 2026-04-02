@@ -76,6 +76,13 @@ function average(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+function normalizeMaturityScore(value: unknown): number {
+  const parsed = toNumber(value, 0);
+  // Backward compatibility: some legacy reports still store maturity on a 1..5 scale.
+  if (parsed > 0 && parsed <= 5) return clamp(parsed * 20, 0, 100);
+  return clamp(parsed, 0, 100);
+}
+
 function normalizeEfficiencyKPI(kpi: EfficiencyLike): number {
   const target = Math.max(0, toNumber(kpi.target, 0));
   const val = Math.max(0, toNumber(kpi.val, 0));
@@ -94,7 +101,7 @@ function normalizeEfficiencyKPI(kpi: EfficiencyLike): number {
 export function calculateGlobalSecurityScore(input: ScoreInput): ScoreResult {
   const kpiCompliance = clamp(toNumber(input.kpiCompliance, 0), 0, 100);
   const avgMaturity = clamp(
-    average((input.maturityDomains ?? []).map((domain) => clamp(toNumber(domain.score, 0), 0, 100))),
+    average((input.maturityDomains ?? []).map((domain) => normalizeMaturityScore(domain.score))),
     0,
     100,
   );
