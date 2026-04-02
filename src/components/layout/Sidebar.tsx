@@ -18,8 +18,20 @@ export default function Sidebar() {
         <p className="text-xs opacity-40 mt-1">النسخة الاحترافية v5.0</p>
       </div>
 
+      {/* Quick routes */}
+      <div className="px-4 py-3 border-b border-white/[0.07] bg-white/[0.02]">
+        <Link href="/" className="flex items-center justify-center gap-2 text-xs text-white/90 bg-white/[0.12] hover:bg-white/[0.18] transition-colors rounded-lg py-2 no-underline font-bold mb-2">
+          <span>🏠</span> العودة للرئيسية
+        </Link>
+        {report?.id && (
+          <Link href={`/report/${report.id}/preview`} className="flex items-center justify-center gap-2 text-xs text-white/75 hover:text-white transition-colors rounded-lg py-1.5 no-underline border border-white/[0.12]">
+            <span>🖨️</span> معاينة التقرير
+          </Link>
+        )}
+      </div>
+
       {/* Navigation */}
-      <div className="p-4 pt-4 pb-2">
+      <div className="p-4 pt-3 pb-2">
         <div className="text-[11px] opacity-35 tracking-[1.5px] uppercase pr-2 mb-2.5 font-bold">أقسام الإدخال</div>
         {NAV_ITEMS.map((item) => (
           <button

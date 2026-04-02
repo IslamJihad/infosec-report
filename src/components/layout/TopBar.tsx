@@ -6,9 +6,10 @@ import { NAV_ITEMS } from '@/lib/constants';
 interface TopBarProps {
   onPreview: () => void;
   onAIReview: () => void;
+  onGoHome: () => void;
 }
 
-export default function TopBar({ onPreview, onAIReview }: TopBarProps) {
+export default function TopBar({ onPreview, onAIReview, onGoHome }: TopBarProps) {
   const { currentStep, setStep, isSaving, lastSaved } = useReportStore();
 
   const title = NAV_ITEMS[currentStep]?.label || '';
@@ -28,6 +29,13 @@ export default function TopBar({ onPreview, onAIReview }: TopBarProps) {
             <span className="text-success-700 font-semibold">✓ تم الحفظ</span>
           ) : null}
         </span>
+
+        <button
+          onClick={onGoHome}
+          className="py-2 px-5 rounded-xl border border-navy-200 bg-navy-50 text-navy-900 text-sm font-bold transition-all duration-200 hover:bg-navy-100 cursor-pointer"
+        >
+          🏠 الرئيسية
+        </button>
 
         <button
           onClick={() => setStep(currentStep - 1)}

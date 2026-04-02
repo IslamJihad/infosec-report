@@ -72,6 +72,14 @@ export default function ReportEditorPage() {
     }
   }, [setSaving, setLastSaved, setDirty]);
 
+  const saveThenNavigate = useCallback(
+    async (path: string) => {
+      await doSave();
+      router.push(path);
+    },
+    [doSave, router],
+  );
+
   useEffect(() => {
     if (!isDirty) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -102,10 +110,12 @@ export default function ReportEditorPage() {
       <div className="flex-1 mr-[280px] flex flex-col min-h-screen">
         <TopBar
           onPreview={() => {
-            doSave();
-            router.push(`/report/${id}/preview`);
+            void saveThenNavigate(`/report/${id}/preview`);
           }}
           onAIReview={() => setShowAI(true)}
+          onGoHome={() => {
+            void saveThenNavigate('/');
+          }}
         />
         <div className="flex-1 overflow-y-auto p-6 pb-10">
           <CurrentForm />
