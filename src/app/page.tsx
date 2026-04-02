@@ -148,6 +148,11 @@ export default function DashboardPage() {
                         {r.status === 'draft' ? 'مسودة' : 'منشور'}
                       </span>
                       <span className="text-xs px-3 py-1 rounded-lg bg-gray-100 text-text-muted">{r.risks.length} مخاطر</span>
+                      {typeof r.scorePercentile === 'number' && (
+                        <span className="text-xs px-3 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold border border-blue-100">
+                          أعلى من {r.scorePercentile}% من التقارير
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-text-muted mb-4 flex gap-4">
                       <span>📅 {r.issueDate}</span>

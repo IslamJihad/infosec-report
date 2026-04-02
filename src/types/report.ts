@@ -64,6 +64,31 @@ export interface ReportData {
   assets: Asset[];
   challenges: Challenge[];
   efficiencyKPIs: EfficiencyKPI[];
+
+  scoreBreakdown?: ScoreBreakdown;
+  scorePercentile?: number;
+}
+
+export interface ScoreBreakdown {
+  formulaVersion: 'v1';
+  equation: string;
+  components: {
+    kpiCompliance: number;
+    avgMaturity: number;
+    avgAssetProtection: number;
+    criticalRisks: number;
+    openRisks: number;
+    totalRisks: number;
+    avgEfficiencyAchievement: number;
+    slaMTTC: number;
+    slaMTTCTarget: number;
+  };
+  governanceBase: number;
+  riskPenalty: number;
+  efficiencyBonus: number;
+  slaPenalty: number;
+  rawScore: number;
+  finalScore: number;
 }
 
 export interface Decision {

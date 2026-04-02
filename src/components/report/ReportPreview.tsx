@@ -10,6 +10,7 @@ import {
   PRIORITY_MAP,
   CHALLENGE_TYPES,
 } from '@/lib/constants';
+import { calculateGlobalSecurityScore, getPercentileText } from '@/lib/scoring';
 
 interface Props {
   report: ReportData;
@@ -103,6 +104,11 @@ export default function ReportPreview({ report }: Props) {
   const trendUp = r.trend.includes('↑') || r.trend.includes('↗');
   const trendDown = r.trend.includes('↓') || r.trend.includes('↘');
   const effKPIs = r.efficiencyKPIs ?? [];
+  const scoreResult = r.scoreBreakdown
+    ? { securityScore: r.securityScore, scoreBreakdown: r.scoreBreakdown }
+    : calculateGlobalSecurityScore(r);
+  const finalScore = scoreResult.securityScore;
+  const scoreBreakdown = scoreResult.scoreBreakdown;
 
   const scoreColor = (s: number) => s >= 75 ? '#16a34a' : s >= 50 ? '#d97706' : '#dc2626';
   const ragColor = (rag: string) => rag === 'r' ? '#dc2626' : rag === 'a' ? '#f59e0b' : rag === 'g' ? '#22c55e' : '#94a3b8';
@@ -129,7 +135,7 @@ export default function ReportPreview({ report }: Props) {
   // TOC items
   const toc = shownSections.map(id => {
     const map: Record<SecId, { title: string; rag: string }> = {
-      exec:   { title: 'الملخص التنفيذي',             rag: r.securityScore >= 75 ? 'g' : r.securityScore >= 50 ? 'a' : 'r' },
+      exec:   { title: 'الملخص التنفيذي',             rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r' },
       risks:  { title: 'المخاطر الرئيسية',             rag: critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r' },
       assets: { title: 'الأصول الحيوية',               rag: avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r' },
       ind:    { title: 'مؤشرات الأداء',               rag: r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r' },
@@ -264,12 +270,17 @@ export default function ReportPreview({ report }: Props) {
 
       {/* ═══════ EXEC SUMMARY ═══════ */}
       <div className="px-11 py-7 border-b border-gray-100">
-        {SH('exec', 'الملخص التنفيذي', r.securityScore >= 75 ? 'g' : r.securityScore >= 50 ? 'a' : 'r')}
+        {SH('exec', 'الملخص التنفيذي', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 20, marginBottom: 18, alignItems: 'start' }}>
           <div style={{ background: '#1e293b', color: '#fff', borderRadius: 4, padding: '18px 22px', textAlign: 'center', minWidth: 110 }}>
-            <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: -2, color: scoreColor(r.securityScore) }}>{r.securityScore}</div>
+            <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: -2, color: scoreColor(finalScore) }}>{finalScore}</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 2 }}>/ 100</div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', marginTop: 7, paddingTop: 7, borderTop: '1px solid rgba(255,255,255,.1)' }}>{r.securityScore >= 75 ? 'وضع جيد' : r.securityScore >= 50 ? 'يستوجب الانتباه' : 'خطر مرتفع'}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', marginTop: 7, paddingTop: 7, borderTop: '1px solid rgba(255,255,255,.1)' }}>{finalScore >= 75 ? 'وضع جيد' : finalScore >= 50 ? 'يستوجب الانتباه' : 'خطر مرتفع'}</div>
+            {typeof r.scorePercentile === 'number' && (
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,.65)', marginTop: 6 }}>
+                {getPercentileText(r.scorePercentile)}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
@@ -294,6 +305,19 @@ export default function ReportPreview({ report }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 2, fontSize: 10, fontWeight: 700, background: trendUp ? '#f0fdf4' : trendDown ? '#fef2f2' : '#f1f5f9', color: trendUp ? '#16a34a' : trendDown ? '#dc2626' : '#94a3b8' }}>{trendUp ? '↑' : trendDown ? '↓' : '→'} {r.trend}</span>
               <span style={{ fontSize: 11, color: '#475569', lineHeight: 1.9, flex: 1 }}>{r.summary}</span>
+            </div>
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ background: '#f8fafc', padding: '8px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 800, color: '#1e293b' }}>
+                معادلة الحساب التلقائي للدرجة العالمية
+              </div>
+              <div style={{ padding: '10px 12px', fontSize: 9, color: '#475569', lineHeight: 1.9 }}>
+                <div style={{ marginBottom: 6 }}>{scoreBreakdown.equation}</div>
+                <div>GovernanceBase = 0.40×{scoreBreakdown.components.kpiCompliance} + 0.35×{scoreBreakdown.components.avgMaturity} + 0.25×{scoreBreakdown.components.avgAssetProtection} = {scoreBreakdown.governanceBase}</div>
+                <div>RiskPenalty = min(40, ({scoreBreakdown.components.criticalRisks}/{Math.max(scoreBreakdown.components.totalRisks, 1)})×30 + ({scoreBreakdown.components.openRisks}/{Math.max(scoreBreakdown.components.totalRisks, 1)})×10) = {scoreBreakdown.riskPenalty}</div>
+                <div>EfficiencyBonus = min(10, {scoreBreakdown.components.avgEfficiencyAchievement}×0.10) = {scoreBreakdown.efficiencyBonus}</div>
+                <div>SlaPenalty = {scoreBreakdown.slaPenalty} (MTTC {scoreBreakdown.components.slaMTTC} / Target {scoreBreakdown.components.slaMTTCTarget})</div>
+                <div style={{ marginTop: 6, fontWeight: 800, color: '#1e293b' }}>FinalScore = clamp(round({scoreBreakdown.rawScore}), 0, 100) = {scoreBreakdown.finalScore}</div>
+              </div>
             </div>
           </div>
         </div>

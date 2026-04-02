@@ -1,23 +1,55 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { buildPercentileMap, calculateGlobalSecurityScore } from '@/lib/scoring';
+
+const REPORT_INCLUDE = {
+  decisions: { orderBy: { sortOrder: 'asc' as const } },
+  risks: { orderBy: { sortOrder: 'asc' as const } },
+  maturityDomains: { orderBy: { sortOrder: 'asc' as const } },
+  recommendations: { orderBy: { sortOrder: 'asc' as const } },
+  assets: { orderBy: { sortOrder: 'asc' as const } },
+  challenges: { orderBy: { sortOrder: 'asc' as const } },
+  efficiencyKPIs: { orderBy: { sortOrder: 'asc' as const } },
+};
+
+async function buildReportPercentiles(currentReportId: string, currentScore: number) {
+  const allScores = await prisma.report.findMany({
+    select: { id: true, securityScore: true },
+  });
+
+  const normalizedScores = allScores.map((entry) =>
+    entry.id === currentReportId ? { ...entry, securityScore: currentScore } : entry,
+  );
+
+  return buildPercentileMap(normalizedScores);
+}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
     const report = await prisma.report.findUnique({
       where: { id },
-      include: {
-        decisions: { orderBy: { sortOrder: 'asc' } },
-        risks: { orderBy: { sortOrder: 'asc' } },
-        maturityDomains: { orderBy: { sortOrder: 'asc' } },
-        recommendations: { orderBy: { sortOrder: 'asc' } },
-        assets: { orderBy: { sortOrder: 'asc' } },
-        challenges: { orderBy: { sortOrder: 'asc' } },
-        efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
-      },
+      include: REPORT_INCLUDE,
     });
+
     if (!report) return NextResponse.json({ error: 'التقرير غير موجود' }, { status: 404 });
-    return NextResponse.json(report);
+
+    const scoreResult = calculateGlobalSecurityScore(report);
+    if (report.securityScore !== scoreResult.securityScore) {
+      await prisma.report.update({
+        where: { id },
+        data: { securityScore: scoreResult.securityScore },
+      });
+    }
+
+    const percentileMap = await buildReportPercentiles(id, scoreResult.securityScore);
+
+    return NextResponse.json({
+      ...report,
+      securityScore: scoreResult.securityScore,
+      scoreBreakdown: scoreResult.scoreBreakdown,
+      scorePercentile: percentileMap[id] ?? 0,
+    });
   } catch (error) {
     console.error('Error fetching report:', error);
     return NextResponse.json({ error: 'خطأ في الخادم' }, { status: 500 });
@@ -30,7 +62,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const data = await req.json();
 
     // Separate nested relations from scalar fields
-    const { decisions, risks, maturityDomains, recommendations, assets, challenges, efficiencyKPIs, id: _id, createdAt: _c, updatedAt: _u, ...scalarData } = data;
+    const {
+      decisions,
+      risks,
+      maturityDomains,
+      recommendations,
+      assets,
+      challenges,
+      efficiencyKPIs,
+      ...scalarData
+    } = data;
+
+    delete scalarData.id;
+    delete scalarData.createdAt;
+    delete scalarData.updatedAt;
+    delete scalarData.securityScore;
+    delete scalarData.scoreBreakdown;
+    delete scalarData.scorePercentile;
 
     // Stringify JSON-serialized array fields before writing to SQLite
     if (Array.isArray(scalarData.isoControls)) {
@@ -184,18 +232,29 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // Return updated report
     const updated = await prisma.report.findUnique({
       where: { id },
-      include: {
-        decisions: { orderBy: { sortOrder: 'asc' } },
-        risks: { orderBy: { sortOrder: 'asc' } },
-        maturityDomains: { orderBy: { sortOrder: 'asc' } },
-        recommendations: { orderBy: { sortOrder: 'asc' } },
-        assets: { orderBy: { sortOrder: 'asc' } },
-        challenges: { orderBy: { sortOrder: 'asc' } },
-        efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
-      },
+      include: REPORT_INCLUDE,
     });
 
-    return NextResponse.json(updated);
+    if (!updated) {
+      return NextResponse.json({ error: 'التقرير غير موجود' }, { status: 404 });
+    }
+
+    const scoreResult = calculateGlobalSecurityScore(updated);
+    if (updated.securityScore !== scoreResult.securityScore) {
+      await prisma.report.update({
+        where: { id },
+        data: { securityScore: scoreResult.securityScore },
+      });
+    }
+
+    const percentileMap = await buildReportPercentiles(id, scoreResult.securityScore);
+
+    return NextResponse.json({
+      ...updated,
+      securityScore: scoreResult.securityScore,
+      scoreBreakdown: scoreResult.scoreBreakdown,
+      scorePercentile: percentileMap[id] ?? 0,
+    });
   } catch (error) {
     console.error('Error updating report:', error);
     return NextResponse.json({ error: 'فشل في حفظ التقرير' }, { status: 500 });

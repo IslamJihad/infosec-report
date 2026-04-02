@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { buildPercentileMap, calculateGlobalSecurityScore } from '@/lib/scoring';
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,6 +14,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         recommendations: { orderBy: { sortOrder: 'asc' } },
         assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
+        efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },
     });
 
@@ -20,7 +22,73 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'التقرير غير موجود' }, { status: 404 });
     }
 
-    const { id: _id, createdAt: _c, updatedAt: _u, decisions, risks, maturityDomains, recommendations, assets, challenges, ...data } = original;
+    const {
+      id: originalId,
+      createdAt,
+      updatedAt,
+      decisions,
+      risks,
+      maturityDomains,
+      recommendations,
+      assets,
+      challenges,
+      efficiencyKPIs,
+      securityScore,
+      ...data
+    } = original;
+    void originalId;
+    void createdAt;
+    void updatedAt;
+    void securityScore;
+
+    const cleanDecision = decisions.map((item) => {
+      const { id: decisionId, reportId, ...next } = item;
+      void decisionId;
+      void reportId;
+      return next;
+    });
+
+    const cleanRisk = risks.map((item) => {
+      const { id: riskId, reportId, ...next } = item;
+      void riskId;
+      void reportId;
+      return next;
+    });
+
+    const cleanMaturity = maturityDomains.map((item) => {
+      const { id: maturityId, reportId, ...next } = item;
+      void maturityId;
+      void reportId;
+      return next;
+    });
+
+    const cleanRecommendation = recommendations.map((item) => {
+      const { id: recommendationId, reportId, ...next } = item;
+      void recommendationId;
+      void reportId;
+      return next;
+    });
+
+    const cleanAsset = assets.map((item) => {
+      const { id: assetId, reportId, ...next } = item;
+      void assetId;
+      void reportId;
+      return next;
+    });
+
+    const cleanChallenge = challenges.map((item) => {
+      const { id: challengeId, reportId, ...next } = item;
+      void challengeId;
+      void reportId;
+      return next;
+    });
+
+    const cleanEfficiencyKPI = efficiencyKPIs.map((item) => {
+      const { id: efficiencyId, reportId, ...next } = item;
+      void efficiencyId;
+      void reportId;
+      return next;
+    });
 
     const duplicate = await prisma.report.create({
       data: {
@@ -28,22 +96,25 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         title: `${data.title} (نسخة)`,
         status: 'draft',
         decisions: {
-          create: decisions.map(({ id: _did, reportId: _rid, ...d }) => d),
+          create: cleanDecision,
         },
         risks: {
-          create: risks.map(({ id: _rid2, reportId: _rid3, ...r }) => r),
+          create: cleanRisk,
         },
         maturityDomains: {
-          create: maturityDomains.map(({ id: _mid, reportId: _rid4, ...m }) => m),
+          create: cleanMaturity,
         },
         recommendations: {
-          create: recommendations.map(({ id: _recid, reportId: _rid5, ...r }) => r),
+          create: cleanRecommendation,
         },
         assets: {
-          create: assets.map(({ id: _aid, reportId: _rid6, ...a }) => a),
+          create: cleanAsset,
         },
         challenges: {
-          create: challenges.map(({ id: _cid, reportId: _rid7, ...c }) => c),
+          create: cleanChallenge,
+        },
+        efficiencyKPIs: {
+          create: cleanEfficiencyKPI,
         },
       },
       include: {
@@ -53,10 +124,33 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         recommendations: { orderBy: { sortOrder: 'asc' } },
         assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
+        efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },
     });
 
-    return NextResponse.json(duplicate);
+    const scoreResult = calculateGlobalSecurityScore(duplicate);
+    if (duplicate.securityScore !== scoreResult.securityScore) {
+      await prisma.report.update({
+        where: { id: duplicate.id },
+        data: { securityScore: scoreResult.securityScore },
+      });
+    }
+
+    const allScores = await prisma.report.findMany({
+      select: { id: true, securityScore: true },
+    });
+    const percentileMap = buildPercentileMap(
+      allScores.map((entry) =>
+        entry.id === duplicate.id ? { ...entry, securityScore: scoreResult.securityScore } : entry,
+      ),
+    );
+
+    return NextResponse.json({
+      ...duplicate,
+      securityScore: scoreResult.securityScore,
+      scoreBreakdown: scoreResult.scoreBreakdown,
+      scorePercentile: percentileMap[duplicate.id] ?? 0,
+    });
   } catch (error) {
     console.error('Error duplicating report:', error);
     return NextResponse.json({ error: 'فشل في نسخ التقرير' }, { status: 500 });
