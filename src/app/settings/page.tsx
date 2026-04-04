@@ -21,6 +21,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   geminiApiKey: '',
   nvidiaApiKey: '',
   aiApiKey: '',
+  hasGeminiApiKey: false,
+  hasNvidiaApiKey: false,
+  geminiApiKeyMasked: '',
+  nvidiaApiKeyMasked: '',
   defaultOrgName: '',
   defaultAuthor: '',
 };
@@ -36,6 +40,12 @@ export default function SettingsPage() {
   const providerMeta = getProviderMeta(settings.aiProvider);
   const modelOptions = AI_MODEL_OPTIONS[settings.aiProvider];
   const activeApiKey = settings.aiProvider === 'nvidia' ? settings.nvidiaApiKey : settings.geminiApiKey;
+  const activeHasStoredKey = settings.aiProvider === 'nvidia'
+    ? Boolean(settings.hasNvidiaApiKey)
+    : Boolean(settings.hasGeminiApiKey);
+  const activeMaskedKey = settings.aiProvider === 'nvidia'
+    ? (settings.nvidiaApiKeyMasked || '')
+    : (settings.geminiApiKeyMasked || '');
 
   useEffect(() => {
     async function load() {
@@ -49,8 +59,13 @@ export default function SettingsPage() {
           ...data,
           aiProvider,
           aiModel,
-          geminiApiKey: data.geminiApiKey || data.aiApiKey || '',
+          geminiApiKey: '',
           nvidiaApiKey: data.nvidiaApiKey || '',
+          aiApiKey: '',
+          hasGeminiApiKey: Boolean(data.hasGeminiApiKey),
+          hasNvidiaApiKey: Boolean(data.hasNvidiaApiKey),
+          geminiApiKeyMasked: data.geminiApiKeyMasked || '',
+          nvidiaApiKeyMasked: data.nvidiaApiKeyMasked || '',
         });
       } catch (e) {
         console.error(e);
@@ -83,16 +98,41 @@ export default function SettingsPage() {
     setSaving(true);
     setSaved(false);
     try {
-      await updateSettings({
+      const nextSettings: Partial<AppSettings> = {
         aiProvider: settings.aiProvider,
         aiModel: normalizeAIModel(settings.aiProvider, settings.aiModel),
-        geminiApiKey: settings.geminiApiKey,
-        nvidiaApiKey: settings.nvidiaApiKey,
-        aiApiKey: settings.geminiApiKey,
         defaultOrgName: settings.defaultOrgName,
         defaultAuthor: settings.defaultAuthor,
-      });
+      };
+
+      const geminiApiKey = settings.geminiApiKey.trim();
+      const nvidiaApiKey = settings.nvidiaApiKey.trim();
+
+      if (geminiApiKey) {
+        nextSettings.geminiApiKey = geminiApiKey;
+        nextSettings.aiApiKey = geminiApiKey;
+      }
+
+      if (nvidiaApiKey) {
+        nextSettings.nvidiaApiKey = nvidiaApiKey;
+      }
+
+      const updated = await updateSettings(nextSettings);
+      const aiProvider = normalizeAIProvider(updated.aiProvider);
+      const aiModel = normalizeAIModel(aiProvider, updated.aiModel);
+
+      setSettings((prev) => ({
+        ...prev,
+        ...updated,
+        aiProvider,
+        aiModel,
+        geminiApiKey: '',
+        nvidiaApiKey: '',
+        aiApiKey: '',
+      }));
+
       setSaved(true);
+      setTestResult(null);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
       console.error(e);
@@ -102,7 +142,7 @@ export default function SettingsPage() {
   }
 
   async function handleTestConnection() {
-    if (!activeApiKey) {
+    if (!activeApiKey && !activeHasStoredKey) {
       setTestResult(`❌ يرجى إدخال مفتاح API لمزود ${providerMeta.label} أولاً`);
       return;
     }
@@ -176,7 +216,7 @@ export default function SettingsPage() {
                   value={activeApiKey}
                   onChange={(e) => setActiveProviderKey(e.target.value)}
                   className="flex-1 border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] hover:border-purple-200 transition-all duration-200"
-                  placeholder={providerMeta.keyPlaceholder}
+                  placeholder={activeMaskedKey ? `مفتاح محفوظ (${activeMaskedKey})` : providerMeta.keyPlaceholder}
                 />
                 <button
                   onClick={() => setShowKey(!showKey)}
@@ -189,12 +229,21 @@ export default function SettingsPage() {
                 احصل على مفتاح API من{' '}
                 <a href={providerMeta.keyHelpUrl} target="_blank" className="text-purple-800 underline font-semibold">{providerMeta.keyHelpText}</a>
               </p>
+              <p className="text-xs text-text-hint mt-1">اترك الحقل فارغاً للاحتفاظ بالمفتاح المخزن حالياً.</p>
               <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
                 <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                  Gemini: {settings.geminiApiKey ? '✅ محفوظ' : '⚪ غير محفوظ'}
+                  Gemini: {settings.geminiApiKey
+                    ? '🟡 مفتاح جديد غير محفوظ'
+                    : settings.hasGeminiApiKey
+                      ? `✅ محفوظ (${settings.geminiApiKeyMasked || '••••••'})`
+                      : '⚪ غير محفوظ'}
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                  NVIDIA: {settings.nvidiaApiKey ? '✅ محفوظ' : '⚪ غير محفوظ'}
+                  NVIDIA: {settings.nvidiaApiKey
+                    ? '🟡 مفتاح جديد غير محفوظ'
+                    : settings.hasNvidiaApiKey
+                      ? `✅ محفوظ (${settings.nvidiaApiKeyMasked || '••••••'})`
+                      : '⚪ غير محفوظ'}
                 </div>
               </div>
             </div>

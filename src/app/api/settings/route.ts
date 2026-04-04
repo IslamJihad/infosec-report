@@ -20,18 +20,30 @@ type SettingsBody = {
   defaultAuthor?: string;
 };
 
+function maskSecret(secret: string): string {
+  const trimmed = secret.trim();
+  if (!trimmed) return '';
+  if (trimmed.length <= 8) return '••••••';
+  return `${trimmed.slice(0, 4)}...${trimmed.slice(-4)}`;
+}
+
 function normalizeOutgoingSettings(settings: PersistedAppSettings) {
   const aiProvider = normalizeAIProvider(settings.aiProvider);
-  const geminiApiKey = settings.geminiApiKey || settings.aiApiKey || '';
+  const geminiApiKeyRaw = settings.geminiApiKey || settings.aiApiKey || '';
+  const nvidiaApiKeyRaw = settings.nvidiaApiKey || '';
   const aiModel = normalizeAIModel(aiProvider, settings.aiModel);
 
   return {
     id: settings.id,
     aiProvider,
     aiModel,
-    aiApiKey: geminiApiKey,
-    geminiApiKey,
-    nvidiaApiKey: settings.nvidiaApiKey || '',
+    aiApiKey: '',
+    geminiApiKey: '',
+    nvidiaApiKey: '',
+    geminiApiKeyMasked: maskSecret(geminiApiKeyRaw),
+    nvidiaApiKeyMasked: maskSecret(nvidiaApiKeyRaw),
+    hasGeminiApiKey: Boolean(geminiApiKeyRaw.trim()),
+    hasNvidiaApiKey: Boolean(nvidiaApiKeyRaw.trim()),
     defaultOrgName: settings.defaultOrgName || '',
     defaultAuthor: settings.defaultAuthor || '',
   };

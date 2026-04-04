@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AIConversationHistoryItem, AIMessage, ReportData, ReviewType } from '@/types/report';
 import { aiReview, aiFollowUp, fetchAIHistory } from '@/lib/api';
 
@@ -143,15 +143,95 @@ export default function AIReviewModal({ report, isOpen, onClose }: Props) {
     return text.replace(/^مراجعة:\s*/, '').slice(0, 85) || 'بدون نص';
   }
 
-  function renderMarkdown(text: string) {
-    return text
-      .replace(/^## (.+)$/gm, '<h3 class="text-base font-extrabold text-purple-900 mt-4 mb-2 pb-1.5 border-b-2 border-purple-200">$1</h3>')
-      .replace(/^### (.+)$/gm, '<h4 class="text-sm font-extrabold text-navy-950 mt-3 mb-1.5">$1</h4>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong class="text-navy-950">$1</strong>')
-      .replace(/^- (.+)$/gm, '<div class="flex gap-2 my-1 text-sm"><span class="text-purple-900 flex-shrink-0">•</span><span>$1</span></div>')
-      .replace(/^\d+\. (.+)$/gm, '<div class="flex gap-2 my-1 text-sm"><span class="text-purple-900 font-extrabold flex-shrink-0">›</span><span>$1</span></div>')
-      .replace(/`(.+?)`/g, '<code class="bg-purple-50 px-1.5 py-0.5 rounded text-xs text-purple-900">$1</code>')
-      .replace(/\n\n/g, '<br/>');
+  function renderInlineMarkdown(text: string): ReactNode {
+    const tokens = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean);
+
+    return tokens.map((token, index) => {
+      if (token.startsWith('`') && token.endsWith('`')) {
+        return (
+          <code key={`code-${index}`} className="bg-purple-50 px-1.5 py-0.5 rounded text-xs text-purple-900">
+            {token.slice(1, -1)}
+          </code>
+        );
+      }
+
+      if (token.startsWith('**') && token.endsWith('**')) {
+        return (
+          <strong key={`strong-${index}`} className="text-navy-950">
+            {token.slice(2, -2)}
+          </strong>
+        );
+      }
+
+      return <Fragment key={`text-${index}`}>{token}</Fragment>;
+    });
+  }
+
+  function renderMarkdown(text: string): ReactNode {
+    const lines = text.split('\n');
+    const blocks: ReactNode[] = [];
+
+    lines.forEach((rawLine, index) => {
+      const line = rawLine.trimEnd();
+      const heading2 = line.match(/^##\s+(.+)$/);
+      const heading3 = line.match(/^###\s+(.+)$/);
+      const bullet = line.match(/^-\s+(.+)$/);
+      const numbered = line.match(/^\d+\.\s+(.+)$/);
+
+      if (!line.trim()) {
+        blocks.push(<div key={`space-${index}`} className="h-2" />);
+        return;
+      }
+
+      if (heading2) {
+        blocks.push(
+          <h3
+            key={`h2-${index}`}
+            className="text-base font-extrabold text-purple-900 mt-4 mb-2 pb-1.5 border-b-2 border-purple-200"
+          >
+            {renderInlineMarkdown(heading2[1])}
+          </h3>
+        );
+        return;
+      }
+
+      if (heading3) {
+        blocks.push(
+          <h4 key={`h3-${index}`} className="text-sm font-extrabold text-navy-950 mt-3 mb-1.5">
+            {renderInlineMarkdown(heading3[1])}
+          </h4>
+        );
+        return;
+      }
+
+      if (bullet) {
+        blocks.push(
+          <div key={`bullet-${index}`} className="flex gap-2 my-1 text-sm">
+            <span className="text-purple-900 flex-shrink-0">•</span>
+            <span>{renderInlineMarkdown(bullet[1])}</span>
+          </div>
+        );
+        return;
+      }
+
+      if (numbered) {
+        blocks.push(
+          <div key={`numbered-${index}`} className="flex gap-2 my-1 text-sm">
+            <span className="text-purple-900 font-extrabold flex-shrink-0">›</span>
+            <span>{renderInlineMarkdown(numbered[1])}</span>
+          </div>
+        );
+        return;
+      }
+
+      blocks.push(
+        <p key={`p-${index}`} className="my-1 text-sm">
+          {renderInlineMarkdown(line)}
+        </p>
+      );
+    });
+
+    return <>{blocks}</>;
   }
 
   return (
@@ -263,7 +343,7 @@ export default function AIReviewModal({ report, isOpen, onClose }: Props) {
                       }
                     >
                       {message.role === 'assistant'
-                        ? <div dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
+                        ? <div>{renderMarkdown(message.content)}</div>
                         : <span>{message.content}</span>}
                     </div>
                   </div>

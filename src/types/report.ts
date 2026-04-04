@@ -226,6 +226,10 @@ export interface AppSettings {
   geminiApiKey: string;
   nvidiaApiKey: string;
   aiApiKey?: string; // legacy compatibility
+  hasGeminiApiKey?: boolean;
+  hasNvidiaApiKey?: boolean;
+  geminiApiKeyMasked?: string;
+  nvidiaApiKeyMasked?: string;
   defaultOrgName: string;
   defaultAuthor: string;
 }

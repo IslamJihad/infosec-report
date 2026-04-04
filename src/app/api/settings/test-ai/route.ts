@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getProviderMeta, normalizeAIModel, normalizeAIProvider } from '@/lib/ai/models';
 import { generateProviderReply } from '@/lib/ai/providers';
+import { getPersistedAppSettings } from '@/lib/db/appSettings';
 
 interface TestConnectionBody {
   aiProvider?: string;
@@ -15,9 +16,16 @@ export async function POST(req: Request) {
     const body = (await req.json()) as TestConnectionBody;
     const aiProvider = normalizeAIProvider(body.aiProvider);
     const aiModel = normalizeAIModel(aiProvider, body.aiModel);
-    const apiKey = aiProvider === 'nvidia'
+    let apiKey = aiProvider === 'nvidia'
       ? (body.nvidiaApiKey || '')
       : (body.geminiApiKey || body.aiApiKey || '');
+
+    if (!apiKey) {
+      const settings = await getPersistedAppSettings();
+      apiKey = aiProvider === 'nvidia'
+        ? (settings.nvidiaApiKey || '')
+        : (settings.geminiApiKey || settings.aiApiKey || '');
+    }
 
     if (!apiKey) {
       return NextResponse.json(
@@ -42,9 +50,9 @@ export async function POST(req: Request) {
       message: `الاتصال ناجح! ${getProviderMeta(aiProvider).label} يعمل بشكل صحيح.`,
     });
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('AI connection test failed:', error);
     return NextResponse.json(
-      { ok: false, error: `فشل اختبار الاتصال: ${errMsg.slice(0, 220)}` },
+      { ok: false, error: 'فشل اختبار الاتصال بمزود الذكاء الاصطناعي. تحقق من المفتاح أو حاول لاحقاً.' },
       { status: 500 }
     );
   }
