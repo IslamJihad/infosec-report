@@ -109,6 +109,10 @@ export default function ReportPreview({ report }: Props) {
     : calculateGlobalSecurityScore(r);
   const finalScore = scoreResult.securityScore;
   const scoreBreakdown = scoreResult.scoreBreakdown;
+  const governance = scoreBreakdown.governanceDetails;
+  const risk = scoreBreakdown.riskPenaltyDetails;
+  const efficiency = scoreBreakdown.efficiencyBonusDetails;
+  const sla = scoreBreakdown.slaPenaltyDetails;
 
   const scoreColor = (s: number) => s >= 75 ? '#16a34a' : s >= 50 ? '#d97706' : '#dc2626';
   const ragColor = (rag: string) => rag === 'r' ? '#dc2626' : rag === 'a' ? '#f59e0b' : rag === 'g' ? '#22c55e' : '#94a3b8';
@@ -312,10 +316,13 @@ export default function ReportPreview({ report }: Props) {
               </div>
               <div style={{ padding: '10px 12px', fontSize: 9, color: '#475569', lineHeight: 1.9 }}>
                 <div style={{ marginBottom: 6 }}>{scoreBreakdown.equation}</div>
-                <div>GovernanceBase = 0.40×{scoreBreakdown.components.kpiCompliance} + 0.35×{scoreBreakdown.components.avgMaturity} + 0.25×{scoreBreakdown.components.avgAssetProtection} = {scoreBreakdown.governanceBase}</div>
-                <div>RiskPenalty = min(40, ({scoreBreakdown.components.criticalRisks}/{Math.max(scoreBreakdown.components.totalRisks, 1)})×30 + ({scoreBreakdown.components.openRisks}/{Math.max(scoreBreakdown.components.totalRisks, 1)})×10) = {scoreBreakdown.riskPenalty}</div>
-                <div>EfficiencyBonus = min(10, {scoreBreakdown.components.avgEfficiencyAchievement}×0.10) = {scoreBreakdown.efficiencyBonus}</div>
-                <div>SlaPenalty = {scoreBreakdown.slaPenalty} (MTTC {scoreBreakdown.components.slaMTTC} / Target {scoreBreakdown.components.slaMTTCTarget})</div>
+                <div>GovernanceBase = {governance.complianceWeighted} + {governance.maturityWeighted} + {governance.assetProtectionWeighted} = {scoreBreakdown.governanceBase}</div>
+                <div>RiskPenalty(before cap) = {risk.criticalContribution} + {risk.openContribution} = {risk.beforeCap}</div>
+                <div>RiskPenalty = min({risk.capValue}, {risk.beforeCap}) = {scoreBreakdown.riskPenalty} {risk.capApplied ? '(cap applied)' : ''}</div>
+                <div>EfficiencyBonus(before cap) = {scoreBreakdown.components.avgEfficiencyAchievement}×{efficiency.multiplier} = {efficiency.beforeCap}</div>
+                <div>EfficiencyBonus = min({efficiency.capValue}, {efficiency.beforeCap}) = {scoreBreakdown.efficiencyBonus} {efficiency.capApplied ? '(cap applied)' : ''}</div>
+                <div>SlaPenalty(before cap) = {sla.overflowRatio}×{sla.capValue} = {sla.beforeCap}</div>
+                <div>SlaPenalty = {scoreBreakdown.slaPenalty} (MTTC {scoreBreakdown.components.slaMTTC} / Target {scoreBreakdown.components.slaMTTCTarget}, {sla.wasTriggered ? 'triggered' : 'not triggered'})</div>
                 <div style={{ marginTop: 6, fontWeight: 800, color: '#1e293b' }}>FinalScore = clamp(round({scoreBreakdown.rawScore}), 0, 100) = {scoreBreakdown.finalScore}</div>
               </div>
             </div>

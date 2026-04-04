@@ -1,11 +1,11 @@
 # Scoring Methodology (Version v1)
 
 ## Purpose
-This document explains how the global security score is calculated, what standards informed the model, and which parts are organizational calibration choices.
+This document explains exactly how the global security score is computed, including intermediate values, caps, and standard-alignment boundaries.
 
 ## Final Equation
 
-```
+```text
 Score = clamp(
   round((0.40*Compliance + 0.35*AvgMaturity + 0.25*AvgAssetProtection)
     - RiskPenalty
@@ -16,52 +16,115 @@ Score = clamp(
 )
 ```
 
-## Inputs Used
-- `Compliance`: ISO/KPI compliance percentage (0..100)
-- `AvgMaturity`: average maturity score (0..100, legacy 1..5 auto-normalized)
-- `AvgAssetProtection`: average protection level for critical assets (0..100)
-- `RiskPenalty`: penalty from critical and open risk concentration (capped at 40)
-- `EfficiencyBonus`: bonus from KPI achievement (capped at 10)
-- `SlaPenalty`: penalty when MTTC exceeds target (capped at 15)
+## Component Equations (Exact Runtime Logic)
 
-## Why These Components
-- Governance base combines compliance, maturity, and asset protection to represent baseline control health.
-- Risk penalty enforces risk-first prioritization and prevents high final scores when unresolved critical risks remain.
-- Efficiency bonus rewards measurable operational performance.
-- SLA penalty captures response discipline and resilience.
+### 1) Governance Base
 
-## Standards Mapping (Principle-Level)
+```text
+GovernanceBase =
+  (0.40 * Compliance)
+  + (0.35 * AvgMaturity)
+  + (0.25 * AvgAssetProtection)
+```
 
-### 1) NIST SP 800-30 Rev.1 (Risk Assessment)
-- Supports likelihood/impact-based risk assessment and risk response.
-- Source: https://doi.org/10.6028/NIST.SP.800-30r1
+Where:
+- `Compliance` is clamped to `0..100`
+- `AvgMaturity` is clamped to `0..100` after legacy normalization (`1..5` -> `20..100`)
+- `AvgAssetProtection` is clamped to `0..100`
 
-### 2) NIST CSF 2.0 (Enterprise Cyber Risk)
-- Supports governance-centered, measurable cyber risk management and continuous improvement.
-- Source: https://doi.org/10.6028/NIST.CSWP.29
+### 2) Risk Penalty
 
-### 3) FIRST CVSS v4.0 (Vulnerability Severity)
-- Supports standardized vulnerability severity characterization and transparent scoring rationale.
-- Source: https://www.first.org/cvss/v4.0/specification-document
+```text
+criticalThreshold = 15
+criticalRisks = count(probability * impact >= 15)
+openRisks = count(status != "closed")
+denominator = max(totalRisks, 1)
 
-### 4) ISO/IEC 27001:2022 (ISMS)
-- Supports risk-aware ISMS and continuous control improvement.
-- Source: https://www.iso.org/standard/27001
+RiskPenaltyBeforeCap =
+  ((criticalRisks / denominator) * 30)
+  + ((openRisks / denominator) * 10)
 
-## Important Governance Note
-The standards above support the method family (risk-based measurement and prioritization). They do **not** prescribe this exact single equation or fixed weights.
+RiskPenalty = min(40, RiskPenaltyBeforeCap)
+```
 
-The current weights and caps are an internal calibration policy:
-- Governance weights: 0.40 / 0.35 / 0.25
-- Penalty/bonus caps: Risk 40, Efficiency 10, SLA 15
+### 3) Efficiency Bonus
 
-These values should be approved and reviewed periodically by security governance (e.g., CISO/Risk Committee).
+Each KPI is normalized to `0..100`:
 
-## Data Quality / Compatibility Rules
-- Maturity values on legacy 1..5 scale are automatically converted to 20..100.
-- Numeric inputs are clamped to valid ranges.
-- Final score is bounded to 0..100 for comparability.
+```text
+if lowerBetter:
+  normalized = (actual == 0) ? 100 : clamp((target / actual) * 100, 0, 100)
+else:
+  normalized = clamp((actual / target) * 100, 0, 100)
+```
+
+Then:
+
+```text
+AvgEfficiencyAchievement = average(normalizedKpis)
+EfficiencyBonusBeforeCap = AvgEfficiencyAchievement * 0.10
+EfficiencyBonus = min(10, EfficiencyBonusBeforeCap)
+```
+
+### 4) SLA Penalty
+
+```text
+target = providedTarget if valid else 24
+target = max(target, 1)
+
+deltaOverTarget = max(0, MTTC - target)
+overflowRatio = deltaOverTarget / target
+SlaPenaltyBeforeCap = overflowRatio * 15
+
+SlaPenalty = (MTTC <= target) ? 0 : min(15, SlaPenaltyBeforeCap)
+```
+
+### 5) Final Score Bounds
+
+```text
+RawScore = GovernanceBase - RiskPenalty + EfficiencyBonus - SlaPenalty
+FinalScore = clamp(round(RawScore), 0, 100)
+```
+
+## Standards-to-Implementation Mapping
+
+| Standard | What it supports | Where used in model |
+| --- | --- | --- |
+| NIST SP 800-30 Rev.1 | Likelihood-impact risk assessment and risk treatment prioritization | `probability * impact` criticality logic and risk concentration penalties |
+| NIST CSF 2.0 | Governance-driven measurable cyber risk management | Governance base construction and KPI-based comparability |
+| ISO/IEC 27001:2022 | Risk-based ISMS and control effectiveness monitoring | Compliance, maturity, and asset-protection governance inputs |
+| FIRST CVSS v4.0 | Structured severity communication and transparent scoring rationale | Severity-minded treatment of high-risk conditions (principle alignment, not direct CVSS math) |
+
+Sources:
+- NIST SP 800-30 Rev.1: https://doi.org/10.6028/NIST.SP.800-30r1
+- NIST CSF 2.0: https://doi.org/10.6028/NIST.CSWP.29
+- FIRST CVSS v4.0: https://www.first.org/cvss/v4.0/specification-document
+- ISO/IEC 27001:2022: https://www.iso.org/standard/27001
+
+## Calibration Boundary (Critical Governance Note)
+The standards above justify the method family (risk-based, measurable, transparent scoring). They do not prescribe this exact equation or these exact coefficients.
+
+Internal calibration choices in v1:
+- Governance weights: `0.40 / 0.35 / 0.25`
+- Caps: Risk `40`, Efficiency `10`, SLA `15`
+- Critical-risk threshold: `probability * impact >= 15`
+
+These values should be approved and periodically reviewed by security governance (for example, CISO and Risk Committee).
+
+## Audit Fields Available Per Report
+The score response includes these auditable objects for traceability:
+- `governanceDetails`
+- `riskPenaltyDetails`
+- `efficiencyBonusDetails` (including per-KPI normalization records)
+- `slaPenaltyDetails`
+
+These fields allow reviewers to reproduce each sub-step without re-running code.
+
+## Data Quality and Compatibility Rules
+- Legacy maturity values stored as `1..5` are automatically normalized to `20..100`.
+- Numeric inputs are clamped to valid bounds before scoring.
+- The final score is always constrained to `0..100` for cross-report comparability.
 
 ## Change Control
-- Current formula version: `v1`
-- Recommended: track formula and methodology versions in reports to preserve auditability when future recalibration occurs.
+- Formula version: `v1`
+- Recommendation: keep formula version and methodology version attached to each report for future recalibration audits.

@@ -89,6 +89,47 @@ export interface ScoreBreakdown {
   slaPenalty: number;
   rawScore: number;
   finalScore: number;
+  governanceDetails: {
+    complianceWeighted: number;
+    maturityWeighted: number;
+    assetProtectionWeighted: number;
+    beforeRounding: number;
+  };
+  riskPenaltyDetails: {
+    criticalThreshold: number;
+    denominator: number;
+    criticalRatio: number;
+    openRatio: number;
+    criticalContribution: number;
+    openContribution: number;
+    beforeCap: number;
+    capValue: number;
+    capApplied: boolean;
+  };
+  efficiencyBonusDetails: {
+    kpiCount: number;
+    normalizedKpis: Array<{
+      id: string;
+      title: string;
+      actual: number;
+      target: number;
+      lowerBetter: boolean;
+      normalized: number;
+    }>;
+    multiplier: number;
+    beforeCap: number;
+    capValue: number;
+    capApplied: boolean;
+  };
+  slaPenaltyDetails: {
+    wasTriggered: boolean;
+    defaultTargetApplied: boolean;
+    deltaOverTarget: number;
+    overflowRatio: number;
+    beforeCap: number;
+    capValue: number;
+    capApplied: boolean;
+  };
 }
 
 export interface Decision {

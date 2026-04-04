@@ -14,6 +14,10 @@ export default function ExecutiveSummaryForm() {
   const scoreColor = getScoreColorClass(report.securityScore);
   const hasPercentile = typeof report.scorePercentile === 'number';
   const scoreBreakdown = report.scoreBreakdown ?? calculateGlobalSecurityScore(report).scoreBreakdown;
+  const governance = scoreBreakdown.governanceDetails;
+  const risk = scoreBreakdown.riskPenaltyDetails;
+  const efficiency = scoreBreakdown.efficiencyBonusDetails;
+  const sla = scoreBreakdown.slaPenaltyDetails;
 
   return (
     <div id="search-editor-section-executive" className="animate-fadeIn">
@@ -119,7 +123,10 @@ export default function ExecutiveSummaryForm() {
                 <div className="mt-2">امتثال ISO: <span className="font-bold">{scoreBreakdown.components.kpiCompliance}</span></div>
                 <div>متوسط النضج: <span className="font-bold">{scoreBreakdown.components.avgMaturity}</span></div>
                 <div>متوسط حماية الاصول: <span className="font-bold">{scoreBreakdown.components.avgAssetProtection}</span></div>
-                <div className="mt-2">ناتج الجزء الاساسي = <span className="font-[900] text-navy-900">{scoreBreakdown.governanceBase}</span></div>
+                <div className="mt-2">0.40×Compliance = <span className="font-bold">{governance.complianceWeighted}</span></div>
+                <div>0.35×AvgMaturity = <span className="font-bold">{governance.maturityWeighted}</span></div>
+                <div>0.25×AvgAssetProtection = <span className="font-bold">{governance.assetProtectionWeighted}</span></div>
+                <div className="mt-2">ناتج الجزء الاساسي = <span className="font-[900] text-navy-900">{governance.beforeRounding}</span></div>
               </div>
 
               <div className="rounded-xl border border-red-200 bg-red-50 p-4">
@@ -128,14 +135,39 @@ export default function ExecutiveSummaryForm() {
                 <div className="mt-2">عدد المخاطر الحرجة: <span className="font-bold">{scoreBreakdown.components.criticalRisks}</span></div>
                 <div>عدد المخاطر المفتوحة: <span className="font-bold">{scoreBreakdown.components.openRisks}</span></div>
                 <div>عدد المخاطر الكلي: <span className="font-bold">{scoreBreakdown.components.totalRisks}</span></div>
-                <div className="mt-2">قيمة الخصم = <span className="font-[900] text-danger-500">-{scoreBreakdown.riskPenalty}</span></div>
+                <div>المقام = max(TotalRisks, 1) = <span className="font-bold">{risk.denominator}</span></div>
+                <div>Critical Ratio = <span className="font-bold">{risk.criticalRatio}</span> و Open Ratio = <span className="font-bold">{risk.openRatio}</span></div>
+                <div>Critical Contribution = <span className="font-bold">{risk.criticalContribution}</span></div>
+                <div>Open Contribution = <span className="font-bold">{risk.openContribution}</span></div>
+                <div>قبل السقف = <span className="font-bold">{risk.beforeCap}</span></div>
+                <div className="mt-2">قيمة الخصم = min({risk.capValue}, {risk.beforeCap}) = <span className="font-[900] text-danger-500">-{scoreBreakdown.riskPenalty}</span></div>
+                <div className={`text-xs mt-1 font-bold ${risk.capApplied ? 'text-danger-500' : 'text-success-700'}`}>
+                  {risk.capApplied ? 'تم تطبيق سقف الخصم.' : 'لم يتم تطبيق سقف الخصم.'}
+                </div>
               </div>
 
               <div className="rounded-xl border border-green-200 bg-green-50 p-4">
                 <div className="font-bold text-success-700 mb-1">3) مكافأة الكفاءة (Efficiency Bonus)</div>
                 <div className="text-xs text-text-muted">لو مؤشرات الكفاءة جيدة، النظام يعطيك نقاط زيادة.</div>
                 <div className="mt-2">متوسط تحقيق مؤشرات الكفاءة: <span className="font-bold">{scoreBreakdown.components.avgEfficiencyAchievement}%</span></div>
-                <div className="mt-2">قيمة المكافأة = <span className="font-[900] text-success-700">+{scoreBreakdown.efficiencyBonus}</span></div>
+                <div>المعامل = <span className="font-bold">{efficiency.multiplier}</span></div>
+                <div>قبل السقف = <span className="font-bold">{efficiency.beforeCap}</span></div>
+                <div className="mt-2">قيمة المكافأة = min({efficiency.capValue}, {efficiency.beforeCap}) = <span className="font-[900] text-success-700">+{scoreBreakdown.efficiencyBonus}</span></div>
+                <div className={`text-xs mt-1 font-bold ${efficiency.capApplied ? 'text-success-700' : 'text-emerald-700'}`}>
+                  {efficiency.capApplied ? 'تم تطبيق سقف المكافأة.' : 'لم يتم تطبيق سقف المكافأة.'}
+                </div>
+                {efficiency.normalizedKpis.length > 0 && (
+                  <div className="mt-2 rounded-lg border border-green-200 bg-white p-2">
+                    <div className="text-xs font-bold text-green-900 mb-1">تفصيل كل KPI (بعد التطبيع)</div>
+                    <div className="space-y-1 text-xs">
+                      {efficiency.normalizedKpis.map((kpi, index) => (
+                        <div key={`${kpi.id || kpi.title}-${index}`}>
+                          {kpi.title}: {kpi.normalized}% (Actual {kpi.actual} / Target {kpi.target} - {kpi.lowerBetter ? 'الاقل افضل' : 'الاعلى افضل'})
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -143,7 +175,17 @@ export default function ExecutiveSummaryForm() {
                 <div className="text-xs text-text-muted">إذا وقت الاحتواء الفعلي أعلى من الهدف، ينخصم من الدرجة.</div>
                 <div className="mt-2">MTTC الفعلي: <span className="font-bold">{scoreBreakdown.components.slaMTTC}</span></div>
                 <div>MTTC الهدف: <span className="font-bold">{scoreBreakdown.components.slaMTTCTarget}</span></div>
+                {sla.defaultTargetApplied && (
+                  <div className="text-xs text-amber-800">تم استخدام هدف افتراضي 24 ساعة لعدم وجود هدف صالح.</div>
+                )}
+                <div>هل انخصم فعليا؟ <span className="font-bold">{sla.wasTriggered ? 'نعم' : 'لا'}</span></div>
+                <div>الفرق فوق الهدف: <span className="font-bold">{sla.deltaOverTarget}</span></div>
+                <div>نسبة التجاوز: <span className="font-bold">{sla.overflowRatio}</span></div>
+                <div>قبل السقف: <span className="font-bold">{sla.beforeCap}</span></div>
                 <div className="mt-2">قيمة الخصم = <span className="font-[900] text-amber-700">-{scoreBreakdown.slaPenalty}</span></div>
+                <div className={`text-xs mt-1 font-bold ${sla.capApplied ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  {sla.capApplied ? 'تم تطبيق سقف خصم SLA.' : 'لم يتم تطبيق سقف خصم SLA.'}
+                </div>
               </div>
 
               <div className="rounded-xl border border-navy-200 bg-navy-50 p-4">

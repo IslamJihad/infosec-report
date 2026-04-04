@@ -11,6 +11,10 @@ interface Props {
 export default function MethodologySummaryCard({ report }: Props) {
   const [showSources, setShowSources] = useState(false);
   const scoreBreakdown = report.scoreBreakdown ?? calculateGlobalSecurityScore(report).scoreBreakdown;
+  const governance = scoreBreakdown.governanceDetails;
+  const risk = scoreBreakdown.riskPenaltyDetails;
+  const efficiency = scoreBreakdown.efficiencyBonusDetails;
+  const sla = scoreBreakdown.slaPenaltyDetails;
 
   return (
     <div className="bg-white rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md" dir="rtl">
@@ -53,6 +57,78 @@ export default function MethodologySummaryCard({ report }: Props) {
           <Metric label="Efficiency Bonus" value={`+${scoreBreakdown.efficiencyBonus}`} tone="green" />
           <Metric label="MTTC / Target" value={`${scoreBreakdown.components.slaMTTC} / ${scoreBreakdown.components.slaMTTCTarget}`} tone="amber" />
           <Metric label="SLA Penalty" value={`-${scoreBreakdown.slaPenalty}`} tone="amber" />
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-3 mb-3">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900 leading-6">
+            <div className="font-bold mb-1">تفصيل Governance Base</div>
+            <div>0.40×Compliance = {governance.complianceWeighted}</div>
+            <div>0.35×AvgMaturity = {governance.maturityWeighted}</div>
+            <div>0.25×AvgAssetProtection = {governance.assetProtectionWeighted}</div>
+            <div className="mt-1 font-bold">Governance Base = {governance.beforeRounding}</div>
+          </div>
+
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-900 leading-6">
+            <div className="font-bold mb-1">تفصيل Risk Penalty</div>
+            <div>عتبة الخطر الحرج: Probability × Impact ≥ {risk.criticalThreshold}</div>
+            <div>المقام = max(TotalRisks, 1) = {risk.denominator}</div>
+            <div>Critical Ratio = {scoreBreakdown.components.criticalRisks}/{risk.denominator} = {risk.criticalRatio}</div>
+            <div>Open Ratio = {scoreBreakdown.components.openRisks}/{risk.denominator} = {risk.openRatio}</div>
+            <div>Critical Contribution = {risk.criticalContribution}</div>
+            <div>Open Contribution = {risk.openContribution}</div>
+            <div>قبل السقف = {risk.beforeCap}</div>
+            <div className="font-bold">RiskPenalty = min({risk.capValue}, {risk.beforeCap}) = {scoreBreakdown.riskPenalty}</div>
+            <div className={`mt-1 font-bold ${risk.capApplied ? 'text-red-700' : 'text-emerald-700'}`}>
+              {risk.capApplied ? 'تم تطبيق سقف خصم المخاطر.' : 'لم يتم تطبيق سقف خصم المخاطر.'}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900 leading-6">
+            <div className="font-bold mb-1">تفصيل Efficiency Bonus</div>
+            <div>عدد مؤشرات الكفاءة المحتسبة: {efficiency.kpiCount}</div>
+            <div>Average Achievement = {scoreBreakdown.components.avgEfficiencyAchievement}%</div>
+            <div>المعامل = {efficiency.multiplier}</div>
+            <div>قبل السقف = {efficiency.beforeCap}</div>
+            <div className="font-bold">EfficiencyBonus = min({efficiency.capValue}, {efficiency.beforeCap}) = {scoreBreakdown.efficiencyBonus}</div>
+            <div className={`mt-1 font-bold ${efficiency.capApplied ? 'text-green-700' : 'text-emerald-700'}`}>
+              {efficiency.capApplied ? 'تم تطبيق سقف مكافأة الكفاءة.' : 'لم يتم تطبيق سقف مكافأة الكفاءة.'}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900 leading-6">
+            <div className="font-bold mb-1">تفصيل SLA Penalty</div>
+            <div>MTTC = {scoreBreakdown.components.slaMTTC}</div>
+            <div>Target = {scoreBreakdown.components.slaMTTCTarget}</div>
+            {sla.defaultTargetApplied && <div>تم استخدام الهدف الافتراضي (24 ساعة) لعدم وجود قيمة هدف صالحة.</div>}
+            <div>هل تم تفعيل الخصم؟ {sla.wasTriggered ? 'نعم' : 'لا'}</div>
+            <div>الفرق فوق الهدف = {sla.deltaOverTarget}</div>
+            <div>نسبة التجاوز = {sla.overflowRatio}</div>
+            <div>قبل السقف = {sla.beforeCap}</div>
+            <div className="font-bold">SlaPenalty = {scoreBreakdown.slaPenalty}</div>
+            <div className={`mt-1 font-bold ${sla.capApplied ? 'text-amber-700' : 'text-emerald-700'}`}>
+              {sla.capApplied ? 'تم تطبيق سقف خصم SLA.' : 'لم يتم تطبيق سقف خصم SLA.'}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-green-200 bg-green-50/50 px-4 py-3 text-xs text-green-900 mb-3">
+          <div className="font-bold mb-2">تفصيل تطبيع مؤشرات الكفاءة (لكل مؤشر)</div>
+          {efficiency.normalizedKpis.length === 0 && (
+            <div className="text-text-muted">لا توجد مؤشرات كفاءة مدخلة، لذلك متوسط الكفاءة = 0.</div>
+          )}
+          {efficiency.normalizedKpis.length > 0 && (
+            <div className="space-y-1">
+              {efficiency.normalizedKpis.map((kpi, index) => (
+                <div key={`${kpi.id || kpi.title}-${index}`} className="rounded-lg border border-green-200 bg-white px-3 py-2">
+                  <div className="font-bold text-green-950">{kpi.title}</div>
+                  <div>
+                    Actual: {kpi.actual} | Target: {kpi.target} | Direction: {kpi.lowerBetter ? 'الاقل افضل' : 'الاعلى افضل'}
+                  </div>
+                  <div className="font-bold">Normalized = {kpi.normalized}%</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="rounded-xl border border-navy-200 bg-navy-50 px-4 py-3 text-sm text-navy-900 leading-7">

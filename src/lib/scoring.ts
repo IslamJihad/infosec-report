@@ -13,6 +13,8 @@ type AssetLike = {
 };
 
 type EfficiencyLike = {
+  id?: string | null;
+  title?: string | null;
   val?: number | null;
   target?: number | null;
   lowerBetter?: boolean | null;
@@ -50,6 +52,47 @@ export interface ScoreBreakdown {
   slaPenalty: number;
   rawScore: number;
   finalScore: number;
+  governanceDetails: {
+    complianceWeighted: number;
+    maturityWeighted: number;
+    assetProtectionWeighted: number;
+    beforeRounding: number;
+  };
+  riskPenaltyDetails: {
+    criticalThreshold: number;
+    denominator: number;
+    criticalRatio: number;
+    openRatio: number;
+    criticalContribution: number;
+    openContribution: number;
+    beforeCap: number;
+    capValue: number;
+    capApplied: boolean;
+  };
+  efficiencyBonusDetails: {
+    kpiCount: number;
+    normalizedKpis: Array<{
+      id: string;
+      title: string;
+      actual: number;
+      target: number;
+      lowerBetter: boolean;
+      normalized: number;
+    }>;
+    multiplier: number;
+    beforeCap: number;
+    capValue: number;
+    capApplied: boolean;
+  };
+  slaPenaltyDetails: {
+    wasTriggered: boolean;
+    defaultTargetApplied: boolean;
+    deltaOverTarget: number;
+    overflowRatio: number;
+    beforeCap: number;
+    capValue: number;
+    capApplied: boolean;
+  };
 }
 
 export interface ScoreResult {
@@ -83,19 +126,34 @@ function normalizeMaturityScore(value: unknown): number {
   return clamp(parsed, 0, 100);
 }
 
-function normalizeEfficiencyKPI(kpi: EfficiencyLike): number {
+function normalizeEfficiencyKPI(kpi: EfficiencyLike) {
   const target = Math.max(0, toNumber(kpi.target, 0));
   const val = Math.max(0, toNumber(kpi.val, 0));
   const lowerBetter = Boolean(kpi.lowerBetter);
 
-  if (target <= 0) return 0;
-
-  if (lowerBetter) {
-    if (val === 0) return 100;
-    return clamp((target / val) * 100, 0, 100);
+  if (target <= 0) {
+    return {
+      id: String(kpi.id ?? ''),
+      title: typeof kpi.title === 'string' && kpi.title.trim() ? kpi.title.trim() : 'KPI',
+      actual: val,
+      target,
+      lowerBetter,
+      normalized: 0,
+    };
   }
 
-  return clamp((val / target) * 100, 0, 100);
+  const normalized = lowerBetter
+    ? (val === 0 ? 100 : clamp((target / val) * 100, 0, 100))
+    : clamp((val / target) * 100, 0, 100);
+
+  return {
+    id: String(kpi.id ?? ''),
+    title: typeof kpi.title === 'string' && kpi.title.trim() ? kpi.title.trim() : 'KPI',
+    actual: val,
+    target,
+    lowerBetter,
+    normalized,
+  };
 }
 
 export function calculateGlobalSecurityScore(input: ScoreInput): ScoreResult {
@@ -113,35 +171,56 @@ export function calculateGlobalSecurityScore(input: ScoreInput): ScoreResult {
 
   const risks = input.risks ?? [];
   const totalRisks = risks.length;
-  const criticalRisks = risks.filter((risk) => toNumber(risk.probability, 0) * toNumber(risk.impact, 0) >= 15).length;
+  const criticalThreshold = 15;
+  const criticalRisks = risks.filter((risk) => toNumber(risk.probability, 0) * toNumber(risk.impact, 0) >= criticalThreshold).length;
   const openRisks = risks.filter((risk) => (risk.status ?? '').toLowerCase() !== 'closed').length;
+  const riskDenominator = Math.max(totalRisks, 1);
+
+  const normalizedKpis = (input.efficiencyKPIs ?? []).map(normalizeEfficiencyKPI);
 
   const avgEfficiencyAchievement = clamp(
-    average((input.efficiencyKPIs ?? []).map(normalizeEfficiencyKPI)),
+    average(normalizedKpis.map((kpi) => kpi.normalized)),
     0,
     100,
   );
 
   const slaMTTC = Math.max(0, toNumber(input.slaMTTC, 0));
-  const slaMTTCTarget = Math.max(1, toNumber(input.slaMTTCTarget, 24));
+  const targetInputParsed = Number(input.slaMTTCTarget);
+  const defaultTargetApplied = !Number.isFinite(targetInputParsed);
+  const slaMTTCTarget = Math.max(1, defaultTargetApplied ? 24 : targetInputParsed);
 
-  const governanceBase =
-    (kpiCompliance * 0.4) +
-    (avgMaturity * 0.35) +
-    (avgAssetProtection * 0.25);
+  const complianceWeighted = kpiCompliance * 0.4;
+  const maturityWeighted = avgMaturity * 0.35;
+  const assetProtectionWeighted = avgAssetProtection * 0.25;
 
-  const riskPenalty = Math.min(
-    40,
-    ((criticalRisks / Math.max(totalRisks, 1)) * 30) +
-      ((openRisks / Math.max(totalRisks, 1)) * 10),
-  );
+  const governanceBase = complianceWeighted + maturityWeighted + assetProtectionWeighted;
 
-  const efficiencyBonus = Math.min(10, avgEfficiencyAchievement * 0.1);
+  const criticalContribution = (criticalRisks / riskDenominator) * 30;
+  const openContribution = (openRisks / riskDenominator) * 10;
+  const riskPenaltyBeforeCap = criticalContribution + openContribution;
+
+  const riskPenaltyCap = 40;
+  const riskPenalty = Math.min(riskPenaltyCap, riskPenaltyBeforeCap);
+  const riskPenaltyCapApplied = riskPenaltyBeforeCap > riskPenaltyCap;
+
+  const efficiencyMultiplier = 0.1;
+  const efficiencyBonusCap = 10;
+  const efficiencyBonusBeforeCap = avgEfficiencyAchievement * efficiencyMultiplier;
+  const efficiencyBonus = Math.min(efficiencyBonusCap, efficiencyBonusBeforeCap);
+  const efficiencyBonusCapApplied = efficiencyBonusBeforeCap > efficiencyBonusCap;
+
+  const slaPenaltyCap = 15;
+  const slaDeltaOverTarget = Math.max(0, slaMTTC - slaMTTCTarget);
+  const slaOverflowRatio = slaDeltaOverTarget > 0
+    ? slaDeltaOverTarget / Math.max(slaMTTCTarget, 1)
+    : 0;
+  const slaPenaltyBeforeCap = slaOverflowRatio * slaPenaltyCap;
+  const slaPenaltyCapApplied = slaPenaltyBeforeCap > slaPenaltyCap;
 
   const slaPenalty =
     slaMTTC <= slaMTTCTarget
       ? 0
-      : Math.min(15, ((slaMTTC - slaMTTCTarget) / Math.max(slaMTTCTarget, 1)) * 15);
+      : Math.min(slaPenaltyCap, slaPenaltyBeforeCap);
 
   const rawScore = governanceBase - riskPenalty + efficiencyBonus - slaPenalty;
   const finalScore = clamp(Math.round(rawScore), 0, 100);
@@ -169,6 +248,47 @@ export function calculateGlobalSecurityScore(input: ScoreInput): ScoreResult {
       slaPenalty: roundTo(slaPenalty),
       rawScore: roundTo(rawScore),
       finalScore,
+      governanceDetails: {
+        complianceWeighted: roundTo(complianceWeighted),
+        maturityWeighted: roundTo(maturityWeighted),
+        assetProtectionWeighted: roundTo(assetProtectionWeighted),
+        beforeRounding: roundTo(governanceBase),
+      },
+      riskPenaltyDetails: {
+        criticalThreshold,
+        denominator: riskDenominator,
+        criticalRatio: roundTo(criticalRisks / riskDenominator, 3),
+        openRatio: roundTo(openRisks / riskDenominator, 3),
+        criticalContribution: roundTo(criticalContribution),
+        openContribution: roundTo(openContribution),
+        beforeCap: roundTo(riskPenaltyBeforeCap),
+        capValue: riskPenaltyCap,
+        capApplied: riskPenaltyCapApplied,
+      },
+      efficiencyBonusDetails: {
+        kpiCount: normalizedKpis.length,
+        normalizedKpis: normalizedKpis.map((kpi) => ({
+          id: kpi.id,
+          title: kpi.title,
+          actual: roundTo(kpi.actual, 2),
+          target: roundTo(kpi.target, 2),
+          lowerBetter: kpi.lowerBetter,
+          normalized: roundTo(kpi.normalized),
+        })),
+        multiplier: efficiencyMultiplier,
+        beforeCap: roundTo(efficiencyBonusBeforeCap),
+        capValue: efficiencyBonusCap,
+        capApplied: efficiencyBonusCapApplied,
+      },
+      slaPenaltyDetails: {
+        wasTriggered: slaMTTC > slaMTTCTarget,
+        defaultTargetApplied,
+        deltaOverTarget: roundTo(slaDeltaOverTarget, 2),
+        overflowRatio: roundTo(slaOverflowRatio, 3),
+        beforeCap: roundTo(slaPenaltyBeforeCap),
+        capValue: slaPenaltyCap,
+        capApplied: slaPenaltyCapApplied,
+      },
     },
   };
 }
