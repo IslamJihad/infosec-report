@@ -2,14 +2,27 @@
 
 import { useReportStore } from '@/store/reportStore';
 import { NAV_ITEMS } from '@/lib/constants';
+import ReportSearchDropdown from '@/components/search/ReportSearchDropdown';
+import type { ReportSearchResult } from '@/lib/search/reportSearch';
+
+interface TopBarSearchProps {
+  isOpen: boolean;
+  query: string;
+  results: ReportSearchResult[];
+  onToggle: () => void;
+  onClose: () => void;
+  onQueryChange: (value: string) => void;
+  onSelect: (result: ReportSearchResult) => void;
+}
 
 interface TopBarProps {
   onPreview: () => void;
   onAIReview: () => void;
   onGoHome: () => void;
+  search?: TopBarSearchProps;
 }
 
-export default function TopBar({ onPreview, onAIReview, onGoHome }: TopBarProps) {
+export default function TopBar({ onPreview, onAIReview, onGoHome, search }: TopBarProps) {
   const { currentStep, setStep, isSaving, lastSaved } = useReportStore();
 
   const title = NAV_ITEMS[currentStep]?.label || '';
@@ -29,6 +42,32 @@ export default function TopBar({ onPreview, onAIReview, onGoHome }: TopBarProps)
             <span className="text-success-700 font-semibold">✓ تم الحفظ</span>
           ) : null}
         </span>
+
+        {search && (
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (search.isOpen) {
+                  search.onClose();
+                  return;
+                }
+                search.onToggle();
+              }}
+              className="py-2 px-4 rounded-xl border border-navy-200 bg-white text-navy-900 text-sm font-bold transition-all duration-200 hover:bg-navy-50 cursor-pointer flex items-center gap-1.5"
+            >
+              🔍 بحث
+            </button>
+
+            <ReportSearchDropdown
+              isOpen={search.isOpen}
+              query={search.query}
+              results={search.results}
+              onQueryChange={search.onQueryChange}
+              onSelect={search.onSelect}
+              onClose={search.onClose}
+            />
+          </div>
+        )}
 
         <button
           onClick={onGoHome}

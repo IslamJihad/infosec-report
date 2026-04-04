@@ -16,7 +16,7 @@ export default function ExecutiveSummaryForm() {
   const scoreBreakdown = report.scoreBreakdown ?? calculateGlobalSecurityScore(report).scoreBreakdown;
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-executive" className="animate-fadeIn">
       <FormCard icon="📋" title="الملخص التنفيذي">
         <div className="mb-4">
           <label className="text-sm font-bold text-text-secondary block mb-2">نص الملخص</label>
@@ -154,6 +154,39 @@ export default function ExecutiveSummaryForm() {
                   <div className="mt-2">المقارنة مع باقي التقارير: <span className="font-bold">أعلى من {report.scorePercentile}% من التقارير</span></div>
                 )}
               </div>
+
+              <div className="rounded-xl border border-border bg-surface p-4">
+                <div className="font-bold text-navy-900 mb-1">المرجعية العلمية والمنهجية</div>
+                <div className="text-xs text-text-muted leading-6 mb-2">
+                  هذا النموذج مبني على مبادئ قياس المخاطر في NIST/ISO ومعيار CVSS لشدة الثغرات، بينما الاوزان الرقمية الحالية هي معايرة داخلية قابلة للمراجعة.
+                </div>
+                <ul className="list-disc pr-5 text-xs text-text-muted space-y-1">
+                  <li>
+                    NIST SP 800-30 Rev.1:{' '}
+                    <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.SP.800-30r1" target="_blank" rel="noreferrer">
+                      doi.org/10.6028/NIST.SP.800-30r1
+                    </a>
+                  </li>
+                  <li>
+                    NIST CSF 2.0:{' '}
+                    <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.CSWP.29" target="_blank" rel="noreferrer">
+                      doi.org/10.6028/NIST.CSWP.29
+                    </a>
+                  </li>
+                  <li>
+                    FIRST CVSS v4.0:{' '}
+                    <a className="text-blue-700 hover:underline" href="https://www.first.org/cvss/v4.0/specification-document" target="_blank" rel="noreferrer">
+                      first.org/cvss/v4.0/specification-document
+                    </a>
+                  </li>
+                  <li>
+                    ISO/IEC 27001:2022:{' '}
+                    <a className="text-blue-700 hover:underline" href="https://www.iso.org/standard/27001" target="_blank" rel="noreferrer">
+                      iso.org/standard/27001
+                    </a>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -165,7 +198,7 @@ export default function ExecutiveSummaryForm() {
         </div>
 
         {report.decisions.map((dec, i) => (
-          <div key={dec.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
+          <div id={`search-editor-decision-${dec.id}`} key={dec.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
             <button
               onClick={() => removeDecision(i)}
               className="absolute top-3 left-3 bg-danger-100 text-danger-500 border border-red-200 rounded-xl w-7 h-7 cursor-pointer text-sm flex items-center justify-center hover:bg-red-200 transition-all duration-200"

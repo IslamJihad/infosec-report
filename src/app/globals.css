@@ -145,6 +145,21 @@
   100% { background-position: 200% 0; }
 }
 
+@keyframes search-highlight-pulse {
+  0% {
+    outline-color: rgba(74, 144, 217, 0.85);
+    background-color: rgba(74, 144, 217, 0.22);
+  }
+  65% {
+    outline-color: rgba(74, 144, 217, 0.45);
+    background-color: rgba(74, 144, 217, 0.1);
+  }
+  100% {
+    outline-color: rgba(74, 144, 217, 0);
+    background-color: transparent;
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.4s ease-out;
 }
@@ -153,8 +168,23 @@
   animation: slideInRight 0.3s ease-out;
 }
 
+.search-highlight-pulse {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  animation: search-highlight-pulse 2.2s ease-out;
+  scroll-margin-top: 110px;
+}
+
 .glass-card {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+@media print {
+  .search-highlight-pulse {
+    animation: none !important;
+    outline: none !important;
+    background: transparent !important;
+  }
 }

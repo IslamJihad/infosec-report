@@ -8,14 +8,14 @@ export default function AssetProtectionForm() {
   if (!report) return null;
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-assets" className="animate-fadeIn">
       <FormCard icon="🏛️" title="حماية الأصول الحيوية">
         <div className="bg-navy-100 border border-blue-200 rounded-xl py-3 px-4 text-sm text-navy-800 mb-4">
           🎯 الأصل الحيوي = أي شيء لو اختُرق أو توقف سيضر بالعمل مباشرة. أدخل مستوى الحماية الحقيقي لا المأمول.
         </div>
 
         {report.assets.map((asset, i) => (
-          <div key={asset.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
+          <div id={`search-editor-asset-${asset.id}`} key={asset.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
             <button
               onClick={() => removeAsset(i)}
               className="absolute top-3 left-3 bg-danger-100 text-danger-500 border border-red-200 rounded-xl w-7 h-7 cursor-pointer text-sm flex items-center justify-center hover:bg-red-200 transition-all duration-200"

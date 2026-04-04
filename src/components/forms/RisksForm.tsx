@@ -9,7 +9,7 @@ export default function RisksForm() {
   if (!report) return null;
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-risks" className="animate-fadeIn">
       <FormCard icon="⚠️" title="أبرز المخاطر والثغرات">
         <div className="bg-navy-100 border border-blue-200 rounded-xl py-3 px-4 text-sm text-navy-800 mb-4">
           🎯 درجة المخاطرة = الاحتمالية × التأثير (1–5).
@@ -19,7 +19,7 @@ export default function RisksForm() {
           const score = risk.probability * risk.impact;
           const scoreClass = getRiskScoreClass(score);
           return (
-            <div key={risk.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
+            <div id={`search-editor-risk-${risk.id}`} key={risk.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
               <button
                 onClick={() => removeRisk(i)}
                 className="absolute top-3 left-3 bg-danger-100 text-danger-500 border border-red-200 rounded-xl w-7 h-7 cursor-pointer text-sm flex items-center justify-center hover:bg-red-200 transition-all duration-200"

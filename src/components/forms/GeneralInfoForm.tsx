@@ -9,7 +9,7 @@ export default function GeneralInfoForm() {
   if (!report) return null;
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-general" className="animate-fadeIn">
       <FormCard icon="🏢" title="معلومات الشركة والتقرير">
         {/* Logo Upload */}
         <div className="mb-4">

@@ -12,7 +12,7 @@ export default function SLAForm() {
   ];
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-sla" className="animate-fadeIn">
       <FormCard icon="⏱️" title="مقاييس الاستجابة للحوادث (SLA)">
         <div className="grid grid-cols-3 gap-4 mb-4">
           {slaItems.map((item) => (

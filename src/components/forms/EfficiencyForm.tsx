@@ -10,7 +10,7 @@ export default function EfficiencyForm() {
   const kpis = report.efficiencyKPIs || [];
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-efficiency" className="animate-fadeIn">
       <FormCard icon="⚡" title="مؤشرات الكفاءة التشغيلية">
         <div className="bg-navy-100 border border-blue-200 rounded-xl py-3 px-4 text-sm text-navy-800 mb-4">
           📈 هذه المؤشرات تقيس فاعلية الفريق الأمني في تحويل الاستثمار إلى نتائج حقيقية قابلة للقياس.
@@ -30,7 +30,7 @@ export default function EfficiencyForm() {
           const barWidth = Math.min(100, pct);
 
           return (
-            <div key={kpi.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
+            <div id={`search-editor-efficiency-${kpi.id}`} key={kpi.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
               <button
                 onClick={() => removeEfficiencyKPI(i)}
                 className="absolute top-3 left-3 bg-danger-100 text-danger-500 border border-red-200 rounded-xl w-7 h-7 cursor-pointer text-sm flex items-center justify-center hover:bg-red-200 transition-all duration-200"

@@ -9,7 +9,7 @@ export default function KPIForm() {
   if (!report) return null;
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-kpi" className="animate-fadeIn">
       <FormCard icon="📊" title="مؤشرات الأداء الرئيسية">
         <div className="bg-navy-100 border border-blue-200 rounded-xl py-3 px-4 text-sm text-navy-800 mb-4">
           📈 أدخل القيم الحالية والسابقة لإظهار اتجاه التحسن أو التراجع.
@@ -99,7 +99,7 @@ export default function KPIForm() {
               const pct = ctrl.totalControls > 0 ? Math.round((ctrl.currentApplied / ctrl.totalControls) * 100) : 0;
               const pctColor = pct === 100 ? 'text-success-700' : pct >= 50 ? 'text-warning-700' : 'text-danger-500';
               return (
-                <div key={ctrl.domainId} className="bg-surface border border-border/60 rounded-xl p-3">
+                <div id={`search-editor-iso-${ctrl.domainId}`} key={ctrl.domainId} className="bg-surface border border-border/60 rounded-xl p-3">
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <span className="text-[10px] font-[800] text-navy-700 tracking-wide">{ctrl.domainId}</span>

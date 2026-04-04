@@ -9,10 +9,10 @@ export default function RecommendationsForm() {
   if (!report) return null;
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-actions" className="animate-fadeIn">
       <FormCard icon="✅" title="التوصيات وخارطة الطريق">
         {report.recommendations.map((rec, i) => (
-          <div key={rec.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
+          <div id={`search-editor-recommendation-${rec.id}`} key={rec.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
             <button
               onClick={() => removeRecommendation(i)}
               className="absolute top-3 left-3 bg-danger-100 text-danger-500 border border-red-200 rounded-xl w-7 h-7 cursor-pointer text-sm flex items-center justify-center hover:bg-red-200 transition-all duration-200"
@@ -66,7 +66,7 @@ export default function RecommendationsForm() {
           ⚡ أدخل المعوقات الحقيقية وما تحتاجه لتجاوزها — هذا ما يُحوّل التقرير من &quot;إشعار&quot; إلى &quot;أداة قرار&quot;.
         </div>
         {report.challenges.map((challenge, i) => (
-          <div key={challenge.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
+          <div id={`search-editor-challenge-${challenge.id}`} key={challenge.id} className="bg-surface border border-border/60 rounded-2xl p-5 mb-3 relative animate-fadeIn shadow-sm hover:shadow-md transition-all duration-200">
             <button
               onClick={() => removeChallenge(i)}
               className="absolute top-3 left-3 bg-danger-100 text-danger-500 border border-red-200 rounded-xl w-7 h-7 cursor-pointer text-sm flex items-center justify-center hover:bg-red-200 transition-all duration-200"

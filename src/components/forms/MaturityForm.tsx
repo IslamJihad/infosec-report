@@ -29,7 +29,7 @@ export default function MaturityForm() {
   const avgLabel = getAvgComplianceLabel(avgNum);
 
   return (
-    <div className="animate-fadeIn">
+    <div id="search-editor-section-maturity" className="animate-fadeIn">
       <FormCard icon="🧭" title="مستوى النضج الأمني">
         <div className="bg-navy-100 border border-blue-200 rounded-xl py-3 px-4 text-sm text-navy-800 mb-4">
           📐 أدخل اسم كل بند ونسبة الامتثال له من 100. يمكنك إضافة أو حذف البنود بحرية.
@@ -63,7 +63,7 @@ export default function MaturityForm() {
           {report.maturityDomains.map((domain, i) => {
             const tone = getComplianceTone(domain.score);
             return (
-              <div key={domain.id} className="grid grid-cols-[70px_1.4fr_180px_1fr_90px] gap-3 py-3 px-4 border-b border-border/60 last:border-b-0 items-center">
+              <div id={`search-editor-maturity-${domain.id}`} key={domain.id} className="grid grid-cols-[70px_1.4fr_180px_1fr_90px] gap-3 py-3 px-4 border-b border-border/60 last:border-b-0 items-center">
                 <div className="text-center text-xs font-bold text-text-hint">{i + 1}</div>
 
                 <input

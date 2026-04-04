@@ -163,7 +163,7 @@ export default function ReportPreview({ report }: Props) {
   return (
     <div className="max-w-[820px] mx-auto bg-white shadow-lg" dir="rtl">
       {/* ═══════ COVER PAGE ═══════ */}
-      <div className="report-cover" style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', height: '1123px', maxHeight: '1123px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0', pageBreakAfter: 'always', boxSizing: 'border-box', margin: 0, padding: 0 }}>
+      <div id="search-preview-section-general" className="report-cover" style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', height: '1123px', maxHeight: '1123px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0', pageBreakAfter: 'always', boxSizing: 'border-box', margin: 0, padding: 0 }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 15% 80%,rgba(26,92,46,.06) 0%,transparent 50%),radial-gradient(circle at 85% 20%,rgba(201,162,39,.07) 0%,transparent 50%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, right: 0, width: 6, height: '100%', background: 'linear-gradient(180deg,#1a5c2e 0%,#c9a227 55%,rgba(201,162,39,.15) 100%)' }} />
         <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(26,92,46,.04)', top: -80, left: -80, pointerEvents: 'none', zIndex: 1 }} />
@@ -269,7 +269,7 @@ export default function ReportPreview({ report }: Props) {
       
 
       {/* ═══════ EXEC SUMMARY ═══════ */}
-      <div className="px-11 py-7 border-b border-gray-100">
+      <div id="search-preview-section-executive" className="px-11 py-7 border-b border-gray-100">
         {SH('exec', 'الملخص التنفيذي', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 20, marginBottom: 18, alignItems: 'start' }}>
           <div style={{ background: '#1e293b', color: '#fff', borderRadius: 4, padding: '18px 22px', textAlign: 'center', minWidth: 110 }}>
@@ -325,7 +325,7 @@ export default function ReportPreview({ report }: Props) {
 
       {/* ═══════ EFFICIENCY ═══════ */}
       {effKPIs.length > 0 && (
-        <div className="px-11 py-7 border-b border-gray-100">
+        <div id="search-preview-section-efficiency" className="px-11 py-7 border-b border-gray-100">
           {SH('eff', 'الكفاءة التشغيلية', 'a')}
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, effKPIs.length)},1fr)`, gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
             {effKPIs.map((e) => {
@@ -333,7 +333,7 @@ export default function ReportPreview({ report }: Props) {
               const pct = Math.min(100, Math.round(Math.abs(e.val) / Math.max(e.target, 1) * 100));
               const mc = good ? '#16a34a' : '#dc2626';
               return (
-                <div key={e.id} style={{ background: '#fff', padding: '16px 18px' }}>
+                <div id={`search-preview-efficiency-${e.id}`} key={e.id} style={{ background: '#fff', padding: '16px 18px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: '#1e293b' }}>{e.title}</span>
                     <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: good ? '#f0fdf4' : '#fef2f2', color: mc }}>{good ? 'ضمن الهدف' : 'دون الهدف'}</span>
@@ -353,7 +353,7 @@ export default function ReportPreview({ report }: Props) {
       )}
 
       {/* ═══════ RISKS ═══════ */}
-      <div className="px-11 py-7 border-b border-gray-100" style={{ pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
+      <div id="search-preview-section-risks" className="px-11 py-7 border-b border-gray-100" style={{ pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
         {SH('risks', 'المخاطر الرئيسية', critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r')}
         {critRisks > 0 && (
           <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.9, padding: '9px 13px', background: '#eff6ff', borderRight: '3px solid #2563eb', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>
@@ -373,7 +373,7 @@ export default function ReportPreview({ report }: Props) {
               const st = STATUS_MAP[risk.status];
               const autoWC = score >= 20 ? 'توقف العمليات 48+ ساعة وخسائر مالية مباشرة' : score >= 15 ? 'اختراق بيانات وتبعات قانونية' : score >= 10 ? 'تعطل جزئي يؤثر على الإنتاجية' : 'تأثير محدود يمكن احتواؤه';
               return (
-                <tr key={risk.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                <tr id={`search-preview-risk-${risk.id}`} key={risk.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontWeight: 600, marginBottom: 3 }}>{risk.description}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>{risk.system}</div></td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${sev?.bgClass}`}>{sev?.label}</span></td>
@@ -391,7 +391,7 @@ export default function ReportPreview({ report }: Props) {
         </table>
       </div>
      {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
-      <div className="px-11 py-7 border-b border-gray-100">
+      <div id="search-preview-section-kpi" className="px-11 py-7 border-b border-gray-100">
         {SH('ind', 'مؤشرات الأداء', r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r')}
         <table className="w-full border-collapse text-[11px] mb-3">
           <thead>
@@ -473,7 +473,7 @@ export default function ReportPreview({ report }: Props) {
 
 
       {/* ═══════ ACTIONS (Recs + Challenges merged) ═══════ */}
-      <div className="px-11 py-7 border-b border-gray-100">
+      <div id="search-preview-section-actions" className="px-11 py-7 border-b border-gray-100">
         {SH('act', 'التوصيات والاعتمادات', r.recommendations.length > 0 ? 'g' : 'n')}
         <table className="w-full border-collapse text-[11px]">
           <thead>
@@ -488,7 +488,7 @@ export default function ReportPreview({ report }: Props) {
             {r.recommendations.map((rec, i) => {
               const pri = PRIORITY_MAP[rec.priority];
               return (
-                <tr key={rec.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                <tr id={`search-preview-recommendation-${rec.id}`} key={rec.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{rec.title}</div><div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{rec.description}</div></td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${pri?.bgClass}`}>{pri?.label}</span></td>
@@ -502,7 +502,7 @@ export default function ReportPreview({ report }: Props) {
             {r.challenges.map((chal, i) => {
               const ct = CHALLENGE_TYPES[chal.type] || CHALLENGE_TYPES.tech;
               return (
-                <tr key={chal.id} style={{ background: '#fffbeb' }}>
+                <tr id={`search-preview-challenge-${chal.id}`} key={chal.id} style={{ background: '#fffbeb' }}>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{String.fromCharCode(65 + i)}</td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{chal.title}</div><div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{chal.rootCause}</div></td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${ct.bgClass}`}>{ct.label}</span></td>
@@ -516,7 +516,7 @@ export default function ReportPreview({ report }: Props) {
 
       {/* ═══════ MATURITY ═══════ */}
       {r.showMaturity && r.maturityDomains.length > 0 && (
-        <div className="px-11 py-7 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+        <div id="search-preview-section-maturity" className="px-11 py-7 border-b border-gray-100" style={{ background: '#f8fafc' }}>
           {SH('mat', 'تقييم مستوى الامتثال — ملحق تقييمي', parseFloat(avgMat) >= 80 ? 'g' : parseFloat(avgMat) >= 60 ? 'a' : 'r')}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14, padding: '12px 16px', background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0' }}>
             <div>
@@ -527,7 +527,7 @@ export default function ReportPreview({ report }: Props) {
           </div>
           <div style={{ background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 14 }}>
             {r.maturityDomains.map((domain) => (
-              <div key={domain.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderBottom: '1px solid #e2e8f0' }}>
+              <div id={`search-preview-maturity-${domain.id}`} key={domain.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderBottom: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: 11, flex: 1 }}>{domain.name}</div>
                 <div style={{ width: 180, height: 6, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${domain.score}%`, height: '100%', borderRadius: 2, background: domain.score >= 85 ? '#15803d' : domain.score >= 70 ? '#16a34a' : domain.score >= 50 ? '#d97706' : '#dc2626' }} /></div>
                 <div style={{ fontSize: 10, fontWeight: 700, minWidth: 86, color: '#475569', fontFamily: 'monospace' }}>{domain.score}%</div>

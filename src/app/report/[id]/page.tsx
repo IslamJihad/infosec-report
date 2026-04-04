@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useReportStore } from '@/store/reportStore';
 import { fetchReport, updateReport } from '@/lib/api';
+import { buildReportSearchIndex, searchReportIndex, type ReportSearchResult } from '@/lib/search/reportSearch';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import GeneralInfoForm from '@/components/forms/GeneralInfoForm';
@@ -15,6 +16,7 @@ import EfficiencyForm from '@/components/forms/EfficiencyForm';
 import SLAForm from '@/components/forms/SLAForm';
 import RecommendationsForm from '@/components/forms/RecommendationsForm';
 import MaturityForm from '@/components/forms/MaturityForm';
+import MethodologySummaryCard from '@/components/forms/MethodologySummaryCard';
 import AIReviewModal from '@/components/ai/AIReviewModal';
 
 const FORM_SECTIONS = [
@@ -35,9 +37,44 @@ export default function ReportEditorPage() {
   const id = params.id as string;
   const [loading, setLoading] = useState(true);
   const [showAI, setShowAI] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { report, setReport, currentStep, isDirty, setSaving, setLastSaved, setDirty } = useReportStore();
+  const { report, setReport, currentStep, setStep, isDirty, setSaving, setLastSaved, setDirty } = useReportStore();
+
+  const searchIndex = useMemo(() => {
+    if (!report) return [];
+    return buildReportSearchIndex(report, 'editor');
+  }, [report]);
+
+  const searchResults = useMemo(() => searchReportIndex(searchIndex, searchQuery), [searchIndex, searchQuery]);
+
+  const highlightTarget = useCallback((targetId: string) => {
+    const target = document.getElementById(targetId);
+    if (!target) return false;
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.remove('search-highlight-pulse');
+    void target.getBoundingClientRect();
+    target.classList.add('search-highlight-pulse');
+    window.setTimeout(() => target.classList.remove('search-highlight-pulse'), 2200);
+    return true;
+  }, []);
+
+  const handleSelectSearchResult = useCallback(
+    (result: ReportSearchResult) => {
+      setSearchOpen(false);
+
+      if (currentStep !== result.sectionStep) {
+        setStep(result.sectionStep);
+      }
+
+      setPendingTargetId(result.targetId);
+    },
+    [currentStep, setStep],
+  );
 
   // Load report
   useEffect(() => {
@@ -89,6 +126,22 @@ export default function ReportEditorPage() {
     };
   }, [isDirty, report, doSave]);
 
+  useEffect(() => {
+    if (!pendingTargetId) return;
+
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+
+      if (highlightTarget(pendingTargetId) || attempts > 16) {
+        window.clearInterval(timer);
+        setPendingTargetId(null);
+      }
+    }, 90);
+
+    return () => window.clearInterval(timer);
+  }, [pendingTargetId, currentStep, highlightTarget]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
@@ -116,8 +169,18 @@ export default function ReportEditorPage() {
           onGoHome={() => {
             void saveThenNavigate('/');
           }}
+          search={{
+            isOpen: searchOpen,
+            query: searchQuery,
+            results: searchResults,
+            onToggle: () => setSearchOpen((prev) => !prev),
+            onClose: () => setSearchOpen(false),
+            onQueryChange: setSearchQuery,
+            onSelect: handleSelectSearchResult,
+          }}
         />
         <div className="flex-1 overflow-y-auto p-6 pb-10">
+          <MethodologySummaryCard report={report} />
           <CurrentForm />
         </div>
       </div>
