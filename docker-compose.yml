@@ -33,3 +33,5 @@ services:
 
 volumes:
   infosec-data:
+    external: true
+    name: infosec-app_infosec-data
