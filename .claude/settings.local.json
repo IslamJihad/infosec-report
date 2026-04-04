@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs basename:*)",
+      "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")",
+      "Bash(grep -n \"id:'R-\\\\|id:'I-\\\\|id:'K-\\\\|{id,ttl\\\\|{id,title\\\\|risks:\\\\[{\" \"/d/infosec-report/ISO27001-CISO-Command-Suite .html\")"
+    ]
+  }
+}

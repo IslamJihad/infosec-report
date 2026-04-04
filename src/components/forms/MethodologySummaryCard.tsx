@@ -9,8 +9,7 @@ interface Props {
 }
 
 export default function MethodologySummaryCard({ report }: Props) {
-  const [showSources, setShowSources] = useState(false);
-  const [showInlineDetails, setShowInlineDetails] = useState(false);
+  const [showSourcesModal, setShowSourcesModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const scoreBreakdown = report.scoreBreakdown ?? calculateGlobalSecurityScore(report).scoreBreakdown;
   const governance = scoreBreakdown.governanceDetails;
@@ -22,15 +21,19 @@ export default function MethodologySummaryCard({ report }: Props) {
     if (!showModal) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowModal(false);
-        setShowSources(false);
+      if (event.key !== 'Escape') return;
+
+      if (showSourcesModal) {
+        setShowSourcesModal(false);
+        return;
       }
+
+      setShowModal(false);
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showModal]);
+  }, [showModal, showSourcesModal]);
 
   const details = (
     <>
@@ -40,10 +43,10 @@ export default function MethodologySummaryCard({ report }: Props) {
         </div>
         <button
           type="button"
-          onClick={() => setShowSources((prev) => !prev)}
+          onClick={() => setShowSourcesModal(true)}
           className="text-xs font-bold bg-white border border-border rounded-lg px-3 py-1.5 text-navy-800 hover:bg-navy-50 transition-colors whitespace-nowrap"
         >
-          {showSources ? 'اخفاء المراجع' : 'عرض المراجع والمنهجية'}
+          عرض المراجع والمنهجية
         </button>
       </div>
 
@@ -142,41 +145,6 @@ export default function MethodologySummaryCard({ report }: Props) {
         <div>النسخة المستخدمة: <span className="font-bold">{scoreBreakdown.formulaVersion}</span></div>
       </div>
 
-      {showSources && (
-        <div className="mt-4 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-text-muted leading-6">
-          <div className="font-bold text-text-secondary mb-1">المرجع العلمي والمنهجي</div>
-          <div>هذه المعادلة مبنية على مبادئ قياس المخاطر والامن من معايير معروفة، مع اوزان معايرة داخلية خاصة بالمؤسسة.</div>
-          <ul className="list-disc pr-5 mt-2 space-y-1">
-            <li>
-              NIST SP 800-30 Rev.1 (Risk Assessment):{' '}
-              <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.SP.800-30r1" target="_blank" rel="noreferrer">
-                doi.org/10.6028/NIST.SP.800-30r1
-              </a>
-            </li>
-            <li>
-              NIST CSF 2.0 (Enterprise Cyber Risk):{' '}
-              <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.CSWP.29" target="_blank" rel="noreferrer">
-                doi.org/10.6028/NIST.CSWP.29
-              </a>
-            </li>
-            <li>
-              FIRST CVSS v4.0 (Vulnerability Severity Standard):{' '}
-              <a className="text-blue-700 hover:underline" href="https://www.first.org/cvss/v4.0/specification-document" target="_blank" rel="noreferrer">
-                first.org/cvss/v4.0/specification-document
-              </a>
-            </li>
-            <li>
-              ISO/IEC 27001:2022 (Risk-aware ISMS):{' '}
-              <a className="text-blue-700 hover:underline" href="https://www.iso.org/standard/27001" target="_blank" rel="noreferrer">
-                iso.org/standard/27001
-              </a>
-            </li>
-          </ul>
-          <div className="mt-2 text-amber-700">
-            ملاحظة حوكمة: الاوزان الرقمية (40%/35%/25% وغيرها) هي قرار معايرة داخلي قابل للمراجعة الدورية، وليست رقما الزاميا منصوصا عليه حرفيا في معيار واحد.
-          </div>
-        </div>
-      )}
     </>
   );
 
@@ -190,7 +158,7 @@ export default function MethodologySummaryCard({ report }: Props) {
             </div>
             <div>
               <h3 className="text-base font-[800] text-navy-950">القيم المستخدمة في حساب الدرجة</h3>
-              <p className="text-xs text-text-muted mt-0.5">مخفية افتراضيا لتقليل المساحة. يمكن توسيعها أو فتحها كنافذة.</p>
+              <p className="text-xs text-text-muted mt-0.5">مخفية افتراضيا لتقليل المساحة. يمكن فتحها كنافذة عند الحاجة.</p>
             </div>
           </div>
           <div className="text-xs font-bold text-navy-900 bg-navy-50 border border-navy-100 rounded-lg px-2.5 py-1.5">
@@ -210,31 +178,14 @@ export default function MethodologySummaryCard({ report }: Props) {
             <button
               type="button"
               onClick={() => {
-                setShowInlineDetails((prev) => !prev);
-                setShowModal(false);
-              }}
-              className="text-xs font-bold bg-white border border-border rounded-lg px-3 py-1.5 text-navy-800 hover:bg-navy-50 transition-colors"
-            >
-              {showInlineDetails ? 'طي التفاصيل' : 'توسيع داخل الصفحة'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
                 setShowModal(true);
-                setShowInlineDetails(false);
+                setShowSourcesModal(false);
               }}
               className="text-xs font-bold bg-navy-900 border border-navy-900 rounded-lg px-3 py-1.5 text-white hover:bg-navy-800 transition-colors"
             >
               فتح كنافذة مستقلة
             </button>
           </div>
-
-          {showInlineDetails && (
-            <div className="mt-4 border-t border-border pt-4">
-              {details}
-            </div>
-          )}
         </div>
       </div>
 
@@ -243,11 +194,11 @@ export default function MethodologySummaryCard({ report }: Props) {
           className="fixed inset-0 z-[110] bg-black/45 backdrop-blur-[1px] p-4 flex items-center justify-center"
           onClick={() => {
             setShowModal(false);
-            setShowSources(false);
+            setShowSourcesModal(false);
           }}
         >
           <div
-            className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-border shadow-2xl"
+            className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-border shadow-2xl"
             dir="rtl"
             onClick={(event) => event.stopPropagation()}
           >
@@ -260,7 +211,7 @@ export default function MethodologySummaryCard({ report }: Props) {
                 type="button"
                 onClick={() => {
                   setShowModal(false);
-                  setShowSources(false);
+                  setShowSourcesModal(false);
                 }}
                 className="w-9 h-9 rounded-xl border border-border text-text-muted hover:bg-red-50 hover:text-danger-500 transition-colors"
                 aria-label="اغلاق"
@@ -269,6 +220,63 @@ export default function MethodologySummaryCard({ report }: Props) {
               </button>
             </div>
             <div className="p-5">{details}</div>
+
+            {showSourcesModal && (
+              <div
+                className="absolute inset-0 z-[120] bg-black/40 p-4 flex items-center justify-center"
+                onClick={() => setShowSourcesModal(false)}
+              >
+                <div
+                  className="w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-border shadow-2xl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="sticky top-0 bg-white border-b border-border px-4 py-3 flex items-center justify-between">
+                    <div className="font-bold text-text-secondary">المرجع العلمي والمنهجي</div>
+                    <button
+                      type="button"
+                      onClick={() => setShowSourcesModal(false)}
+                      className="w-8 h-8 rounded-lg border border-border text-text-muted hover:bg-red-50 hover:text-danger-500 transition-colors"
+                      aria-label="اغلاق"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="p-4 text-xs text-text-muted leading-6">
+                    <div>هذه المعادلة مبنية على مبادئ قياس المخاطر والامن من معايير معروفة، مع اوزان معايرة داخلية خاصة بالمؤسسة.</div>
+                    <ul className="list-disc pr-5 mt-2 space-y-1">
+                      <li>
+                        NIST SP 800-30 Rev.1 (Risk Assessment):{' '}
+                        <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.SP.800-30r1" target="_blank" rel="noreferrer">
+                          doi.org/10.6028/NIST.SP.800-30r1
+                        </a>
+                      </li>
+                      <li>
+                        NIST CSF 2.0 (Enterprise Cyber Risk):{' '}
+                        <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.CSWP.29" target="_blank" rel="noreferrer">
+                          doi.org/10.6028/NIST.CSWP.29
+                        </a>
+                      </li>
+                      <li>
+                        FIRST CVSS v4.0 (Vulnerability Severity Standard):{' '}
+                        <a className="text-blue-700 hover:underline" href="https://www.first.org/cvss/v4.0/specification-document" target="_blank" rel="noreferrer">
+                          first.org/cvss/v4.0/specification-document
+                        </a>
+                      </li>
+                      <li>
+                        ISO/IEC 27001:2022 (Risk-aware ISMS):{' '}
+                        <a className="text-blue-700 hover:underline" href="https://www.iso.org/standard/27001" target="_blank" rel="noreferrer">
+                          iso.org/standard/27001
+                        </a>
+                      </li>
+                    </ul>
+                    <div className="mt-2 text-amber-700">
+                      ملاحظة حوكمة: الاوزان الرقمية (40%/35%/25% وغيرها) هي قرار معايرة داخلي قابل للمراجعة الدورية، وليست رقما الزاميا منصوصا عليه حرفيا في معيار واحد.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
