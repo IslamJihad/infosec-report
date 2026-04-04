@@ -94,3 +94,28 @@ export interface AnalyticsQueryOptions {
   riskStatus?: AnalyticsRiskStatus;
   reportId?: string;
 }
+
+export type AnalyticsSummaryAudience = 'leadership' | 'board' | 'ciso';
+
+export interface AnalyticsAISummaryRequest extends AnalyticsQueryOptions {
+  audience?: AnalyticsSummaryAudience;
+  forceRefresh?: boolean;
+}
+
+export interface AnalyticsAISummaryResponse {
+  content: string;
+  audience: AnalyticsSummaryAudience;
+  generatedAt: string;
+  cacheHit: boolean;
+  provider: 'gemini' | 'nvidia';
+  model: string;
+  queryHash: string;
+  keyMetrics: {
+    totalReports: number;
+    avgSecurityScore: number;
+    openRisks: number;
+    criticalRisks: number;
+    overallIsoCoverage: number;
+    complianceDelta: number;
+  };
+}

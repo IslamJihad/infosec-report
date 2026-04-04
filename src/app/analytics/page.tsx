@@ -17,14 +17,16 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { fetchAnalytics } from '@/lib/api';
+import { fetchAnalytics, generateAnalyticsSummary } from '@/lib/api';
 import { formatArabicDate, getDeltaInfo, PRIORITY_MAP, SEVERITY_MAP, STATUS_MAP } from '@/lib/constants';
 import type {
+  AnalyticsAISummaryResponse,
   AnalyticsGroupBy,
   AnalyticsQueryOptions,
   AnalyticsResponse,
   AnalyticsRiskSeverity,
   AnalyticsRiskStatus,
+  AnalyticsSummaryAudience,
 } from '@/types/analytics';
 
 const SEVERITY_COLORS: Record<'critical' | 'high' | 'medium' | 'low', string> = {
@@ -48,6 +50,25 @@ const INSIGHT_STYLES = {
   success: 'bg-green-50 border-green-200 text-green-800',
 } as const;
 
+const AUDIENCE_LABELS: Record<AnalyticsSummaryAudience, string> = {
+  leadership: 'الإدارة التنفيذية',
+  board: 'مجلس الإدارة',
+  ciso: 'مدير الأمن (CISO)',
+};
+
+function buildSummaryQueryHash(query: AnalyticsQueryOptions, audience: AnalyticsSummaryAudience): string {
+  return JSON.stringify({
+    audience,
+    from: query.from || '',
+    to: query.to || '',
+    limit: query.limit ?? 24,
+    groupBy: query.groupBy || 'none',
+    riskSeverity: query.riskSeverity || '',
+    riskStatus: query.riskStatus || '',
+    reportId: query.reportId || '',
+  });
+}
+
 function formatArabicNumber(value: number): string {
   return new Intl.NumberFormat('ar-EG').format(value);
 }
@@ -66,6 +87,11 @@ export default function AnalyticsPage() {
   const [riskSeverity, setRiskSeverity] = useState<AnalyticsRiskSeverity | ''>('');
   const [riskStatus, setRiskStatus] = useState<AnalyticsRiskStatus | ''>('');
   const [reportId, setReportId] = useState('');
+  const [aiAudience, setAiAudience] = useState<AnalyticsSummaryAudience>('leadership');
+  const [aiSummary, setAiSummary] = useState<AnalyticsAISummaryResponse | null>(null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState('');
+  const [copyStatus, setCopyStatus] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -106,6 +132,9 @@ export default function AnalyticsPage() {
     ? getDeltaInfo(analytics.summary.avgCompliance, analytics.summary.avgPrevCompliance, false)
     : null;
 
+  const activeSummaryQueryHash = useMemo(() => buildSummaryQueryHash(query, aiAudience), [query, aiAudience]);
+  const isSummaryStale = !!aiSummary && aiSummary.queryHash !== activeSummaryQueryHash;
+
   function applyFilters() {
     const next: AnalyticsQueryOptions = {
       limit,
@@ -128,6 +157,38 @@ export default function AnalyticsPage() {
     setRiskStatus('');
     setReportId('');
     setQuery({ limit: 24 });
+  }
+
+  async function handleGenerateSummary(forceRefresh = false) {
+    setAiSummaryLoading(true);
+    setAiSummaryError('');
+    setCopyStatus('');
+
+    try {
+      const summary = await generateAnalyticsSummary({
+        ...query,
+        audience: aiAudience,
+        forceRefresh,
+      });
+      setAiSummary(summary);
+    } catch (e: unknown) {
+      setAiSummaryError((e as Error).message || 'فشل توليد الملخص الذكي');
+    } finally {
+      setAiSummaryLoading(false);
+    }
+  }
+
+  async function handleCopySummary() {
+    if (!aiSummary?.content) return;
+
+    try {
+      await navigator.clipboard.writeText(aiSummary.content);
+      setCopyStatus('تم النسخ');
+      window.setTimeout(() => setCopyStatus(''), 1400);
+    } catch {
+      setCopyStatus('تعذر النسخ');
+      window.setTimeout(() => setCopyStatus(''), 1400);
+    }
   }
 
   function openReport(reportIdValue: string) {
@@ -252,6 +313,109 @@ export default function AnalyticsPage() {
               إعادة ضبط
             </button>
           </div>
+        </section>
+
+        <section className="bg-white rounded-2xl border border-border/60 p-5 shadow-md">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-[900] text-navy-900">الملخص التنفيذي الذكي</h2>
+              <p className="text-xs text-text-muted mt-1">تحليل استشاري مبني على نفس بيانات لوحة التحليلات الحالية.</p>
+              <span className="inline-flex mt-2 bg-blue-50 text-blue-900 border border-blue-200 rounded-lg px-2.5 py-1 text-[11px] font-bold">
+                اقتراحات فقط - بدون أي تنفيذ تلقائي
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={aiAudience}
+                onChange={(event) => setAiAudience(event.target.value as AnalyticsSummaryAudience)}
+                className="border border-border rounded-xl px-3 py-2 text-sm bg-white min-w-[170px]"
+              >
+                <option value="leadership">الإدارة التنفيذية</option>
+                <option value="board">مجلس الإدارة</option>
+                <option value="ciso">مدير الأمن (CISO)</option>
+              </select>
+
+              <button
+                onClick={() => { void handleGenerateSummary(false); }}
+                disabled={aiSummaryLoading || loading}
+                className="bg-gradient-to-l from-purple-800 to-purple-900 text-white rounded-xl px-4 py-2 text-sm font-bold border-none cursor-pointer disabled:opacity-60"
+              >
+                {aiSummaryLoading ? 'جاري التوليد...' : 'توليد الملخص'}
+              </button>
+
+              <button
+                onClick={() => { void handleGenerateSummary(true); }}
+                disabled={aiSummaryLoading || loading || !aiSummary}
+                className="bg-white text-navy-900 rounded-xl px-4 py-2 text-sm font-bold border border-border cursor-pointer disabled:opacity-60"
+              >
+                تحديث
+              </button>
+            </div>
+          </div>
+
+          {aiSummaryError ? (
+            <div className="mt-4 bg-danger-100 border border-red-200 text-danger-700 rounded-xl px-3 py-2 text-sm font-bold">
+              {aiSummaryError}
+            </div>
+          ) : null}
+
+          {!aiSummary && !aiSummaryLoading && !aiSummaryError ? (
+            <div className="mt-4 bg-surface rounded-xl border border-border/50 p-4 text-sm text-text-muted">
+              اختر الجمهور ثم اضغط &quot;توليد الملخص&quot; للحصول على قراءة تنفيذية للبيانات الحالية.
+            </div>
+          ) : null}
+
+          {aiSummaryLoading ? (
+            <div className="mt-4 bg-surface rounded-xl border border-border/50 p-6 text-center">
+              <div className="text-3xl animate-spin inline-block">⚙️</div>
+              <p className="text-sm text-text-muted mt-2">جاري إنتاج الملخص الذكي...</p>
+            </div>
+          ) : null}
+
+          {aiSummary && !aiSummaryLoading ? (
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="bg-purple-50 border border-purple-200 text-purple-900 rounded-lg px-2 py-1 font-bold">{AUDIENCE_LABELS[aiSummary.audience]}</span>
+                <span className="bg-blue-50 border border-blue-200 text-blue-900 rounded-lg px-2 py-1 font-bold">{aiSummary.provider} / {aiSummary.model}</span>
+                <span className="bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-2 py-1 font-bold">
+                  {aiSummary.cacheHit ? 'من الذاكرة المؤقتة' : 'توليد مباشر'}
+                </span>
+                <span className="bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-2 py-1 font-bold">
+                  {new Date(aiSummary.generatedAt).toLocaleString('ar-SA')}
+                </span>
+              </div>
+
+              {isSummaryStale ? (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-3 py-2 text-xs font-bold">
+                  الملخص الحالي مبني على مرشحات سابقة. اضغط &quot;تحديث&quot; لمزامنته مع المرشحات الحالية.
+                </div>
+              ) : null}
+
+              <div className="rounded-xl border border-border/50 bg-surface p-4 text-sm leading-8 text-text-secondary whitespace-pre-wrap">
+                {aiSummary.content}
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="bg-white border border-border rounded-lg px-3 py-2 text-xs text-text-secondary">تقارير: <span className="font-bold text-navy-900">{formatArabicNumber(aiSummary.keyMetrics.totalReports)}</span></div>
+                <div className="bg-white border border-border rounded-lg px-3 py-2 text-xs text-text-secondary">درجة الأمن: <span className="font-bold text-navy-900">{formatArabicNumber(aiSummary.keyMetrics.avgSecurityScore)}</span></div>
+                <div className="bg-white border border-border rounded-lg px-3 py-2 text-xs text-text-secondary">مخاطر مفتوحة: <span className="font-bold text-danger-700">{formatArabicNumber(aiSummary.keyMetrics.openRisks)}</span></div>
+                <div className="bg-white border border-border rounded-lg px-3 py-2 text-xs text-text-secondary">مخاطر حرجة: <span className="font-bold text-danger-700">{formatArabicNumber(aiSummary.keyMetrics.criticalRisks)}</span></div>
+                <div className="bg-white border border-border rounded-lg px-3 py-2 text-xs text-text-secondary">تغطية ISO: <span className="font-bold text-navy-900">{formatArabicNumber(aiSummary.keyMetrics.overallIsoCoverage)}%</span></div>
+                <div className="bg-white border border-border rounded-lg px-3 py-2 text-xs text-text-secondary">تغير الامتثال: <span className="font-bold text-navy-900">{formatArabicNumber(aiSummary.keyMetrics.complianceDelta)}</span></div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { void handleCopySummary(); }}
+                  className="bg-white text-navy-900 rounded-xl px-3 py-1.5 text-xs font-bold border border-border cursor-pointer"
+                >
+                  نسخ الملخص
+                </button>
+                {copyStatus ? <span className="text-xs text-text-muted">{copyStatus}</span> : null}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {loading ? (

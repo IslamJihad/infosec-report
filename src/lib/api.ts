@@ -6,7 +6,12 @@ import type {
   ReportData,
   ReviewType,
 } from '@/types/report';
-import type { AnalyticsQueryOptions, AnalyticsResponse } from '@/types/analytics';
+import type {
+  AnalyticsAISummaryRequest,
+  AnalyticsAISummaryResponse,
+  AnalyticsQueryOptions,
+  AnalyticsResponse,
+} from '@/types/analytics';
 
 // isoControls is stored as a JSON string in SQLite; parse it back to an array on every read.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -151,5 +156,22 @@ export async function fetchAnalytics(options: AnalyticsQueryOptions = {}): Promi
   const query = params.toString();
   const res = await fetch(`/api/analytics${query ? `?${query}` : ''}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('فشل في تحميل بيانات التحليلات');
+  return res.json();
+}
+
+export async function generateAnalyticsSummary(
+  payload: AnalyticsAISummaryRequest
+): Promise<AnalyticsAISummaryResponse> {
+  const res = await fetch('/api/ai/analytics-summary', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'فشل توليد الملخص الذكي' }));
+    throw new Error(err.error || 'فشل توليد الملخص الذكي');
+  }
+
   return res.json();
 }
