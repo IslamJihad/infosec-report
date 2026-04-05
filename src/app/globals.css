@@ -93,6 +93,11 @@
 }
 
 @media print {
+  :root {
+    --report-a4-print-width: 210mm;
+    --report-a4-print-height: 296mm;
+  }
+
   html,
   body {
     height: auto;
@@ -117,13 +122,14 @@
   }
   
   .report-page {
-    width: var(--report-a4-width) !important;
-    min-width: var(--report-a4-width) !important;
-    max-width: var(--report-a4-width) !important;
+    width: var(--report-a4-print-width) !important;
+    min-width: var(--report-a4-print-width) !important;
+    max-width: var(--report-a4-print-width) !important;
     background: #fff !important;
     box-shadow: none !important;
     margin: 0 auto !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .report-page,
@@ -141,13 +147,25 @@
   }
 
   .report-toc {
-    min-height: var(--report-a4-height) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
     page-break-before: auto !important;
-    page-break-after: always !important;
+    page-break-after: auto !important;
+    break-inside: auto !important;
+    display: block !important;
   }
 
   .report-toc-body {
     overflow: visible !important;
+    display: block !important;
+    flex: none !important;
+  }
+
+  .report-toc-legend {
+    margin-top: 16px !important;
   }
 
   .report-table-wrapper {
@@ -177,14 +195,23 @@
   }
   
   .report-cover {
-    page-break-after: always !important;
-    height: var(--report-a4-height) !important;
-    max-height: var(--report-a4-height) !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+    height: auto !important;
+    min-height: var(--report-a4-print-height) !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    break-inside: avoid-page !important;
     overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+  }
+
+  .report-cover + .report-toc {
+    page-break-before: always !important;
+    break-before: page !important;
   }
 
   .report-footer {

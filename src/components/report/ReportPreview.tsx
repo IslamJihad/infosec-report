@@ -361,7 +361,7 @@ export default function ReportPreview({ report }: Props) {
 
 {/* ═══════ TOC ═══════ */}
 
-      <div className="report-toc" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '24px 44px', minHeight: '1123px', display: 'flex', flexDirection: 'column', pageBreakAfter: 'always' }}>
+      <div className="report-toc" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '24px 44px', minHeight: '1123px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
 
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: '#94a3b8', marginBottom: 16, textTransform: 'uppercase' }}>فهرس التقرير — الحالة الراهنة</div>
 
@@ -395,7 +395,7 @@ export default function ReportPreview({ report }: Props) {
         </table>
         </div>
 
-        <div style={{ display: 'flex', gap: 20, marginTop: 'auto', fontSize: 9, color: '#94a3b8', paddingTop: 16 }}>
+        <div className="report-toc-legend" style={{ display: 'flex', gap: 20, marginTop: 'auto', fontSize: 9, color: '#94a3b8', paddingTop: 16 }}>
 
           <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#dc2626', marginRight: 4 }} /> يستوجب تدخلاً فورياً</span>
 
@@ -461,18 +461,6 @@ export default function ReportPreview({ report }: Props) {
                 color: '#475569',
                 gap: 8,
               })}
-            </div>
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ background: '#f8fafc', padding: '8px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 800, color: '#1e293b' }}>
-                معادلة الحساب التلقائي للدرجة العالمية
-              </div>
-              <div style={{ padding: '10px 12px', fontSize: 9, color: '#475569', lineHeight: 1.9, direction: 'ltr', textAlign: 'left' }}>
-                <div style={{ marginBottom: 6 }}>{scoreBreakdown.equation}</div>
-                {domainResults.map((d) => (
-                  <div key={d.id}>{d.nameEn} = {d.domainScore}/100 × {Math.round(d.domainWeight * 100)}% = {d.domainContribution}{d.usedNeutralDefault ? ' [neutral]' : ''}</div>
-                ))}
-                <div style={{ marginTop: 6, fontWeight: 800, color: '#1e293b' }}>SPS = round({scoreBreakdown.rawScore}) = {scoreBreakdown.finalScore}</div>
-              </div>
             </div>
           </div>
         </div>
