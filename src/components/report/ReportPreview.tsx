@@ -109,10 +109,7 @@ export default function ReportPreview({ report }: Props) {
     : calculateGlobalSecurityScore(r);
   const finalScore = scoreResult.securityScore;
   const scoreBreakdown = scoreResult.scoreBreakdown;
-  const governance = scoreBreakdown.governanceDetails;
-  const risk = scoreBreakdown.riskPenaltyDetails;
-  const efficiency = scoreBreakdown.efficiencyBonusDetails;
-  const sla = scoreBreakdown.slaPenaltyDetails;
+  const { componentScores, weightedContributions, riskPostureDetails, operationalDetails } = scoreBreakdown;
 
   const scoreColor = (s: number) => s >= 75 ? '#16a34a' : s >= 50 ? '#d97706' : '#dc2626';
   const ragColor = (rag: string) => rag === 'r' ? '#dc2626' : rag === 'a' ? '#f59e0b' : rag === 'g' ? '#22c55e' : '#94a3b8';
@@ -316,14 +313,12 @@ export default function ReportPreview({ report }: Props) {
               </div>
               <div style={{ padding: '10px 12px', fontSize: 9, color: '#475569', lineHeight: 1.9 }}>
                 <div style={{ marginBottom: 6 }}>{scoreBreakdown.equation}</div>
-                <div>GovernanceBase = {governance.complianceWeighted} + {governance.maturityWeighted} + {governance.assetProtectionWeighted} = {scoreBreakdown.governanceBase}</div>
-                <div>RiskPenalty(before cap) = {risk.criticalContribution} + {risk.openContribution} = {risk.beforeCap}</div>
-                <div>RiskPenalty = min({risk.capValue}, {risk.beforeCap}) = {scoreBreakdown.riskPenalty} {risk.capApplied ? '(cap applied)' : ''}</div>
-                <div>EfficiencyBonus(before cap) = {scoreBreakdown.components.avgEfficiencyAchievement}×{efficiency.multiplier} = {efficiency.beforeCap}</div>
-                <div>EfficiencyBonus = min({efficiency.capValue}, {efficiency.beforeCap}) = {scoreBreakdown.efficiencyBonus} {efficiency.capApplied ? '(cap applied)' : ''}</div>
-                <div>SlaPenalty(before cap) = {sla.overflowRatio}×{sla.capValue} = {sla.beforeCap}</div>
-                <div>SlaPenalty = {scoreBreakdown.slaPenalty} (MTTC {scoreBreakdown.components.slaMTTC} / Target {scoreBreakdown.components.slaMTTCTarget}, {sla.wasTriggered ? 'triggered' : 'not triggered'})</div>
-                <div style={{ marginTop: 6, fontWeight: 800, color: '#1e293b' }}>FinalScore = clamp(round({scoreBreakdown.rawScore}), 0, 100) = {scoreBreakdown.finalScore}</div>
+                <div>Compliance = {componentScores.compliance}/100 × 0.25 = {weightedContributions.compliance}</div>
+                <div>Maturity = {componentScores.maturity}/100 × 0.20 = {weightedContributions.maturity}</div>
+                <div>AssetProtection = {componentScores.assetProtection}/100 × 0.15 = {weightedContributions.assetProtection}</div>
+                <div>RiskPosture = {componentScores.riskPosture}/100 × 0.25 = {weightedContributions.riskPosture} (deduction: {riskPostureDetails.totalDeduction}, open: {riskPostureDetails.openRisks}, in-progress: {riskPostureDetails.inProgressRisks}, closed: {riskPostureDetails.closedRisks})</div>
+                <div>Operational = {componentScores.operational}/100 × 0.15 = {weightedContributions.operational} (KPI: {operationalDetails.kpiAchievement}%, SLA: {operationalDetails.slaCompliance}%)</div>
+                <div style={{ marginTop: 6, fontWeight: 800, color: '#1e293b' }}>SPI = round({scoreBreakdown.rawScore}) = {scoreBreakdown.finalScore}</div>
               </div>
             </div>
           </div>

@@ -11,7 +11,7 @@ export interface AnalyticsSummary {
 }
 
 export type AnalyticsRiskSeverity = 'critical' | 'high' | 'medium' | 'low';
-export type AnalyticsRiskStatus = 'open' | 'inprogress' | 'closed';
+export type AnalyticsRiskStatus = 'open' | 'inprogress' | 'accepted' | 'closed';
 export type AnalyticsGroupBy = 'none' | 'severity' | 'status' | 'system' | 'organization';
 
 export interface AnalyticsInsight {

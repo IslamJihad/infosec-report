@@ -70,43 +70,58 @@ export interface ReportData {
 }
 
 export interface ScoreBreakdown {
-  formulaVersion: 'v1';
+  formulaVersion: 'v2';
   equation: string;
-  components: {
-    kpiCompliance: number;
-    avgMaturity: number;
-    avgAssetProtection: number;
-    criticalRisks: number;
-    openRisks: number;
-    totalRisks: number;
-    avgEfficiencyAchievement: number;
-    slaMTTC: number;
-    slaMTTCTarget: number;
-  };
-  governanceBase: number;
-  riskPenalty: number;
-  efficiencyBonus: number;
-  slaPenalty: number;
-  rawScore: number;
   finalScore: number;
-  governanceDetails: {
-    complianceWeighted: number;
-    maturityWeighted: number;
-    assetProtectionWeighted: number;
-    beforeRounding: number;
+  rawScore: number;
+
+  weights: {
+    compliance: number;
+    maturity: number;
+    assetProtection: number;
+    riskPosture: number;
+    operational: number;
   };
-  riskPenaltyDetails: {
-    criticalThreshold: number;
-    denominator: number;
-    criticalRatio: number;
-    openRatio: number;
-    criticalContribution: number;
-    openContribution: number;
-    beforeCap: number;
-    capValue: number;
-    capApplied: boolean;
+
+  complianceDetails: {
+    inputValue: number;
+    score: number;
   };
-  efficiencyBonusDetails: {
+
+  maturityDetails: {
+    domainCount: number;
+    normalizedScores: number[];
+    usedNeutralDefault: boolean;
+    score: number;
+  };
+
+  assetProtectionDetails: {
+    assetCount: number;
+    protectionLevels: number[];
+    usedNeutralDefault: boolean;
+    score: number;
+  };
+
+  riskPostureDetails: {
+    totalRisks: number;
+    openRisks: number;
+    inProgressRisks: number;
+    closedRisks: number;
+    totalDeduction: number;
+    perRiskDeductions: Array<{
+      index: number;
+      probability: number;
+      impact: number;
+      riskScore: number;
+      band: 'critical' | 'high' | 'medium' | 'low';
+      status: string;
+      deduction: number;
+    }>;
+    score: number;
+  };
+
+  operationalDetails: {
+    kpiAchievement: number;
     kpiCount: number;
     normalizedKpis: Array<{
       id: string;
@@ -116,19 +131,28 @@ export interface ScoreBreakdown {
       lowerBetter: boolean;
       normalized: number;
     }>;
-    multiplier: number;
-    beforeCap: number;
-    capValue: number;
-    capApplied: boolean;
+    kpiUsedNeutralDefault: boolean;
+    slaCompliance: number;
+    slaMTTC: number;
+    slaMTTCTarget: number;
+    slaUsedNeutralDefault: boolean;
+    score: number;
   };
-  slaPenaltyDetails: {
-    wasTriggered: boolean;
-    defaultTargetApplied: boolean;
-    deltaOverTarget: number;
-    overflowRatio: number;
-    beforeCap: number;
-    capValue: number;
-    capApplied: boolean;
+
+  componentScores: {
+    compliance: number;
+    maturity: number;
+    assetProtection: number;
+    riskPosture: number;
+    operational: number;
+  };
+
+  weightedContributions: {
+    compliance: number;
+    maturity: number;
+    assetProtection: number;
+    riskPosture: number;
+    operational: number;
   };
 }
 
@@ -150,7 +174,7 @@ export interface Risk {
   description: string;
   system: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
-  status: 'open' | 'inprogress' | 'closed';
+  status: 'open' | 'inprogress' | 'accepted' | 'closed';
   probability: number;
   impact: number;
   worstCase: string;

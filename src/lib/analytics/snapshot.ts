@@ -37,7 +37,7 @@ function toSeverity(value: string): AnalyticsRiskSeverity {
 }
 
 function toRiskStatus(value: string): AnalyticsRiskStatus {
-  if (value === 'open' || value === 'inprogress' || value === 'closed') {
+  if (value === 'open' || value === 'inprogress' || value === 'accepted' || value === 'closed') {
     return value;
   }
   return 'open';
@@ -51,7 +51,7 @@ function parseRiskSeverity(raw: unknown): AnalyticsRiskSeverity | undefined {
 }
 
 function parseRiskStatus(raw: unknown): AnalyticsRiskStatus | undefined {
-  if (raw === 'open' || raw === 'inprogress' || raw === 'closed') {
+  if (raw === 'open' || raw === 'inprogress' || raw === 'accepted' || raw === 'closed') {
     return raw;
   }
   return undefined;

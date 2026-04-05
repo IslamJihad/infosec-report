@@ -4,10 +4,15 @@ import { useReportStore } from '@/store/reportStore';
 import { NAV_ITEMS } from '@/lib/constants';
 import Link from 'next/link';
 
-export default function Sidebar() {
-  const { currentStep, setStep, report } = useReportStore();
+interface SidebarProps {
+  currentStep: number;
+  onStepChange: (step: number) => void;
+}
 
-  const progress = Math.round(((currentStep + 1) / 9) * 100);
+export default function Sidebar({ currentStep, onStepChange }: SidebarProps) {
+  const { report } = useReportStore();
+
+  const progress = Math.round(((currentStep + 1) / NAV_ITEMS.length) * 100);
 
   return (
     <aside className="w-[280px] bg-gradient-to-b from-navy-950 via-navy-950 to-[#060e1f] text-white flex-shrink-0 fixed h-screen overflow-y-auto flex flex-col z-50 shadow-2xl">
@@ -36,7 +41,7 @@ export default function Sidebar() {
         {NAV_ITEMS.map((item) => (
           <button
             key={item.key}
-            onClick={() => setStep(item.key)}
+            onClick={() => onStepChange(item.key)}
             className={`flex items-center gap-3 w-full py-2.5 px-3 border-none rounded-xl cursor-pointer text-sm text-right transition-all duration-200 mb-1 ${
               currentStep === item.key
                 ? 'bg-white/[0.12] text-white font-bold border-r-[3px] border-r-navy-600 shadow-sm'

@@ -287,6 +287,7 @@ export default function AnalyticsPage() {
                 <option value="">كل الحالات</option>
                 <option value="open">مفتوحة</option>
                 <option value="inprogress">قيد المعالجة</option>
+                <option value="accepted">مقبولة</option>
                 <option value="closed">مغلقة</option>
               </select>
             </div>

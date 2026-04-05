@@ -8,6 +8,7 @@ export const SEVERITY_MAP: Record<string, { label: string; className: string; bg
 export const STATUS_MAP: Record<string, { label: string; bgClass: string }> = {
   open: { label: 'مفتوحة', bgClass: 'bg-danger-100 text-danger-500' },
   inprogress: { label: 'قيد المعالجة', bgClass: 'bg-warning-100 text-warning-500' },
+  accepted: { label: 'مقبولة', bgClass: 'bg-blue-100 text-blue-700' },
   closed: { label: 'مغلقة', bgClass: 'bg-success-100 text-success-700' },
 };
 

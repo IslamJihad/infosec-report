@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useReportStore } from '@/store/reportStore';
 import { fetchReport, updateReport } from '@/lib/api';
 import { buildReportSearchIndex, searchReportIndex, type ReportSearchResult } from '@/lib/search/reportSearch';
@@ -31,9 +31,23 @@ const FORM_SECTIONS = [
   MaturityForm,           // 8: مستوى النضج الأمني
 ];
 
+const MAX_STEP = FORM_SECTIONS.length - 1;
+
+function clampStep(step: number): number {
+  return Math.max(0, Math.min(MAX_STEP, step));
+}
+
+function parseStepParam(value: string | null): number | null {
+  if (value == null) return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return null;
+  return clampStep(parsed);
+}
+
 export default function ReportEditorPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id as string;
   const [loading, setLoading] = useState(true);
   const [showAI, setShowAI] = useState(false);
@@ -50,6 +64,30 @@ export default function ReportEditorPage() {
   }, [report]);
 
   const searchResults = useMemo(() => searchReportIndex(searchIndex, searchQuery), [searchIndex, searchQuery]);
+
+  const syncStepToUrl = useCallback(
+    (step: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('step', String(step));
+
+      router.replace(`/report/${id}?${params.toString()}`, { scroll: false });
+    },
+    [id, router, searchParams],
+  );
+
+  const navigateToStep = useCallback(
+    (step: number) => {
+      const normalizedStep = clampStep(step);
+      if (normalizedStep !== currentStep) {
+        setStep(normalizedStep);
+      }
+
+      if (parseStepParam(searchParams.get('step')) !== normalizedStep) {
+        syncStepToUrl(normalizedStep);
+      }
+    },
+    [currentStep, searchParams, setStep, syncStepToUrl],
+  );
 
   const highlightTarget = useCallback((targetId: string) => {
     const target = document.getElementById(targetId);
@@ -68,13 +106,28 @@ export default function ReportEditorPage() {
       setSearchOpen(false);
 
       if (currentStep !== result.sectionStep) {
-        setStep(result.sectionStep);
+        navigateToStep(result.sectionStep);
       }
 
       setPendingTargetId(result.targetId);
     },
-    [currentStep, setStep],
+    [currentStep, navigateToStep],
   );
+
+  useEffect(() => {
+    const urlStep = parseStepParam(searchParams.get('step'));
+
+    if (urlStep === null) {
+      if (currentStep !== 0) {
+        setStep(0);
+      }
+      return;
+    }
+
+    if (urlStep !== currentStep) {
+      setStep(urlStep);
+    }
+  }, [currentStep, searchParams, setStep]);
 
   // Load report
   useEffect(() => {
@@ -159,9 +212,11 @@ export default function ReportEditorPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-surface to-[#eef1f8] flex" dir="rtl">
-      <Sidebar />
+      <Sidebar currentStep={currentStep} onStepChange={navigateToStep} />
       <div className="flex-1 mr-[280px] flex flex-col min-h-screen">
         <TopBar
+          currentStep={currentStep}
+          onStepChange={navigateToStep}
           onPreview={() => {
             void saveThenNavigate(`/report/${id}/preview`);
           }}

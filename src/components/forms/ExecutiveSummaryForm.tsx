@@ -14,10 +14,7 @@ export default function ExecutiveSummaryForm() {
   const scoreColor = getScoreColorClass(report.securityScore);
   const hasPercentile = typeof report.scorePercentile === 'number';
   const scoreBreakdown = report.scoreBreakdown ?? calculateGlobalSecurityScore(report).scoreBreakdown;
-  const governance = scoreBreakdown.governanceDetails;
-  const risk = scoreBreakdown.riskPenaltyDetails;
-  const efficiency = scoreBreakdown.efficiencyBonusDetails;
-  const sla = scoreBreakdown.slaPenaltyDetails;
+  const { complianceDetails, maturityDetails, assetProtectionDetails, riskPostureDetails, operationalDetails, componentScores, weightedContributions } = scoreBreakdown;
 
   return (
     <div id="search-editor-section-executive" className="animate-fadeIn">
@@ -68,7 +65,7 @@ export default function ExecutiveSummaryForm() {
                 شرح مبسط: كيف انحسبت الدرجة؟
               </button>
               <p className="text-[11px] leading-5 text-text-muted">
-                Score = clamp(round((0.40×Compliance + 0.35×Maturity + 0.25×Assets) - RiskPenalty + EfficiencyBonus - SlaPenalty), 0, 100)
+                SPI = clamp(round(0.25×Compliance + 0.20×Maturity + 0.15×AssetProtection + 0.25×RiskPosture + 0.15×Operational), 0, 100)
               </p>
             </div>
           </div>
@@ -108,9 +105,9 @@ export default function ExecutiveSummaryForm() {
 
             <div className="p-5 space-y-4 text-sm text-text-primary leading-7">
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                <div className="font-bold text-navy-900">المعادلة النهائية</div>
+                <div className="font-bold text-navy-900">المعادلة النهائية (SPI v2)</div>
                 <div className="text-xs text-text-muted mt-1 break-words">
-                  Score = clamp(round((0.40×Compliance + 0.35×Maturity + 0.25×Assets) - RiskPenalty + EfficiencyBonus - SlaPenalty), 0, 100)
+                  SPI = clamp(round(0.25×Compliance + 0.20×Maturity + 0.15×AssetProtection + 0.25×RiskPosture + 0.15×Operational), 0, 100)
                 </div>
                 <div className="mt-2 text-sm">
                   النتيجة الحالية: <span className="font-[900] text-navy-900">{scoreBreakdown.finalScore}/100</span>
@@ -118,51 +115,58 @@ export default function ExecutiveSummaryForm() {
               </div>
 
               <div className="rounded-xl border border-border p-4">
-                <div className="font-bold text-navy-900 mb-1">1) الجزء الاساسي (Governance Base)</div>
-                <div className="text-xs text-text-muted">هذا هو الجزء الذي يرفع الدرجة عندما الامتثال والنضج وحماية الاصول يكونوا جيدين.</div>
-                <div className="mt-2">امتثال ISO: <span className="font-bold">{scoreBreakdown.components.kpiCompliance}</span></div>
-                <div>متوسط النضج: <span className="font-bold">{scoreBreakdown.components.avgMaturity}</span></div>
-                <div>متوسط حماية الاصول: <span className="font-bold">{scoreBreakdown.components.avgAssetProtection}</span></div>
-                <div className="mt-2">0.40×Compliance = <span className="font-bold">{governance.complianceWeighted}</span></div>
-                <div>0.35×AvgMaturity = <span className="font-bold">{governance.maturityWeighted}</span></div>
-                <div>0.25×AvgAssetProtection = <span className="font-bold">{governance.assetProtectionWeighted}</span></div>
-                <div className="mt-2">ناتج الجزء الاساسي = <span className="font-[900] text-navy-900">{governance.beforeRounding}</span></div>
+                <div className="font-bold text-navy-900 mb-1">1) الامتثال (Compliance) — وزن 25%</div>
+                <div className="text-xs text-text-muted">نسبة الامتثال لمعايير ISO 27001 مباشرة.</div>
+                <div className="mt-2">القيمة المدخلة: <span className="font-bold">{complianceDetails.inputValue}%</span></div>
+                <div className="mt-1">النتيجة = <span className="font-[900] text-navy-900">{complianceDetails.score}/100</span></div>
+                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.25 × {complianceDetails.score} = <span className="font-bold">{weightedContributions.compliance}</span></div>
+              </div>
+
+              <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
+                <div className="font-bold text-violet-900 mb-1">2) النضج الأمني (Maturity) — وزن 20%</div>
+                <div className="text-xs text-text-muted">متوسط درجات النضج عبر جميع المجالات الأمنية (مقياس 1-5 يُطبّع إلى 0-100).</div>
+                <div className="mt-2">عدد المجالات: <span className="font-bold">{maturityDetails.domainCount}</span></div>
+                {maturityDetails.usedNeutralDefault && (
+                  <div className="text-xs text-amber-700 mt-1">لا توجد مجالات مدخلة — تم استخدام القيمة المحايدة (50)</div>
+                )}
+                <div className="mt-1">النتيجة = <span className="font-[900] text-violet-900">{maturityDetails.score}/100</span></div>
+                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.20 × {maturityDetails.score} = <span className="font-bold">{weightedContributions.maturity}</span></div>
+              </div>
+
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+                <div className="font-bold text-cyan-900 mb-1">3) حماية الأصول (Asset Protection) — وزن 15%</div>
+                <div className="text-xs text-text-muted">متوسط مستوى الحماية لجميع الأصول الحيوية.</div>
+                <div className="mt-2">عدد الأصول: <span className="font-bold">{assetProtectionDetails.assetCount}</span></div>
+                {assetProtectionDetails.usedNeutralDefault && (
+                  <div className="text-xs text-amber-700 mt-1">لا توجد أصول مدخلة — تم استخدام القيمة المحايدة (50)</div>
+                )}
+                <div className="mt-1">النتيجة = <span className="font-[900] text-cyan-900">{assetProtectionDetails.score}/100</span></div>
+                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.15 × {assetProtectionDetails.score} = <span className="font-bold">{weightedContributions.assetProtection}</span></div>
               </div>
 
               <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                <div className="font-bold text-danger-500 mb-1">2) خصم المخاطر (Risk Penalty)</div>
-                <div className="text-xs text-text-muted">كلما زادت المخاطر الحرجة والمفتوحة، ينزل السكور.</div>
-                <div className="mt-2">عدد المخاطر الحرجة: <span className="font-bold">{scoreBreakdown.components.criticalRisks}</span></div>
-                <div>عدد المخاطر المفتوحة: <span className="font-bold">{scoreBreakdown.components.openRisks}</span></div>
-                <div>عدد المخاطر الكلي: <span className="font-bold">{scoreBreakdown.components.totalRisks}</span></div>
-                <div>المقام = max(TotalRisks, 1) = <span className="font-bold">{risk.denominator}</span></div>
-                <div>Critical Ratio = <span className="font-bold">{risk.criticalRatio}</span> و Open Ratio = <span className="font-bold">{risk.openRatio}</span></div>
-                <div>Critical Contribution = <span className="font-bold">{risk.criticalContribution}</span></div>
-                <div>Open Contribution = <span className="font-bold">{risk.openContribution}</span></div>
-                <div>قبل السقف = <span className="font-bold">{risk.beforeCap}</span></div>
-                <div className="mt-2">قيمة الخصم = min({risk.capValue}, {risk.beforeCap}) = <span className="font-[900] text-danger-500">-{scoreBreakdown.riskPenalty}</span></div>
-                <div className={`text-xs mt-1 font-bold ${risk.capApplied ? 'text-danger-500' : 'text-success-700'}`}>
-                  {risk.capApplied ? 'تم تطبيق سقف الخصم.' : 'لم يتم تطبيق سقف الخصم.'}
-                </div>
+                <div className="font-bold text-danger-500 mb-1">4) وضع المخاطر (Risk Posture) — وزن 25%</div>
+                <div className="text-xs text-text-muted">يبدأ من 100 ويُخصم بناء على شدة وحالة كل خطر. المخاطر المغلقة لا تخصم. المخاطر قيد المعالجة تخصم نصف الخصم.</div>
+                <div className="mt-2">إجمالي المخاطر: <span className="font-bold">{riskPostureDetails.totalRisks}</span> (مفتوحة: {riskPostureDetails.openRisks} | قيد المعالجة: {riskPostureDetails.inProgressRisks} | مغلقة: {riskPostureDetails.closedRisks})</div>
+                <div>إجمالي الخصم: <span className="font-bold">{riskPostureDetails.totalDeduction}</span></div>
+                <div className="mt-1">النتيجة = max(0, 100 - {riskPostureDetails.totalDeduction}) = <span className="font-[900] text-danger-500">{riskPostureDetails.score}/100</span></div>
+                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.25 × {riskPostureDetails.score} = <span className="font-bold">{weightedContributions.riskPosture}</span></div>
               </div>
 
               <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-                <div className="font-bold text-success-700 mb-1">3) مكافأة الكفاءة (Efficiency Bonus)</div>
-                <div className="text-xs text-text-muted">لو مؤشرات الكفاءة جيدة، النظام يعطيك نقاط زيادة.</div>
-                <div className="mt-2">متوسط تحقيق مؤشرات الكفاءة: <span className="font-bold">{scoreBreakdown.components.avgEfficiencyAchievement}%</span></div>
-                <div>المعامل = <span className="font-bold">{efficiency.multiplier}</span></div>
-                <div>قبل السقف = <span className="font-bold">{efficiency.beforeCap}</span></div>
-                <div className="mt-2">قيمة المكافأة = min({efficiency.capValue}, {efficiency.beforeCap}) = <span className="font-[900] text-success-700">+{scoreBreakdown.efficiencyBonus}</span></div>
-                <div className={`text-xs mt-1 font-bold ${efficiency.capApplied ? 'text-success-700' : 'text-emerald-700'}`}>
-                  {efficiency.capApplied ? 'تم تطبيق سقف المكافأة.' : 'لم يتم تطبيق سقف المكافأة.'}
-                </div>
-                {efficiency.normalizedKpis.length > 0 && (
+                <div className="font-bold text-success-700 mb-1">5) الكفاءة التشغيلية (Operational) — وزن 15%</div>
+                <div className="text-xs text-text-muted">يجمع بين تحقيق مؤشرات الأداء (70%) وامتثال SLA (30%).</div>
+                <div className="mt-2">تحقيق مؤشرات الأداء: <span className="font-bold">{operationalDetails.kpiAchievement}%</span>{operationalDetails.kpiUsedNeutralDefault ? ' (محايد)' : ''}</div>
+                <div>امتثال SLA: <span className="font-bold">{operationalDetails.slaCompliance}%</span>{operationalDetails.slaUsedNeutralDefault ? ' (محايد)' : ` (MTTC: ${operationalDetails.slaMTTC} / هدف: ${operationalDetails.slaMTTCTarget})`}</div>
+                <div className="mt-1">النتيجة = 0.70×{operationalDetails.kpiAchievement} + 0.30×{operationalDetails.slaCompliance} = <span className="font-[900] text-success-700">{operationalDetails.score}/100</span></div>
+                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.15 × {operationalDetails.score} = <span className="font-bold">{weightedContributions.operational}</span></div>
+                {operationalDetails.normalizedKpis.length > 0 && (
                   <div className="mt-2 rounded-lg border border-green-200 bg-white p-2">
                     <div className="text-xs font-bold text-green-900 mb-1">تفصيل كل KPI (بعد التطبيع)</div>
                     <div className="space-y-1 text-xs">
-                      {efficiency.normalizedKpis.map((kpi, index) => (
+                      {operationalDetails.normalizedKpis.map((kpi, index) => (
                         <div key={`${kpi.id || kpi.title}-${index}`}>
-                          {kpi.title}: {kpi.normalized}% (Actual {kpi.actual} / Target {kpi.target} - {kpi.lowerBetter ? 'الاقل افضل' : 'الاعلى افضل'})
+                          {kpi.title}: {kpi.normalized}% (الفعلي {kpi.actual} / الهدف {kpi.target} - {kpi.lowerBetter ? 'الأقل أفضل' : 'الأعلى أفضل'})
                         </div>
                       ))}
                     </div>
@@ -170,28 +174,14 @@ export default function ExecutiveSummaryForm() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <div className="font-bold text-amber-700 mb-1">4) خصم SLA</div>
-                <div className="text-xs text-text-muted">إذا وقت الاحتواء الفعلي أعلى من الهدف، ينخصم من الدرجة.</div>
-                <div className="mt-2">MTTC الفعلي: <span className="font-bold">{scoreBreakdown.components.slaMTTC}</span></div>
-                <div>MTTC الهدف: <span className="font-bold">{scoreBreakdown.components.slaMTTCTarget}</span></div>
-                {sla.defaultTargetApplied && (
-                  <div className="text-xs text-amber-800">تم استخدام هدف افتراضي 24 ساعة لعدم وجود هدف صالح.</div>
-                )}
-                <div>هل انخصم فعليا؟ <span className="font-bold">{sla.wasTriggered ? 'نعم' : 'لا'}</span></div>
-                <div>الفرق فوق الهدف: <span className="font-bold">{sla.deltaOverTarget}</span></div>
-                <div>نسبة التجاوز: <span className="font-bold">{sla.overflowRatio}</span></div>
-                <div>قبل السقف: <span className="font-bold">{sla.beforeCap}</span></div>
-                <div className="mt-2">قيمة الخصم = <span className="font-[900] text-amber-700">-{scoreBreakdown.slaPenalty}</span></div>
-                <div className={`text-xs mt-1 font-bold ${sla.capApplied ? 'text-amber-700' : 'text-emerald-700'}`}>
-                  {sla.capApplied ? 'تم تطبيق سقف خصم SLA.' : 'لم يتم تطبيق سقف خصم SLA.'}
-                </div>
-              </div>
-
               <div className="rounded-xl border border-navy-200 bg-navy-50 p-4">
-                <div className="font-bold text-navy-900">5) التجميع النهائي</div>
-                <div className="mt-2">قبل التقريب: <span className="font-bold">{scoreBreakdown.rawScore}</span></div>
-                <div>بعد التقريب والحدود 0..100: <span className="font-[900] text-lg text-navy-900">{scoreBreakdown.finalScore}/100</span></div>
+                <div className="font-bold text-navy-900">التجميع النهائي</div>
+                <div className="mt-2">
+                  <div>0.25×{componentScores.compliance} + 0.20×{componentScores.maturity} + 0.15×{componentScores.assetProtection} + 0.25×{componentScores.riskPosture} + 0.15×{componentScores.operational}</div>
+                  <div>= {weightedContributions.compliance} + {weightedContributions.maturity} + {weightedContributions.assetProtection} + {weightedContributions.riskPosture} + {weightedContributions.operational}</div>
+                  <div className="mt-1">= <span className="font-bold">{scoreBreakdown.rawScore}</span></div>
+                </div>
+                <div className="mt-2">النتيجة النهائية: <span className="font-[900] text-lg text-navy-900">{scoreBreakdown.finalScore}/100</span></div>
                 {hasPercentile && (
                   <div className="mt-2">المقارنة مع باقي التقارير: <span className="font-bold">أعلى من {report.scorePercentile}% من التقارير</span></div>
                 )}
@@ -200,7 +190,7 @@ export default function ExecutiveSummaryForm() {
               <div className="rounded-xl border border-border bg-surface p-4">
                 <div className="font-bold text-navy-900 mb-1">المرجعية العلمية والمنهجية</div>
                 <div className="text-xs text-text-muted leading-6 mb-2">
-                  هذا النموذج مبني على مبادئ قياس المخاطر في NIST/ISO ومعيار CVSS لشدة الثغرات، بينما الاوزان الرقمية الحالية هي معايرة داخلية قابلة للمراجعة.
+                  هذا النموذج مبني على مبادئ قياس المخاطر في NIST/ISO ومعيار CVSS لشدة الثغرات، بينما الأوزان الرقمية الحالية هي معايرة داخلية قابلة للمراجعة.
                 </div>
                 <ul className="list-disc pr-5 text-xs text-text-muted space-y-1">
                   <li>

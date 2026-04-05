@@ -32,66 +32,96 @@ export type ScoreInput = {
   slaMTTCTarget?: number | null;
 };
 
+export type RiskSeverityBand = 'critical' | 'high' | 'medium' | 'low';
+
+export interface RiskDeductionRecord {
+  index: number;
+  probability: number;
+  impact: number;
+  riskScore: number;
+  band: RiskSeverityBand;
+  status: string;
+  deduction: number;
+}
+
+export interface NormalizedKpiRecord {
+  id: string;
+  title: string;
+  actual: number;
+  target: number;
+  lowerBetter: boolean;
+  normalized: number;
+}
+
 export interface ScoreBreakdown {
-  formulaVersion: 'v1';
+  formulaVersion: 'v2';
   equation: string;
-  components: {
-    kpiCompliance: number;
-    avgMaturity: number;
-    avgAssetProtection: number;
-    criticalRisks: number;
-    openRisks: number;
+  finalScore: number;
+  rawScore: number;
+
+  weights: {
+    compliance: number;
+    maturity: number;
+    assetProtection: number;
+    riskPosture: number;
+    operational: number;
+  };
+
+  complianceDetails: {
+    inputValue: number;
+    score: number;
+  };
+
+  maturityDetails: {
+    domainCount: number;
+    normalizedScores: number[];
+    usedNeutralDefault: boolean;
+    score: number;
+  };
+
+  assetProtectionDetails: {
+    assetCount: number;
+    protectionLevels: number[];
+    usedNeutralDefault: boolean;
+    score: number;
+  };
+
+  riskPostureDetails: {
     totalRisks: number;
-    avgEfficiencyAchievement: number;
+    openRisks: number;
+    inProgressRisks: number;
+    closedRisks: number;
+    totalDeduction: number;
+    perRiskDeductions: RiskDeductionRecord[];
+    score: number;
+  };
+
+  operationalDetails: {
+    kpiAchievement: number;
+    kpiCount: number;
+    normalizedKpis: NormalizedKpiRecord[];
+    kpiUsedNeutralDefault: boolean;
+    slaCompliance: number;
     slaMTTC: number;
     slaMTTCTarget: number;
+    slaUsedNeutralDefault: boolean;
+    score: number;
   };
-  governanceBase: number;
-  riskPenalty: number;
-  efficiencyBonus: number;
-  slaPenalty: number;
-  rawScore: number;
-  finalScore: number;
-  governanceDetails: {
-    complianceWeighted: number;
-    maturityWeighted: number;
-    assetProtectionWeighted: number;
-    beforeRounding: number;
+
+  componentScores: {
+    compliance: number;
+    maturity: number;
+    assetProtection: number;
+    riskPosture: number;
+    operational: number;
   };
-  riskPenaltyDetails: {
-    criticalThreshold: number;
-    denominator: number;
-    criticalRatio: number;
-    openRatio: number;
-    criticalContribution: number;
-    openContribution: number;
-    beforeCap: number;
-    capValue: number;
-    capApplied: boolean;
-  };
-  efficiencyBonusDetails: {
-    kpiCount: number;
-    normalizedKpis: Array<{
-      id: string;
-      title: string;
-      actual: number;
-      target: number;
-      lowerBetter: boolean;
-      normalized: number;
-    }>;
-    multiplier: number;
-    beforeCap: number;
-    capValue: number;
-    capApplied: boolean;
-  };
-  slaPenaltyDetails: {
-    wasTriggered: boolean;
-    defaultTargetApplied: boolean;
-    deltaOverTarget: number;
-    overflowRatio: number;
-    beforeCap: number;
-    capValue: number;
-    capApplied: boolean;
+
+  weightedContributions: {
+    compliance: number;
+    maturity: number;
+    assetProtection: number;
+    riskPosture: number;
+    operational: number;
   };
 }
 
@@ -99,6 +129,10 @@ export interface ScoreResult {
   securityScore: number;
   scoreBreakdown: ScoreBreakdown;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
 function toNumber(value: unknown, fallback = 0): number {
   const parsed = Number(value);
@@ -119,14 +153,48 @@ function average(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+const NEUTRAL_DEFAULT = 50;
+
+/* ------------------------------------------------------------------ */
+/*  Maturity normalization (v2: 1→0, 5→100)                           */
+/* ------------------------------------------------------------------ */
+
 function normalizeMaturityScore(value: unknown): number {
   const parsed = toNumber(value, 0);
-  // Backward compatibility: some legacy reports still store maturity on a 1..5 scale.
-  if (parsed > 0 && parsed <= 5) return clamp(parsed * 20, 0, 100);
+  if (parsed >= 1 && parsed <= 5) return clamp(((parsed - 1) / 4) * 100, 0, 100);
   return clamp(parsed, 0, 100);
 }
 
-function normalizeEfficiencyKPI(kpi: EfficiencyLike) {
+/* ------------------------------------------------------------------ */
+/*  Risk severity band & deduction                                     */
+/* ------------------------------------------------------------------ */
+
+const RISK_DEDUCTIONS: Record<RiskSeverityBand, { open: number; inprogress: number }> = {
+  critical: { open: 25, inprogress: 12 },
+  high: { open: 15, inprogress: 7 },
+  medium: { open: 8, inprogress: 4 },
+  low: { open: 3, inprogress: 1.5 },
+};
+
+function getRiskBand(riskScore: number): RiskSeverityBand {
+  if (riskScore >= 15) return 'critical';
+  if (riskScore >= 10) return 'high';
+  if (riskScore >= 5) return 'medium';
+  return 'low';
+}
+
+function getRiskDeduction(band: RiskSeverityBand, status: string): number {
+  const normalizedStatus = (status ?? '').toLowerCase().trim();
+  if (normalizedStatus === 'closed') return 0;
+  if (normalizedStatus === 'inprogress') return RISK_DEDUCTIONS[band].inprogress;
+  return RISK_DEDUCTIONS[band].open;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Efficiency KPI normalization (unchanged logic)                     */
+/* ------------------------------------------------------------------ */
+
+function normalizeEfficiencyKPI(kpi: EfficiencyLike): NormalizedKpiRecord {
   const target = Math.max(0, toNumber(kpi.target, 0));
   const val = Math.max(0, toNumber(kpi.val, 0));
   const lowerBetter = Boolean(kpi.lowerBetter);
@@ -156,116 +224,146 @@ function normalizeEfficiencyKPI(kpi: EfficiencyLike) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/*  Main scoring function                                              */
+/* ------------------------------------------------------------------ */
+
 export function calculateGlobalSecurityScore(input: ScoreInput): ScoreResult {
-  const kpiCompliance = clamp(toNumber(input.kpiCompliance, 0), 0, 100);
-  const avgMaturity = clamp(
-    average((input.maturityDomains ?? []).map((domain) => normalizeMaturityScore(domain.score))),
-    0,
-    100,
-  );
-  const avgAssetProtection = clamp(
-    average((input.assets ?? []).map((asset) => clamp(toNumber(asset.protectionLevel, 0), 0, 100))),
-    0,
-    100,
-  );
+  // --- Component 1: Compliance (25%) ---
+  const complianceInput = clamp(toNumber(input.kpiCompliance, 0), 0, 100);
+  const complianceScore = complianceInput;
 
+  // --- Component 2: Maturity (20%) ---
+  const maturityDomains = input.maturityDomains ?? [];
+  const normalizedMaturityScores = maturityDomains.map((d) => normalizeMaturityScore(d.score));
+  const maturityUsedDefault = normalizedMaturityScores.length === 0;
+  const maturityScore = maturityUsedDefault ? NEUTRAL_DEFAULT : clamp(average(normalizedMaturityScores), 0, 100);
+
+  // --- Component 3: Asset Protection (15%) ---
+  const assets = input.assets ?? [];
+  const protectionLevels = assets.map((a) => clamp(toNumber(a.protectionLevel, 0), 0, 100));
+  const assetUsedDefault = protectionLevels.length === 0;
+  const assetProtectionScore = assetUsedDefault ? NEUTRAL_DEFAULT : clamp(average(protectionLevels), 0, 100);
+
+  // --- Component 4: Risk Posture (25%) ---
   const risks = input.risks ?? [];
-  const totalRisks = risks.length;
-  const criticalThreshold = 15;
-  const criticalRisks = risks.filter((risk) => toNumber(risk.probability, 0) * toNumber(risk.impact, 0) >= criticalThreshold).length;
-  const openRisks = risks.filter((risk) => (risk.status ?? '').toLowerCase() !== 'closed').length;
-  const riskDenominator = Math.max(totalRisks, 1);
+  let totalDeduction = 0;
+  let openCount = 0;
+  let inProgressCount = 0;
+  let closedCount = 0;
+  const perRiskDeductions: RiskDeductionRecord[] = [];
 
+  risks.forEach((risk, index) => {
+    const prob = toNumber(risk.probability, 0);
+    const imp = toNumber(risk.impact, 0);
+    const riskScore = prob * imp;
+    const band = getRiskBand(riskScore);
+    const status = (risk.status ?? 'open').toLowerCase().trim();
+    const deduction = getRiskDeduction(band, status);
+
+    if (status === 'closed') closedCount++;
+    else if (status === 'inprogress') inProgressCount++;
+    else openCount++;
+
+    totalDeduction += deduction;
+    perRiskDeductions.push({
+      index,
+      probability: prob,
+      impact: imp,
+      riskScore,
+      band,
+      status,
+      deduction,
+    });
+  });
+
+  const riskPostureScore = risks.length === 0 ? 100 : clamp(Math.max(0, 100 - totalDeduction), 0, 100);
+
+  // --- Component 5: Operational (15%) ---
   const normalizedKpis = (input.efficiencyKPIs ?? []).map(normalizeEfficiencyKPI);
-
-  const avgEfficiencyAchievement = clamp(
-    average(normalizedKpis.map((kpi) => kpi.normalized)),
-    0,
-    100,
-  );
+  const kpiUsedDefault = normalizedKpis.length === 0;
+  const kpiAchievement = kpiUsedDefault ? NEUTRAL_DEFAULT : clamp(average(normalizedKpis.map((k) => k.normalized)), 0, 100);
 
   const slaMTTC = Math.max(0, toNumber(input.slaMTTC, 0));
   const targetInputParsed = Number(input.slaMTTCTarget);
-  const defaultTargetApplied = !Number.isFinite(targetInputParsed);
-  const slaMTTCTarget = Math.max(1, defaultTargetApplied ? 24 : targetInputParsed);
+  const slaUsedDefault = !Number.isFinite(targetInputParsed) && slaMTTC === 0;
+  const slaMTTCTarget = Math.max(1, Number.isFinite(targetInputParsed) ? targetInputParsed : 24);
 
-  const complianceWeighted = kpiCompliance * 0.4;
-  const maturityWeighted = avgMaturity * 0.35;
-  const assetProtectionWeighted = avgAssetProtection * 0.25;
+  let slaCompliance: number;
+  if (slaUsedDefault) {
+    slaCompliance = NEUTRAL_DEFAULT;
+  } else if (slaMTTC <= slaMTTCTarget) {
+    slaCompliance = 100;
+  } else {
+    slaCompliance = clamp(Math.max(0, 100 - ((slaMTTC - slaMTTCTarget) / slaMTTCTarget) * 100), 0, 100);
+  }
 
-  const governanceBase = complianceWeighted + maturityWeighted + assetProtectionWeighted;
+  const operationalScore = clamp(0.70 * kpiAchievement + 0.30 * slaCompliance, 0, 100);
 
-  const criticalContribution = (criticalRisks / riskDenominator) * 30;
-  const openContribution = (openRisks / riskDenominator) * 10;
-  const riskPenaltyBeforeCap = criticalContribution + openContribution;
+  // --- Final SPI ---
+  const W_COMPLIANCE = 0.25;
+  const W_MATURITY = 0.20;
+  const W_ASSET = 0.15;
+  const W_RISK = 0.25;
+  const W_OPERATIONAL = 0.15;
 
-  const riskPenaltyCap = 40;
-  const riskPenalty = Math.min(riskPenaltyCap, riskPenaltyBeforeCap);
-  const riskPenaltyCapApplied = riskPenaltyBeforeCap > riskPenaltyCap;
+  const wCompliance = complianceScore * W_COMPLIANCE;
+  const wMaturity = maturityScore * W_MATURITY;
+  const wAsset = assetProtectionScore * W_ASSET;
+  const wRisk = riskPostureScore * W_RISK;
+  const wOperational = operationalScore * W_OPERATIONAL;
 
-  const efficiencyMultiplier = 0.1;
-  const efficiencyBonusCap = 10;
-  const efficiencyBonusBeforeCap = avgEfficiencyAchievement * efficiencyMultiplier;
-  const efficiencyBonus = Math.min(efficiencyBonusCap, efficiencyBonusBeforeCap);
-  const efficiencyBonusCapApplied = efficiencyBonusBeforeCap > efficiencyBonusCap;
-
-  const slaPenaltyCap = 15;
-  const slaDeltaOverTarget = Math.max(0, slaMTTC - slaMTTCTarget);
-  const slaOverflowRatio = slaDeltaOverTarget > 0
-    ? slaDeltaOverTarget / Math.max(slaMTTCTarget, 1)
-    : 0;
-  const slaPenaltyBeforeCap = slaOverflowRatio * slaPenaltyCap;
-  const slaPenaltyCapApplied = slaPenaltyBeforeCap > slaPenaltyCap;
-
-  const slaPenalty =
-    slaMTTC <= slaMTTCTarget
-      ? 0
-      : Math.min(slaPenaltyCap, slaPenaltyBeforeCap);
-
-  const rawScore = governanceBase - riskPenalty + efficiencyBonus - slaPenalty;
+  const rawScore = wCompliance + wMaturity + wAsset + wRisk + wOperational;
   const finalScore = clamp(Math.round(rawScore), 0, 100);
 
   return {
     securityScore: finalScore,
     scoreBreakdown: {
-      formulaVersion: 'v1',
+      formulaVersion: 'v2',
       equation:
-        'Score = clamp(round((0.40*Compliance + 0.35*AvgMaturity + 0.25*AvgAssetProtection) - RiskPenalty + EfficiencyBonus - SlaPenalty), 0, 100)',
-      components: {
-        kpiCompliance: roundTo(kpiCompliance),
-        avgMaturity: roundTo(avgMaturity),
-        avgAssetProtection: roundTo(avgAssetProtection),
-        criticalRisks,
-        openRisks,
-        totalRisks,
-        avgEfficiencyAchievement: roundTo(avgEfficiencyAchievement),
-        slaMTTC: roundTo(slaMTTC),
-        slaMTTCTarget: roundTo(slaMTTCTarget),
-      },
-      governanceBase: roundTo(governanceBase),
-      riskPenalty: roundTo(riskPenalty),
-      efficiencyBonus: roundTo(efficiencyBonus),
-      slaPenalty: roundTo(slaPenalty),
-      rawScore: roundTo(rawScore),
+        'SPI = clamp(round(0.25×Compliance + 0.20×Maturity + 0.15×AssetProtection + 0.25×RiskPosture + 0.15×Operational), 0, 100)',
       finalScore,
-      governanceDetails: {
-        complianceWeighted: roundTo(complianceWeighted),
-        maturityWeighted: roundTo(maturityWeighted),
-        assetProtectionWeighted: roundTo(assetProtectionWeighted),
-        beforeRounding: roundTo(governanceBase),
+      rawScore: roundTo(rawScore),
+
+      weights: {
+        compliance: W_COMPLIANCE,
+        maturity: W_MATURITY,
+        assetProtection: W_ASSET,
+        riskPosture: W_RISK,
+        operational: W_OPERATIONAL,
       },
-      riskPenaltyDetails: {
-        criticalThreshold,
-        denominator: riskDenominator,
-        criticalRatio: roundTo(criticalRisks / riskDenominator, 3),
-        openRatio: roundTo(openRisks / riskDenominator, 3),
-        criticalContribution: roundTo(criticalContribution),
-        openContribution: roundTo(openContribution),
-        beforeCap: roundTo(riskPenaltyBeforeCap),
-        capValue: riskPenaltyCap,
-        capApplied: riskPenaltyCapApplied,
+
+      complianceDetails: {
+        inputValue: roundTo(complianceInput),
+        score: roundTo(complianceScore),
       },
-      efficiencyBonusDetails: {
+
+      maturityDetails: {
+        domainCount: normalizedMaturityScores.length,
+        normalizedScores: normalizedMaturityScores.map((s) => roundTo(s)),
+        usedNeutralDefault: maturityUsedDefault,
+        score: roundTo(maturityScore),
+      },
+
+      assetProtectionDetails: {
+        assetCount: protectionLevels.length,
+        protectionLevels: protectionLevels.map((p) => roundTo(p)),
+        usedNeutralDefault: assetUsedDefault,
+        score: roundTo(assetProtectionScore),
+      },
+
+      riskPostureDetails: {
+        totalRisks: risks.length,
+        openRisks: openCount,
+        inProgressRisks: inProgressCount,
+        closedRisks: closedCount,
+        totalDeduction: roundTo(totalDeduction),
+        perRiskDeductions,
+        score: roundTo(riskPostureScore),
+      },
+
+      operationalDetails: {
+        kpiAchievement: roundTo(kpiAchievement),
         kpiCount: normalizedKpis.length,
         normalizedKpis: normalizedKpis.map((kpi) => ({
           id: kpi.id,
@@ -275,23 +373,36 @@ export function calculateGlobalSecurityScore(input: ScoreInput): ScoreResult {
           lowerBetter: kpi.lowerBetter,
           normalized: roundTo(kpi.normalized),
         })),
-        multiplier: efficiencyMultiplier,
-        beforeCap: roundTo(efficiencyBonusBeforeCap),
-        capValue: efficiencyBonusCap,
-        capApplied: efficiencyBonusCapApplied,
+        kpiUsedNeutralDefault: kpiUsedDefault,
+        slaCompliance: roundTo(slaCompliance),
+        slaMTTC: roundTo(slaMTTC),
+        slaMTTCTarget: roundTo(slaMTTCTarget),
+        slaUsedNeutralDefault: slaUsedDefault,
+        score: roundTo(operationalScore),
       },
-      slaPenaltyDetails: {
-        wasTriggered: slaMTTC > slaMTTCTarget,
-        defaultTargetApplied,
-        deltaOverTarget: roundTo(slaDeltaOverTarget, 2),
-        overflowRatio: roundTo(slaOverflowRatio, 3),
-        beforeCap: roundTo(slaPenaltyBeforeCap),
-        capValue: slaPenaltyCap,
-        capApplied: slaPenaltyCapApplied,
+
+      componentScores: {
+        compliance: roundTo(complianceScore),
+        maturity: roundTo(maturityScore),
+        assetProtection: roundTo(assetProtectionScore),
+        riskPosture: roundTo(riskPostureScore),
+        operational: roundTo(operationalScore),
+      },
+
+      weightedContributions: {
+        compliance: roundTo(wCompliance),
+        maturity: roundTo(wMaturity),
+        assetProtection: roundTo(wAsset),
+        riskPosture: roundTo(wRisk),
+        operational: roundTo(wOperational),
       },
     },
   };
 }
+
+/* ------------------------------------------------------------------ */
+/*  Percentile (unchanged)                                             */
+/* ------------------------------------------------------------------ */
 
 export function buildPercentileMap<T extends { id: string; securityScore: number }>(
   reports: T[],

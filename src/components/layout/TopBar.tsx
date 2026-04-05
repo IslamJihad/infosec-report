@@ -16,14 +16,16 @@ interface TopBarSearchProps {
 }
 
 interface TopBarProps {
+  currentStep: number;
+  onStepChange: (step: number) => void;
   onPreview: () => void;
   onAIReview: () => void;
   onGoHome: () => void;
   search?: TopBarSearchProps;
 }
 
-export default function TopBar({ onPreview, onAIReview, onGoHome, search }: TopBarProps) {
-  const { currentStep, setStep, isSaving, lastSaved } = useReportStore();
+export default function TopBar({ currentStep, onStepChange, onPreview, onAIReview, onGoHome, search }: TopBarProps) {
+  const { isSaving, lastSaved } = useReportStore();
 
   const title = NAV_ITEMS[currentStep]?.label || '';
 
@@ -77,7 +79,7 @@ export default function TopBar({ onPreview, onAIReview, onGoHome, search }: TopB
         </button>
 
         <button
-          onClick={() => setStep(currentStep - 1)}
+          onClick={() => onStepChange(currentStep - 1)}
           disabled={currentStep === 0}
           className="py-2 px-5 rounded-xl border border-border bg-white text-navy-800 text-sm font-bold transition-all duration-200 hover:bg-navy-50 hover:shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
         >
@@ -85,8 +87,8 @@ export default function TopBar({ onPreview, onAIReview, onGoHome, search }: TopB
         </button>
 
         <button
-          onClick={() => setStep(currentStep + 1)}
-          disabled={currentStep === 8}
+          onClick={() => onStepChange(currentStep + 1)}
+          disabled={currentStep >= NAV_ITEMS.length - 1}
           className="py-2 px-5 rounded-xl border-none bg-gradient-to-l from-navy-800 to-navy-900 text-white text-sm font-bold transition-all duration-200 hover:from-navy-700 hover:to-navy-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-sm"
         >
           التالي ←
