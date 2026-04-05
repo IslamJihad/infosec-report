@@ -3,53 +3,51 @@
 import { useEffect, useState } from 'react';
 import type { ReportData } from '@/types/report';
 import { calculateGlobalSecurityScore } from '@/lib/scoring';
+import { DEFAULT_SPS_DOMAINS } from '@/lib/constants';
 
 interface Props {
   report: ReportData;
 }
 
-const BAND_LABELS: Record<string, string> = {
-  critical: 'حرج',
-  high: 'عالي',
-  medium: 'متوسط',
-  low: 'منخفض',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  open: 'مفتوح',
-  inprogress: 'قيد المعالجة',
-  closed: 'مغلق',
-};
+const TONE_CLASSES = [
+  'border-blue-200 bg-blue-50 text-blue-900',
+  'border-violet-200 bg-violet-50 text-violet-900',
+  'border-teal-200 bg-teal-50 text-teal-900',
+  'border-amber-200 bg-amber-50 text-amber-900',
+  'border-red-200 bg-red-50 text-red-900',
+  'border-green-200 bg-green-50 text-green-900',
+];
 
 export default function MethodologySummaryCard({ report }: Props) {
   const [showSourcesModal, setShowSourcesModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const scoreBreakdown = report.scoreBreakdown ?? calculateGlobalSecurityScore(report).scoreBreakdown;
-  const { complianceDetails, maturityDetails, assetProtectionDetails, riskPostureDetails, operationalDetails, weightedContributions, componentScores } = scoreBreakdown;
+
+  const spsDomains = Array.isArray(report.spsDomains) && report.spsDomains.length > 0
+    ? report.spsDomains
+    : DEFAULT_SPS_DOMAINS;
+
+  const scoreBreakdown = report.scoreBreakdown
+    ?? calculateGlobalSecurityScore({ id: report.id, spsDomains }).scoreBreakdown;
+
+  const { domainResults } = scoreBreakdown;
 
   useEffect(() => {
     if (!showModal) return;
-
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-
-      if (showSourcesModal) {
-        setShowSourcesModal(false);
-        return;
-      }
-
+      if (showSourcesModal) { setShowSourcesModal(false); return; }
       setShowModal(false);
     };
-
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [showModal, showSourcesModal]);
 
   const details = (
     <>
+      {/* Formula */}
       <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="text-xs text-text-muted leading-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-          المعادلة: SPI = clamp(round(0.25×Compliance + 0.20×Maturity + 0.15×AssetProtection + 0.25×RiskPosture + 0.15×Operational), 0, 100)
+        <div className="text-xs text-text-muted leading-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 ltr text-left">
+          SPS = clamp(round(Σ DomainScore × DomainWeight), 0, 100)&nbsp;&nbsp;|&nbsp;&nbsp;DomainScore = Σ(subMetric × weight) / Σ(weights)
         </div>
         <button
           type="button"
@@ -60,114 +58,53 @@ export default function MethodologySummaryCard({ report }: Props) {
         </button>
       </div>
 
-      {/* 5-Component Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-        <ComponentMetric label="الامتثال" score={componentScores.compliance} weight="25%" weighted={weightedContributions.compliance} tone="blue" />
-        <ComponentMetric label="النضج الأمني" score={componentScores.maturity} weight="20%" weighted={weightedContributions.maturity} tone="violet" />
-        <ComponentMetric label="حماية الأصول" score={componentScores.assetProtection} weight="15%" weighted={weightedContributions.assetProtection} tone="cyan" />
-        <ComponentMetric label="وضع المخاطر" score={componentScores.riskPosture} weight="25%" weighted={weightedContributions.riskPosture} tone="red" />
-        <ComponentMetric label="الكفاءة التشغيلية" score={componentScores.operational} weight="15%" weighted={weightedContributions.operational} tone="green" />
+      {/* 6-Domain overview grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+        {domainResults.map((d, i) => (
+          <div key={d.id} className={`rounded-xl border px-3 py-2.5 ${TONE_CLASSES[i % TONE_CLASSES.length]}`}>
+            <div className="text-[11px] opacity-75">{d.nameAr} ({Math.round(d.domainWeight * 100)}%)</div>
+            <div className="text-sm font-[900] mt-0.5">{d.domainScore}/100</div>
+            <div className="text-[10px] opacity-60 mt-0.5">مساهمة: {d.domainContribution}</div>
+            {d.usedNeutralDefault && (
+              <div className="text-[10px] text-amber-600 mt-0.5">قيمة محايدة (50)</div>
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* Detailed Breakdowns */}
+      {/* Per-domain sub-metric detail */}
       <div className="grid md:grid-cols-2 gap-3 mb-3">
-        {/* Compliance */}
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900 leading-6">
-          <div className="font-bold mb-1">تفصيل الامتثال (Compliance)</div>
-          <div>القيمة المدخلة: {complianceDetails.inputValue}%</div>
-          <div className="font-bold">النتيجة = {complianceDetails.score}/100</div>
-        </div>
+        {domainResults.map((d, i) => {
+          const domain = spsDomains.find((x) => x.id === d.id);
+          const toneClass = TONE_CLASSES[i % TONE_CLASSES.length];
+          return (
+            <div key={d.id} className={`rounded-xl border px-4 py-3 text-xs leading-6 ${toneClass}`}>
+              <div className="font-bold mb-1">{d.nameAr}</div>
+              {domain?.subMetrics.map((sm) => (
+                <div key={sm.id}>
+                  {sm.nameAr}: <span className="font-semibold">{sm.value}</span> (و:{sm.weight})
+                </div>
+              ))}
+              <div className="font-bold mt-1">
+                درجة المجال = {d.domainScore}/100 | مساهمة = {d.domainContribution}
+              </div>
+            </div>
+          );
+        })}
 
-        {/* Maturity */}
-        <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-900 leading-6">
-          <div className="font-bold mb-1">تفصيل النضج الأمني (Maturity)</div>
-          <div>عدد المجالات: {maturityDetails.domainCount}</div>
-          {maturityDetails.usedNeutralDefault && (
-            <div className="text-amber-700">لا توجد مجالات مدخلة — تم استخدام القيمة المحايدة (50)</div>
-          )}
-          {!maturityDetails.usedNeutralDefault && (
-            <div>الدرجات المطبّعة: [{maturityDetails.normalizedScores.join(', ')}]</div>
-          )}
-          <div className="font-bold">النتيجة = {maturityDetails.score}/100</div>
-        </div>
-
-        {/* Asset Protection */}
-        <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs text-cyan-900 leading-6">
-          <div className="font-bold mb-1">تفصيل حماية الأصول (Asset Protection)</div>
-          <div>عدد الأصول: {assetProtectionDetails.assetCount}</div>
-          {assetProtectionDetails.usedNeutralDefault && (
-            <div className="text-amber-700">لا توجد أصول مدخلة — تم استخدام القيمة المحايدة (50)</div>
-          )}
-          {!assetProtectionDetails.usedNeutralDefault && (
-            <div>مستويات الحماية: [{assetProtectionDetails.protectionLevels.join(', ')}]</div>
-          )}
-          <div className="font-bold">النتيجة = {assetProtectionDetails.score}/100</div>
-        </div>
-
-        {/* Risk Posture */}
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-900 leading-6">
-          <div className="font-bold mb-1">تفصيل وضع المخاطر (Risk Posture)</div>
-          <div>إجمالي المخاطر: {riskPostureDetails.totalRisks} (مفتوحة: {riskPostureDetails.openRisks} | قيد المعالجة: {riskPostureDetails.inProgressRisks} | مغلقة: {riskPostureDetails.closedRisks})</div>
-          <div>إجمالي الخصم: {riskPostureDetails.totalDeduction}</div>
-          <div className="font-bold">النتيجة = max(0, 100 - {riskPostureDetails.totalDeduction}) = {riskPostureDetails.score}/100</div>
-        </div>
-
-        {/* Operational */}
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900 leading-6">
-          <div className="font-bold mb-1">تفصيل الكفاءة التشغيلية (Operational)</div>
-          <div>تحقيق مؤشرات الأداء: {operationalDetails.kpiAchievement}%{operationalDetails.kpiUsedNeutralDefault ? ' (محايد — لا مؤشرات)' : ` (${operationalDetails.kpiCount} مؤشرات)`}</div>
-          <div>امتثال SLA: {operationalDetails.slaCompliance}%{operationalDetails.slaUsedNeutralDefault ? ' (محايد — لا بيانات SLA)' : ` (MTTC: ${operationalDetails.slaMTTC} / هدف: ${operationalDetails.slaMTTCTarget})`}</div>
-          <div className="font-bold">النتيجة = 0.70×{operationalDetails.kpiAchievement} + 0.30×{operationalDetails.slaCompliance} = {operationalDetails.score}/100</div>
-        </div>
-
-        {/* Weighted Contributions Summary */}
+        {/* Weighted contributions summary */}
         <div className="rounded-xl border border-navy-200 bg-navy-50 px-4 py-3 text-xs text-navy-900 leading-6">
           <div className="font-bold mb-1">المساهمات الموزونة</div>
-          <div>0.25 × {componentScores.compliance} (امتثال) = {weightedContributions.compliance}</div>
-          <div>0.20 × {componentScores.maturity} (نضج) = {weightedContributions.maturity}</div>
-          <div>0.15 × {componentScores.assetProtection} (أصول) = {weightedContributions.assetProtection}</div>
-          <div>0.25 × {componentScores.riskPosture} (مخاطر) = {weightedContributions.riskPosture}</div>
-          <div>0.15 × {componentScores.operational} (تشغيل) = {weightedContributions.operational}</div>
-          <div className="mt-1 font-bold">المجموع = {scoreBreakdown.rawScore} → النتيجة النهائية = {scoreBreakdown.finalScore}/100</div>
+          {domainResults.map((d) => (
+            <div key={d.id}>
+              {Math.round(d.domainWeight * 100)}% × {d.domainScore} ({d.nameAr}) = {d.domainContribution}
+            </div>
+          ))}
+          <div className="mt-1 font-bold">
+            المجموع = {scoreBreakdown.rawScore} → النتيجة النهائية = {scoreBreakdown.finalScore}/100
+          </div>
         </div>
       </div>
-
-      {/* Per-Risk Deduction Table */}
-      {riskPostureDetails.perRiskDeductions.length > 0 && (
-        <div className="rounded-xl border border-red-200 bg-red-50/50 px-4 py-3 text-xs text-red-900 mb-3">
-          <div className="font-bold mb-2">تفصيل خصم المخاطر (لكل خطر)</div>
-          <div className="space-y-1">
-            {riskPostureDetails.perRiskDeductions.map((r) => (
-              <div key={r.index} className="rounded-lg border border-red-200 bg-white px-3 py-2">
-                <div>
-                  خطر #{r.index + 1}: الاحتمالية {r.probability} × الأثر {r.impact} = {r.riskScore} → <span className="font-bold">{BAND_LABELS[r.band] ?? r.band}</span>
-                </div>
-                <div>
-                  الحالة: {STATUS_LABELS[r.status] ?? r.status} | الخصم: <span className="font-bold">{r.deduction === 0 ? '0 (مغلق)' : `-${r.deduction}`}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Per-KPI Normalization */}
-      {operationalDetails.normalizedKpis.length > 0 && (
-        <div className="rounded-xl border border-green-200 bg-green-50/50 px-4 py-3 text-xs text-green-900 mb-3">
-          <div className="font-bold mb-2">تفصيل تطبيع مؤشرات الكفاءة (لكل مؤشر)</div>
-          <div className="space-y-1">
-            {operationalDetails.normalizedKpis.map((kpi, index) => (
-              <div key={`${kpi.id || kpi.title}-${index}`} className="rounded-lg border border-green-200 bg-white px-3 py-2">
-                <div className="font-bold text-green-950">{kpi.title}</div>
-                <div>
-                  الفعلي: {kpi.actual} | الهدف: {kpi.target} | الاتجاه: {kpi.lowerBetter ? 'الأقل أفضل' : 'الأعلى أفضل'}
-                </div>
-                <div className="font-bold">المطبّع = {kpi.normalized}%</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="rounded-xl border border-navy-200 bg-navy-50 px-4 py-3 text-sm text-navy-900 leading-7">
         <div>النتيجة قبل التقريب: <span className="font-bold">{scoreBreakdown.rawScore}</span></div>
@@ -186,7 +123,7 @@ export default function MethodologySummaryCard({ report }: Props) {
               🧪
             </div>
             <div>
-              <h3 className="text-base font-[800] text-navy-950">القيم المستخدمة في حساب الدرجة</h3>
+              <h3 className="text-base font-[800] text-navy-950">القيم المستخدمة في حساب درجة SPS</h3>
               <p className="text-xs text-text-muted mt-0.5">مخفية افتراضيا لتقليل المساحة. يمكن فتحها كنافذة عند الحاجة.</p>
             </div>
           </div>
@@ -196,36 +133,29 @@ export default function MethodologySummaryCard({ report }: Props) {
         </div>
 
         <div className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-3">
-            <Metric label="الامتثال" value={`${componentScores.compliance}`} tone="blue" />
-            <Metric label="النضج" value={`${componentScores.maturity}`} tone="violet" />
-            <Metric label="الأصول" value={`${componentScores.assetProtection}`} tone="cyan" />
-            <Metric label="المخاطر" value={`${componentScores.riskPosture}`} tone="red" />
-            <Metric label="التشغيل" value={`${componentScores.operational}`} tone="green" />
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-3">
+            {domainResults.map((d, i) => (
+              <div key={d.id} className={`rounded-xl border px-2 py-2 ${TONE_CLASSES[i % TONE_CLASSES.length]}`}>
+                <div className="text-[10px] opacity-70 truncate">{d.nameAr}</div>
+                <div className="text-sm font-[900] mt-0.5">{d.domainScore}</div>
+              </div>
+            ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setShowModal(true);
-                setShowSourcesModal(false);
-              }}
-              className="text-xs font-bold bg-navy-900 border border-navy-900 rounded-lg px-3 py-1.5 text-white hover:bg-navy-800 transition-colors"
-            >
-              فتح كنافذة مستقلة
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => { setShowModal(true); setShowSourcesModal(false); }}
+            className="text-xs font-bold bg-navy-900 border border-navy-900 rounded-lg px-3 py-1.5 text-white hover:bg-navy-800 transition-colors"
+          >
+            فتح كنافذة مستقلة
+          </button>
         </div>
       </div>
 
       {showModal && (
         <div
           className="fixed inset-0 z-[110] bg-black/45 backdrop-blur-[1px] p-4 flex items-center justify-center"
-          onClick={() => {
-            setShowModal(false);
-            setShowSourcesModal(false);
-          }}
+          onClick={() => { setShowModal(false); setShowSourcesModal(false); }}
         >
           <div
             className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-border shadow-2xl"
@@ -234,15 +164,12 @@ export default function MethodologySummaryCard({ report }: Props) {
           >
             <div className="sticky top-0 bg-white border-b border-border px-5 py-4 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-[900] text-navy-950">تفاصيل حساب الدرجة العالمية (SPI v2)</h3>
+                <h3 className="text-base font-[900] text-navy-950">تفاصيل حساب درجة وضع الأمان (SPS v1)</h3>
                 <p className="text-xs text-text-muted mt-0.5">يمكن اغلاق النافذة في اي وقت بدون التأثير على البيانات.</p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setShowModal(false);
-                  setShowSourcesModal(false);
-                }}
+                onClick={() => { setShowModal(false); setShowSourcesModal(false); }}
                 className="w-9 h-9 rounded-xl border border-border text-text-muted hover:bg-red-50 hover:text-danger-500 transition-colors"
                 aria-label="اغلاق"
               >
@@ -261,7 +188,7 @@ export default function MethodologySummaryCard({ report }: Props) {
                   onClick={(event) => event.stopPropagation()}
                 >
                   <div className="sticky top-0 bg-white border-b border-border px-4 py-3 flex items-center justify-between">
-                    <div className="font-bold text-text-secondary">المرجع العلمي والمنهجي</div>
+                    <div className="font-bold text-text-secondary">المرجع العلمي والمنهجي — SPS v1</div>
                     <button
                       type="button"
                       onClick={() => setShowSourcesModal(false)}
@@ -271,37 +198,38 @@ export default function MethodologySummaryCard({ report }: Props) {
                       ×
                     </button>
                   </div>
-
                   <div className="p-4 text-xs text-text-muted leading-6">
-                    <div>هذه المعادلة مبنية على مبادئ قياس المخاطر والأمن من معايير معروفة، مع أوزان معايرة داخلية خاصة بالمؤسسة.</div>
+                    <div>معادلة SPS v1 مبنية على نموذج متوسط مرجح ثنائي المستوى: درجة مجال ← مساهمة مجال ← درجة إجمالية.</div>
                     <ul className="list-disc pr-5 mt-2 space-y-1">
                       <li>
-                        NIST SP 800-30 Rev.1 (Risk Assessment):{' '}
-                        <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.SP.800-30r1" target="_blank" rel="noreferrer">
-                          doi.org/10.6028/NIST.SP.800-30r1
-                        </a>
-                      </li>
-                      <li>
-                        NIST CSF 2.0 (Enterprise Cyber Risk):{' '}
+                        NIST CSF 2.0:{' '}
                         <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.CSWP.29" target="_blank" rel="noreferrer">
                           doi.org/10.6028/NIST.CSWP.29
                         </a>
                       </li>
                       <li>
-                        FIRST CVSS v4.0 (Vulnerability Severity Standard):{' '}
-                        <a className="text-blue-700 hover:underline" href="https://www.first.org/cvss/v4.0/specification-document" target="_blank" rel="noreferrer">
-                          first.org/cvss/v4.0/specification-document
-                        </a>
-                      </li>
-                      <li>
-                        ISO/IEC 27001:2022 (Risk-aware ISMS):{' '}
+                        ISO/IEC 27001:2022:{' '}
                         <a className="text-blue-700 hover:underline" href="https://www.iso.org/standard/27001" target="_blank" rel="noreferrer">
                           iso.org/standard/27001
                         </a>
                       </li>
+                      <li>
+                        NIST SP 800-30 Rev.1:{' '}
+                        <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.SP.800-30r1" target="_blank" rel="noreferrer">
+                          doi.org/10.6028/NIST.SP.800-30r1
+                        </a>
+                      </li>
+                    </ul>
+                    <div className="mt-3 font-semibold text-navy-800">مقياس التصنيف:</div>
+                    <ul className="list-disc pr-5 mt-1 space-y-0.5">
+                      <li>90–100: ممتاز</li>
+                      <li>80–89: قوي</li>
+                      <li>70–79: متوسط</li>
+                      <li>60–69: دون المتوسط</li>
+                      <li>0–59: حرج</li>
                     </ul>
                     <div className="mt-2 text-amber-700">
-                      ملاحظة حوكمة: الأوزان الرقمية (25%/20%/15%/25%/15%) هي قرار معايرة داخلي قابل للمراجعة الدورية، وليست رقما إلزاميا منصوصا عليه حرفيا في معيار واحد.
+                      ملاحظة: الأوزان قابلة للمراجعة الدورية وليست قيمة إلزامية من معيار واحد.
                     </div>
                   </div>
                 </div>
@@ -314,57 +242,3 @@ export default function MethodologySummaryCard({ report }: Props) {
   );
 }
 
-function ComponentMetric({
-  label,
-  score,
-  weight,
-  weighted,
-  tone,
-}: {
-  label: string;
-  score: number;
-  weight: string;
-  weighted: number;
-  tone: 'blue' | 'violet' | 'cyan' | 'red' | 'green';
-}) {
-  const classMap: Record<typeof tone, string> = {
-    blue: 'border-blue-200 bg-blue-50 text-blue-900',
-    violet: 'border-violet-200 bg-violet-50 text-violet-900',
-    cyan: 'border-cyan-200 bg-cyan-50 text-cyan-900',
-    red: 'border-red-200 bg-red-50 text-red-900',
-    green: 'border-green-200 bg-green-50 text-green-900',
-  };
-
-  return (
-    <div className={`rounded-xl border px-3 py-2.5 ${classMap[tone]}`}>
-      <div className="text-[11px] opacity-75">{label} ({weight})</div>
-      <div className="text-sm font-[900] mt-0.5">{score}/100</div>
-      <div className="text-[10px] opacity-60 mt-0.5">مساهمة: {weighted}</div>
-    </div>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: 'blue' | 'violet' | 'cyan' | 'red' | 'green';
-}) {
-  const classMap: Record<typeof tone, string> = {
-    blue: 'border-blue-200 bg-blue-50 text-blue-900',
-    violet: 'border-violet-200 bg-violet-50 text-violet-900',
-    cyan: 'border-cyan-200 bg-cyan-50 text-cyan-900',
-    red: 'border-red-200 bg-red-50 text-red-900',
-    green: 'border-green-200 bg-green-50 text-green-900',
-  };
-
-  return (
-    <div className={`rounded-xl border px-3 py-2.5 ${classMap[tone]}`}>
-      <div className="text-[11px] opacity-75">{label}</div>
-      <div className="text-sm font-[900] mt-0.5">{value}</div>
-    </div>
-  );
-}

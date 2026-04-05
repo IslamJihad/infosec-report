@@ -1,3 +1,29 @@
+export interface SPSSubMetric {
+  id: string;
+  nameAr: string;
+  value: number;   // 0-100
+  weight: number;  // relative weight, e.g. 40 for "40%"
+}
+
+export interface SPSDomain {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  weight: number;  // domain weight as decimal, e.g. 0.25
+  subMetrics: SPSSubMetric[];
+}
+
+export interface SPSDomainResult {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  domainWeight: number;
+  subMetricCount: number;
+  domainScore: number;
+  domainContribution: number;
+  usedNeutralDefault: boolean;
+}
+
 export interface ReportData {
   id: string;
   title: string;
@@ -65,95 +91,19 @@ export interface ReportData {
   challenges: Challenge[];
   efficiencyKPIs: EfficiencyKPI[];
 
+  spsDomains: SPSDomain[];
   scoreBreakdown?: ScoreBreakdown;
   scorePercentile?: number;
 }
 
 export interface ScoreBreakdown {
-  formulaVersion: 'v2';
+  formulaVersion: 'sps-v1';
   equation: string;
   finalScore: number;
   rawScore: number;
-
-  weights: {
-    compliance: number;
-    maturity: number;
-    assetProtection: number;
-    riskPosture: number;
-    operational: number;
-  };
-
-  complianceDetails: {
-    inputValue: number;
-    score: number;
-  };
-
-  maturityDetails: {
-    domainCount: number;
-    normalizedScores: number[];
-    usedNeutralDefault: boolean;
-    score: number;
-  };
-
-  assetProtectionDetails: {
-    assetCount: number;
-    protectionLevels: number[];
-    usedNeutralDefault: boolean;
-    score: number;
-  };
-
-  riskPostureDetails: {
-    totalRisks: number;
-    openRisks: number;
-    inProgressRisks: number;
-    closedRisks: number;
-    totalDeduction: number;
-    perRiskDeductions: Array<{
-      index: number;
-      probability: number;
-      impact: number;
-      riskScore: number;
-      band: 'critical' | 'high' | 'medium' | 'low';
-      status: string;
-      deduction: number;
-    }>;
-    score: number;
-  };
-
-  operationalDetails: {
-    kpiAchievement: number;
-    kpiCount: number;
-    normalizedKpis: Array<{
-      id: string;
-      title: string;
-      actual: number;
-      target: number;
-      lowerBetter: boolean;
-      normalized: number;
-    }>;
-    kpiUsedNeutralDefault: boolean;
-    slaCompliance: number;
-    slaMTTC: number;
-    slaMTTCTarget: number;
-    slaUsedNeutralDefault: boolean;
-    score: number;
-  };
-
-  componentScores: {
-    compliance: number;
-    maturity: number;
-    assetProtection: number;
-    riskPosture: number;
-    operational: number;
-  };
-
-  weightedContributions: {
-    compliance: number;
-    maturity: number;
-    assetProtection: number;
-    riskPosture: number;
-    operational: number;
-  };
+  domainResults: SPSDomainResult[];
+  componentScores: Record<string, number>;       // keyed by domain.id
+  weightedContributions: Record<string, number>; // keyed by domain.id
 }
 
 export interface Decision {

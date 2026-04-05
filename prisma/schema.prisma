@@ -70,6 +70,9 @@ model Report {
   // ISO 27001 Controls (JSON array of 14 domains)
   isoControls    String @default("[]")
 
+  // SPS v1 domain data (JSON array of 6 domains with sub-metrics)
+  spsDomainsJson String @default("[]")
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

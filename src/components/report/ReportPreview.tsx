@@ -8,6 +8,7 @@ import {
   STATUS_MAP,
   PRIORITY_MAP,
   CHALLENGE_TYPES,
+  DEFAULT_SPS_DOMAINS,
 } from '@/lib/constants';
 import { calculateGlobalSecurityScore, getPercentileText } from '@/lib/scoring';
 import {
@@ -25,7 +26,7 @@ interface Props {
   report: ReportData;
 }
 
-type SectionId = 'exec' | 'eff' | 'risks' | 'assets' | 'ind' | 'sla' | 'act' | 'mat';
+type SectionId = 'exec' | 'eff' | 'risks' | 'sps' | 'ind' | 'sla' | 'act' | 'mat';
 
 interface SectionDefinition {
   id: SectionId;
@@ -154,29 +155,40 @@ export default function ReportPreview({ report }: Props) {
   const dateF = formatArabicDate(r.issueDate);
 
   const risks = ensureArray(r.risks);
-  const assets = ensureArray(r.assets);
   const recommendations = ensureArray(r.recommendations);
   const challenges = ensureArray(r.challenges);
   const maturityDomains = ensureArray(r.maturityDomains);
   const effKPIs = ensureArray(r.efficiencyKPIs);
+  const spsDomains = Array.isArray(r.spsDomains) && r.spsDomains.length > 0
+    ? r.spsDomains : DEFAULT_SPS_DOMAINS;
 
   const totalVulnRaw = r.vulnCritical + r.vulnHigh + r.vulnMedium + r.vulnLow;
   const totalVuln = totalVulnRaw > 0 ? totalVulnRaw : 1;
   const sortedRisks = [...risks].sort((a, b) => b.probability * b.impact - a.probability * a.impact);
   const critRisks = sortedRisks.filter(risk => risk.probability * risk.impact >= 15).length;
-  const avgProt = assets.length > 0
-    ? Math.round(assets.reduce((sum, asset) => sum + asset.protectionLevel, 0) / assets.length)
-    : 70;
   const avgMatValue = maturityDomains.length > 0
     ? maturityDomains.reduce((sum, domain) => sum + domain.score, 0) / maturityDomains.length
     : 0;
   const avgMat = avgMatValue.toFixed(1);
   const trendUp = r.trend.includes('↑') || r.trend.includes('↗');
   const trendDown = r.trend.includes('↓') || r.trend.includes('↘');
-  const fallbackScoreResult = calculateGlobalSecurityScore(r);
+  const fallbackScoreResult = calculateGlobalSecurityScore({ id: r.id, spsDomains });
   const scoreBreakdown = r.scoreBreakdown ?? fallbackScoreResult.scoreBreakdown;
   const finalScore = r.scoreBreakdown ? r.securityScore : fallbackScoreResult.securityScore;
-  const { componentScores, weightedContributions, riskPostureDetails, operationalDetails } = scoreBreakdown;
+  const { domainResults } = scoreBreakdown;
+  const avgProt = (() => {
+    const assetDomain = domainResults.find((domain) => (
+      domain.id === 'asset-protection'
+      || domain.id === 'assetProtection'
+      || domain.nameEn.toLowerCase().includes('asset')
+    ));
+
+    if (assetDomain) {
+      return Math.round(assetDomain.domainScore);
+    }
+
+    return Math.round((finalScore + r.kpiCompliance) / 2);
+  })();
 
   const scoreColor = (s: number) => s >= 75 ? '#16a34a' : s >= 50 ? '#d97706' : '#dc2626';
   const ragColor = (rag: string) => {
@@ -214,7 +226,7 @@ export default function ReportPreview({ report }: Props) {
     { id: 'exec', title: 'الملخص التنفيذي', rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r', visible: true },
     { id: 'eff', title: 'الكفاءة التشغيلية', rag: 'a', visible: effKPIs.length > 0 },
     { id: 'risks', title: 'المخاطر الرئيسية', rag: critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r', visible: true },
-    { id: 'assets', title: 'الأصول الحيوية', rag: avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r', visible: assets.length > 0 },
+    { id: 'sps', title: 'مؤشرات وضع الأمان', rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r', visible: true },
     { id: 'ind', title: 'مؤشرات الأداء', rag: r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r', visible: true },
     { id: 'sla', title: 'مقاييس الاستجابة', rag: slaOk ? 'g' : 'r', visible: r.showSLA },
     { id: 'act', title: 'التوصيات والاعتمادات', rag: hasActions ? 'g' : 'n', visible: true },
@@ -259,32 +271,52 @@ export default function ReportPreview({ report }: Props) {
         <div style={{ position: 'absolute', top: 0, right: 0, width: 6, height: '100%', background: 'linear-gradient(180deg,#1a5c2e 0%,#c9a227 55%,rgba(201,162,39,.15) 100%)' }} />
         <div className="report-cover-decoration" style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(26,92,46,.04)', top: -80, left: -80, pointerEvents: 'none', zIndex: 1 }} />
         <div className="report-cover-decoration" style={{ position: 'absolute', width: 180, height: 180, borderRadius: '50%', background: 'rgba(201,162,39,.05)', bottom: 80, right: -50, pointerEvents: 'none', zIndex: 1 }} />
-        <div style={{ position: 'relative', zIndex: 2, padding: '24px 40px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ position: 'relative', zIndex: 2, padding: '18px 40px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            {r.logoBase64 ? <img src={r.logoBase64} alt="شعار" style={{ maxHeight: 40, maxWidth: 140, objectFit: 'contain' }} /> : <div style={{ fontSize: 9, color: '#1a5c2e', border: '1px solid rgba(26,92,46,.25)', padding: '4px 10px', borderRadius: 6, letterSpacing: 0.5, background: 'rgba(255,255,255,.8)', fontWeight: 600 }}>{r.orgName}</div>}
+            {r.logoBase64 ? <img src={r.logoBase64} alt="شعار" style={{ maxHeight: 46, maxWidth: 170, objectFit: 'contain' }} /> : <div style={{ fontSize: 10, color: '#1a5c2e', border: '1px solid rgba(26,92,46,.25)', padding: '5px 12px', borderRadius: 8, letterSpacing: 0.4, background: 'rgba(255,255,255,.8)', fontWeight: 700 }}>{r.orgName}</div>}
           </div>
-          <div style={{ border: '1px solid rgba(26,92,46,.3)', borderRadius: 20, padding: '3px 10px', fontSize: 7, fontWeight: 800, letterSpacing: 1.5, color: '#1a5c2e', background: 'rgba(26,92,46,.06)' }}>{r.classification}</div>
+          <div style={{ border: '1px solid rgba(26,92,46,.3)', borderRadius: 20, padding: '4px 12px', fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: '#1a5c2e', background: 'rgba(26,92,46,.06)' }}>{r.classification}</div>
         </div>
-        <div style={{ height: '920px', position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '12px 50px 10px', boxSizing: 'border-box', overflow: 'hidden' }}>
-          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 4, color: '#1a5c2e', opacity: 0.75, textTransform: 'uppercase', marginBottom: 12 }}>Information Security Report</div>
-          <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1.15, letterSpacing: -1.5, marginBottom: 4, color: '#1a3a1f' }}>تقرير أمن المعلومات<br /><span style={{ color: '#c9a227' }}>{r.period}</span></div>
-          <div style={{ fontSize: 11, color: '#5a7a5e', marginBottom: 20, letterSpacing: 0.5 }}>{dateF}</div>
-          <div style={{ width: 180, height: 1.2, background: 'linear-gradient(90deg,transparent,#c9a227,rgba(26,92,46,.4),transparent)', margin: '0 auto 16px' }} />
-          <div style={{ fontSize: 9, color: '#5a7a5e', marginBottom: 3 }}>مُعدّ ومقدَّم إلى</div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#1a3a1f', marginBottom: 2 }}>{r.recipientName}</div>
-          <div style={{ fontSize: 10, color: '#5a7a5e' }}>{r.orgName}</div>
+        <div style={{ height: '920px', position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'center', padding: '52px 44px 214px', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 3.2, color: '#1a5c2e', opacity: 0.78, textTransform: 'uppercase', marginBottom: 12 }}>Information Security Report</div>
+          <div style={{ fontSize: 48, fontWeight: 900, lineHeight: 1.06, letterSpacing: -1.8, marginBottom: 8, color: '#1a3a1f' }}>تقرير أمن المعلومات<br /><span style={{ color: '#c9a227', fontSize: 44 }}>{r.period}</span></div>
+          <div style={{ fontSize: 11, color: '#5a7a5e', marginBottom: 14, letterSpacing: 0.5 }}>{dateF}</div>
+          <div style={{ width: 260, height: 1.8, background: 'linear-gradient(90deg,transparent,#c9a227,rgba(26,92,46,.4),transparent)', margin: '0 auto 22px' }} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 10, width: '100%', maxWidth: 680, marginBottom: 18 }}>
+            <div style={{ background: 'rgba(255,255,255,.75)', border: '1px solid rgba(26,92,46,.16)', borderRadius: 10, padding: '11px 10px', boxShadow: '0 8px 18px rgba(26,92,46,.06)' }}>
+              <div style={{ fontSize: 8, color: '#6b8f71', marginBottom: 5, fontWeight: 700, letterSpacing: 0.5 }}>الدرجة العالمية</div>
+              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: scoreColor(finalScore), fontFamily: 'monospace' }}>{finalScore}</div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,.75)', border: '1px solid rgba(26,92,46,.16)', borderRadius: 10, padding: '11px 10px', boxShadow: '0 8px 18px rgba(26,92,46,.06)' }}>
+              <div style={{ fontSize: 8, color: '#6b8f71', marginBottom: 5, fontWeight: 700, letterSpacing: 0.5 }}>امتثال ISO</div>
+              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: scoreColor(r.kpiCompliance), fontFamily: 'monospace' }}>{r.kpiCompliance}%</div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,.75)', border: '1px solid rgba(26,92,46,.16)', borderRadius: 10, padding: '11px 10px', boxShadow: '0 8px 18px rgba(26,92,46,.06)' }}>
+              <div style={{ fontSize: 8, color: '#6b8f71', marginBottom: 5, fontWeight: 700, letterSpacing: 0.5 }}>مخاطر حرجة</div>
+              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: critRisks === 0 ? '#16a34a' : critRisks <= 2 ? '#d97706' : '#dc2626', fontFamily: 'monospace' }}>{critRisks}</div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,.75)', border: '1px solid rgba(26,92,46,.16)', borderRadius: 10, padding: '11px 10px', boxShadow: '0 8px 18px rgba(26,92,46,.06)' }}>
+              <div style={{ fontSize: 8, color: '#6b8f71', marginBottom: 5, fontWeight: 700, letterSpacing: 0.5 }}>درجة SPS</div>
+              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: scoreColor(finalScore), fontFamily: 'monospace' }}>{finalScore}</div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 10, color: '#5a7a5e', marginBottom: 3 }}>مُعدّ ومقدَّم إلى</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#1a3a1f', marginBottom: 3 }}>{r.recipientName}</div>
+          <div style={{ fontSize: 11, color: '#5a7a5e', marginBottom: 12 }}>{r.orgName}</div>
           {r.subject && (
-            <div style={{ marginTop: 22, width: '100%', maxWidth: 540, display: 'flex', justifyContent: 'center' }}>
-              <div style={{ width: '100%', position: 'relative', borderRadius: 18, padding: '12px 16px 14px', background: 'linear-gradient(135deg,rgba(255,255,255,.8),rgba(240,248,237,.92))', border: '1px solid rgba(26,92,46,.2)', boxShadow: '0 10px 28px rgba(26,92,46,.08), inset 0 1px 0 rgba(255,255,255,.55)' }}>
-                <div style={{ fontSize: 8, letterSpacing: 2, color: '#6b8f71', textTransform: 'uppercase', marginBottom: 7 }}>الموضوع</div>
-                <div style={{ width: 120, height: 1.5, margin: '0 auto 8px', background: 'linear-gradient(90deg,transparent,rgba(201,162,39,.9),transparent)' }} />
-                <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.95, color: '#1a3a1f', background: 'rgba(255,255,255,.55)', border: '1px solid rgba(26,92,46,.12)', borderRadius: 12, padding: '9px 13px' }}>
+            <div style={{ marginTop: 10, width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: '100%', position: 'relative', borderRadius: 16, padding: '11px 14px 12px', background: 'linear-gradient(135deg,rgba(255,255,255,.86),rgba(240,248,237,.94))', border: '1px solid rgba(26,92,46,.18)', boxShadow: '0 10px 24px rgba(26,92,46,.08), inset 0 1px 0 rgba(255,255,255,.55)' }}>
+                <div style={{ fontSize: 9, letterSpacing: 1.8, color: '#6b8f71', textTransform: 'uppercase', marginBottom: 6 }}>الموضوع</div>
+                <div style={{ width: 160, height: 1.5, margin: '0 auto 7px', background: 'linear-gradient(90deg,transparent,rgba(201,162,39,.9),transparent)' }} />
+                <div style={{ fontSize: 17, fontWeight: 900, lineHeight: 1.8, color: '#1a3a1f', background: 'rgba(255,255,255,.68)', border: '1px solid rgba(26,92,46,.12)', borderRadius: 11, padding: '9px 12px' }}>
                   {renderFormattedText(r.subject, {
-                    fontSize: 14,
-                    lineHeight: 1.95,
+                    fontSize: 17,
+                    lineHeight: 1.8,
                     color: '#1a3a1f',
-                    fontWeight: 800,
-                    gap: 8,
+                    fontWeight: 900,
+                    gap: 6,
                   })}
                 </div>
               </div>
@@ -298,21 +330,21 @@ export default function ReportPreview({ report }: Props) {
               zIndex: 2,
               left: '40px',
               right: '40px',
-              bottom: '74px',
+              bottom: '84px',
               border: '1px solid rgba(26,92,46,.15)',
-              borderRadius: 8,
-              padding: '9px 12px',
+              borderRadius: 10,
+              padding: '10px 12px',
               background: 'rgba(244,250,240,.92)',
               pageBreakInside: 'avoid',
             }}
           >
-            <div style={{ fontSize: 8, letterSpacing: 1.4, color: '#6b8f71', marginBottom: 5 }}>
+            <div style={{ fontSize: 8, letterSpacing: 1.4, color: '#6b8f71', marginBottom: 6, fontWeight: 700 }}>
               كلمة رئيس مجلس الإدارة / كبار المسؤولين
             </div>
-            <div style={{ maxHeight: 104, overflow: 'hidden' }}>
+            <div style={{ maxHeight: 116, overflow: 'hidden' }}>
               {renderFormattedText(r.chairNote, {
-                fontSize: 10,
-                lineHeight: 1.8,
+                fontSize: 11,
+                lineHeight: 1.75,
                 color: '#2d4a31',
                 gap: 4,
               })}
@@ -434,14 +466,12 @@ export default function ReportPreview({ report }: Props) {
               <div style={{ background: '#f8fafc', padding: '8px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 800, color: '#1e293b' }}>
                 معادلة الحساب التلقائي للدرجة العالمية
               </div>
-              <div style={{ padding: '10px 12px', fontSize: 9, color: '#475569', lineHeight: 1.9 }}>
+              <div style={{ padding: '10px 12px', fontSize: 9, color: '#475569', lineHeight: 1.9, direction: 'ltr', textAlign: 'left' }}>
                 <div style={{ marginBottom: 6 }}>{scoreBreakdown.equation}</div>
-                <div>Compliance = {componentScores.compliance}/100 × 0.25 = {weightedContributions.compliance}</div>
-                <div>Maturity = {componentScores.maturity}/100 × 0.20 = {weightedContributions.maturity}</div>
-                <div>AssetProtection = {componentScores.assetProtection}/100 × 0.15 = {weightedContributions.assetProtection}</div>
-                <div>RiskPosture = {componentScores.riskPosture}/100 × 0.25 = {weightedContributions.riskPosture} (deduction: {riskPostureDetails.totalDeduction}, open: {riskPostureDetails.openRisks}, in-progress: {riskPostureDetails.inProgressRisks}, closed: {riskPostureDetails.closedRisks})</div>
-                <div>Operational = {componentScores.operational}/100 × 0.15 = {weightedContributions.operational} (KPI: {operationalDetails.kpiAchievement}%, SLA: {operationalDetails.slaCompliance}%)</div>
-                <div style={{ marginTop: 6, fontWeight: 800, color: '#1e293b' }}>SPI = round({scoreBreakdown.rawScore}) = {scoreBreakdown.finalScore}</div>
+                {domainResults.map((d) => (
+                  <div key={d.id}>{d.nameEn} = {d.domainScore}/100 × {Math.round(d.domainWeight * 100)}% = {d.domainContribution}{d.usedNeutralDefault ? ' [neutral]' : ''}</div>
+                ))}
+                <div style={{ marginTop: 6, fontWeight: 800, color: '#1e293b' }}>SPS = round({scoreBreakdown.rawScore}) = {scoreBreakdown.finalScore}</div>
               </div>
             </div>
           </div>
@@ -578,64 +608,60 @@ export default function ReportPreview({ report }: Props) {
         )}
       </div>
 
-      {/* ═══════ ASSETS ═══════ */}
-      {assets.length > 0 && (
-        <div id="search-preview-section-assets" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f9fcff' }}>
-          {SH('assets', 'الأصول الحيوية', avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r')}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
-              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>عدد الأصول الحيوية</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', fontFamily: 'monospace' }}>{assets.length}</div>
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
-              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>متوسط الحماية</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: scoreColor(avgProt), fontFamily: 'monospace' }}>{avgProt}%</div>
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
-              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>الحالة العامة</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: avgProt >= 70 ? '#15803d' : avgProt >= 50 ? '#a16207' : '#b91c1c' }}>
-                {avgProt >= 70 ? 'حماية جيدة' : avgProt >= 50 ? 'تحتاج متابعة' : 'تحتاج تدخل'}
-              </div>
-            </div>
+      {/* ═══════ SPS DOMAINS ═══════ */}
+      <div id="search-preview-section-sps" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f9fcff' }}>
+        {SH('sps', 'مؤشرات وضع الأمان (SPS v1)', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>درجة SPS الإجمالية</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: scoreColor(finalScore), fontFamily: 'monospace' }}>{finalScore}/100</div>
           </div>
-
-          <div className="report-table-wrapper overflow-x-auto">
-            <table className="report-preview-table w-full border-collapse text-[11px] min-w-[700px]">
-              <thead>
-                <tr>{['#', 'الأصل', 'القيمة', 'مستوى الحماية', 'الفجوات'].map((h) => (
-                  <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody>
-                {assets.map((asset, i) => (
-                  <tr id={`search-preview-asset-${asset.id}`} key={asset.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 700 }}>{asset.name || '—'}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#475569', lineHeight: 1.8 }}>{asset.value || '—'}</td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', minWidth: 180 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ flex: 1, height: 6, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' }}>
-                          <div style={{ width: `${asset.protectionLevel}%`, height: '100%', background: asset.protectionLevel >= 80 ? '#15803d' : asset.protectionLevel >= 60 ? '#16a34a' : asset.protectionLevel >= 40 ? '#d97706' : '#dc2626' }} />
-                        </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'monospace', minWidth: 34 }}>{asset.protectionLevel}%</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#475569', lineHeight: 1.8 }}>
-                      {renderFormattedText(asset.gaps, {
-                        fontSize: 10,
-                        color: '#475569',
-                        lineHeight: 1.8,
-                        emptyText: '—',
-                        gap: 4,
-                      })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>عدد المجالات</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', fontFamily: 'monospace' }}>{spsDomains.length}</div>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>التصنيف</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: finalScore >= 80 ? '#15803d' : finalScore >= 60 ? '#a16207' : '#b91c1c' }}>
+              {finalScore >= 90 ? 'ممتاز' : finalScore >= 80 ? 'قوي' : finalScore >= 70 ? 'متوسط' : finalScore >= 60 ? 'دون المتوسط' : 'حرج'}
+            </div>
           </div>
         </div>
-      )}
+
+        <div className="report-table-wrapper overflow-x-auto">
+          <table className="report-preview-table w-full border-collapse text-[11px] min-w-[700px]">
+            <thead>
+              <tr>{['#', 'المجال', 'الوزن', 'درجة المجال', 'المساهمة', 'المقاييس الفرعية'].map((h) => (
+                <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {domainResults.map((d, i) => (
+                <tr key={d.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 700 }}>{d.nameAr}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontFamily: 'monospace' }}>{Math.round(d.domainWeight * 100)}%</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', minWidth: 140 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1, height: 6, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' }}>
+                        <div style={{ width: `${d.domainScore}%`, height: '100%', background: d.domainScore >= 75 ? '#16a34a' : d.domainScore >= 50 ? '#d97706' : '#dc2626' }} />
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'monospace', minWidth: 34 }}>{d.domainScore}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>{d.domainContribution}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: 9 }}>
+                    {spsDomains.find((x) => x.id === d.id)?.subMetrics.map((sm) => (
+                      <span key={sm.id} style={{ display: 'inline-block', marginLeft: 6 }}>{sm.nameAr}: <strong>{sm.value}</strong></span>
+                    ))}
+                    {d.usedNeutralDefault && <span style={{ color: '#a16207' }}> (قيم محايدة)</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
       <div id="search-preview-section-kpi" className="report-section px-11 py-8 border-b border-gray-100">

@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { buildPercentileMap, calculateGlobalSecurityScore } from '@/lib/scoring';
+import { DEFAULT_SPS_DOMAINS } from '@/lib/constants';
+import type { SPSDomain } from '@/types/report';
+
+function parseSPSDomains(json: string): SPSDomain[] {
+  if (!json || json === '[]') return DEFAULT_SPS_DOMAINS;
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) && parsed.length > 0 ? (parsed as SPSDomain[]) : DEFAULT_SPS_DOMAINS;
+  } catch {
+    return DEFAULT_SPS_DOMAINS;
+  }
+}
 
 const REPORT_INCLUDE = {
   decisions: { orderBy: { sortOrder: 'asc' as const } },
@@ -34,7 +46,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     if (!report) return NextResponse.json({ error: 'التقرير غير موجود' }, { status: 404 });
 
-    const scoreResult = calculateGlobalSecurityScore(report);
+    const spsDomains = parseSPSDomains(report.spsDomainsJson);
+    const scoreResult = calculateGlobalSecurityScore({ id: report.id, spsDomains });
     if (report.securityScore !== scoreResult.securityScore) {
       await prisma.report.update({
         where: { id },
@@ -46,6 +59,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({
       ...report,
+      spsDomains,
       securityScore: scoreResult.securityScore,
       scoreBreakdown: scoreResult.scoreBreakdown,
       scorePercentile: percentileMap[id] ?? 0,
@@ -70,6 +84,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       assets,
       challenges,
       efficiencyKPIs,
+      spsDomains,
       ...scalarData
     } = data;
 
@@ -83,6 +98,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // Stringify JSON-serialized array fields before writing to SQLite
     if (Array.isArray(scalarData.isoControls)) {
       scalarData.isoControls = JSON.stringify(scalarData.isoControls);
+    }
+    if (Array.isArray(spsDomains)) {
+      scalarData.spsDomainsJson = JSON.stringify(spsDomains);
     }
 
     // Update scalar fields
@@ -241,7 +259,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'التقرير غير موجود' }, { status: 404 });
     }
 
-    const scoreResult = calculateGlobalSecurityScore(updated);
+    const updatedSpsDomains = parseSPSDomains(updated.spsDomainsJson);
+    const scoreResult = calculateGlobalSecurityScore({ id: updated.id, spsDomains: updatedSpsDomains });
     if (updated.securityScore !== scoreResult.securityScore) {
       await prisma.report.update({
         where: { id },
@@ -253,6 +272,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     return NextResponse.json({
       ...updated,
+      spsDomains: updatedSpsDomains,
       securityScore: scoreResult.securityScore,
       scoreBreakdown: scoreResult.scoreBreakdown,
       scorePercentile: percentileMap[id] ?? 0,

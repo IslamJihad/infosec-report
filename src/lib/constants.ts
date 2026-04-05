@@ -1,3 +1,5 @@
+import type { SPSDomain } from '@/types/report';
+
 export const SEVERITY_MAP: Record<string, { label: string; className: string; bgClass: string }> = {
   critical: { label: 'حرجة', className: 'text-danger-700', bgClass: 'bg-danger-100 text-danger-700 border-danger-100' },
   high: { label: 'عالية', className: 'text-warning-700', bgClass: 'bg-warning-100 text-warning-700 border-warning-100' },
@@ -52,7 +54,7 @@ export const NAV_ITEMS = [
   { icon: '🏢', label: 'معلومات التقرير', key: 0 },
   { icon: '📋', label: 'الملخص التنفيذي', key: 1 },
   { icon: '⚠️', label: 'المخاطر الرئيسية', key: 2 },
-  { icon: '🏛️', label: 'حماية الأصول الحيوية', key: 3 },
+  { icon: '🛡️', label: 'مؤشرات وضع الأمان', key: 3 },
   { icon: '📊', label: 'المؤشرات والمعايير', key: 4 },
   { icon: '⚡', label: 'مؤشرات الكفاءة التشغيلية', key: 5 },
   { icon: '⏱️', label: 'مقاييس الاستجابة', key: 6 },
@@ -148,3 +150,75 @@ export function getDeltaInfo(current: number, previous: number, lowerIsBetter: b
     colorClass: isEqual ? 'bg-gray-100 text-gray-500' : isGood ? 'bg-success-100 text-success-700' : 'bg-danger-100 text-danger-500',
   };
 }
+
+export const DEFAULT_SPS_DOMAINS: SPSDomain[] = [
+  {
+    id: 'vuln-mgmt',
+    nameAr: 'إدارة الثغرات',
+    nameEn: 'Vulnerability Management',
+    weight: 0.25,
+    subMetrics: [
+      { id: 'sla-compliance',     nameAr: 'الامتثال لاتفاقيات SLA',         value: 50, weight: 40 },
+      { id: 'mean-time-to-patch', nameAr: 'متوسط وقت التصحيح',              value: 50, weight: 30 },
+      { id: 'vuln-density',       nameAr: 'كثافة الثغرات',                  value: 50, weight: 15 },
+      { id: 'scan-coverage',      nameAr: 'تغطية المسح الأمني',             value: 50, weight: 15 },
+    ],
+  },
+  {
+    id: 'incident-response',
+    nameAr: 'الاستجابة للحوادث',
+    nameEn: 'Incident Response',
+    weight: 0.20,
+    subMetrics: [
+      { id: 'mttr-efficiency',      nameAr: 'كفاءة MTTR',                   value: 50, weight: 35 },
+      { id: 'mttd',                 nameAr: 'متوسط وقت الاكتشاف',           value: 50, weight: 25 },
+      { id: 'incident-recurrence',  nameAr: 'تكرار الحوادث',                value: 50, weight: 20 },
+      { id: 'ir-plan-testing',      nameAr: 'اختبار خطة الاستجابة',         value: 50, weight: 20 },
+    ],
+  },
+  {
+    id: 'compliance',
+    nameAr: 'الامتثال',
+    nameEn: 'Compliance',
+    weight: 0.20,
+    subMetrics: [
+      { id: 'framework-avg',   nameAr: 'متوسط أطر الامتثال',               value: 50, weight: 60 },
+      { id: 'audit-closure',   nameAr: 'إغلاق ملاحظات التدقيق',            value: 50, weight: 25 },
+      { id: 'policy-currency', nameAr: 'حداثة السياسات',                    value: 50, weight: 15 },
+    ],
+  },
+  {
+    id: 'security-awareness',
+    nameAr: 'الوعي الأمني',
+    nameEn: 'Security Awareness',
+    weight: 0.15,
+    subMetrics: [
+      { id: 'training-completion',  nameAr: 'إتمام التدريب',                value: 50, weight: 30 },
+      { id: 'phishing-click-rate',  nameAr: 'معدل النقر على التصيد',        value: 50, weight: 40 },
+      { id: 'phishing-report-rate', nameAr: 'معدل الإبلاغ عن التصيد',       value: 50, weight: 30 },
+    ],
+  },
+  {
+    id: 'risk-mgmt',
+    nameAr: 'إدارة المخاطر',
+    nameEn: 'Risk Management',
+    weight: 0.10,
+    subMetrics: [
+      { id: 'risk-register',   nameAr: 'اكتمال سجل المخاطر',               value: 50, weight: 35 },
+      { id: 'risk-mitigation', nameAr: 'تقدم معالجة المخاطر',              value: 50, weight: 35 },
+      { id: 'vendor-risk',     nameAr: 'تقييم مخاطر الموردين',             value: 50, weight: 30 },
+    ],
+  },
+  {
+    id: 'infra-hardening',
+    nameAr: 'تعزيز البنية التحتية',
+    nameEn: 'Infrastructure Hardening',
+    weight: 0.10,
+    subMetrics: [
+      { id: 'endpoint-protection',   nameAr: 'حماية نقاط النهاية',          value: 50, weight: 30 },
+      { id: 'mfa-adoption',          nameAr: 'المصادقة متعددة العوامل',     value: 50, weight: 25 },
+      { id: 'encryption-compliance', nameAr: 'امتثال التشفير',              value: 50, weight: 25 },
+      { id: 'cloud-security',        nameAr: 'وضع أمان السحابة',            value: 50, weight: 20 },
+    ],
+  },
+];

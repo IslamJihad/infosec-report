@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Asset, Challenge, EfficiencyKPI } from '@/types/report';
+import { DEFAULT_SPS_DOMAINS } from '@/lib/constants';
 
 interface ReportStore {
   report: ReportData | null;
@@ -55,6 +56,10 @@ interface ReportStore {
 
   // ISO Controls
   updateISOControl: (index: number, field: 'currentApplied' | 'previousApplied', value: number) => void;
+
+  // SPS Domains
+  updateSPSSubMetric: (domainId: string, subMetricId: string, value: number) => void;
+  resetSPSDomains: () => void;
 }
 
 function uuid() {
@@ -323,12 +328,28 @@ export const useReportStore = create<ReportStore>((set, get) => ({
     if (!report) return;
     const controls = [...report.isoControls];
     controls[index] = { ...controls[index], [field]: value };
-    set({
-      report: {
-        ...report,
-        isoControls: controls,
-      },
-      isDirty: true,
+    set({ report: { ...report, isoControls: controls }, isDirty: true });
+  },
+
+  // SPS Domains
+  updateSPSSubMetric: (domainId, subMetricId, value) => {
+    const { report } = get();
+    if (!report) return;
+    const spsDomains = (report.spsDomains ?? DEFAULT_SPS_DOMAINS).map((domain) => {
+      if (domain.id !== domainId) return domain;
+      return {
+        ...domain,
+        subMetrics: domain.subMetrics.map((sm) =>
+          sm.id === subMetricId ? { ...sm, value: Math.max(0, Math.min(100, value)) } : sm
+        ),
+      };
     });
+    set({ report: { ...report, spsDomains }, isDirty: true });
+  },
+
+  resetSPSDomains: () => {
+    const { report } = get();
+    if (!report) return;
+    set({ report: { ...report, spsDomains: DEFAULT_SPS_DOMAINS }, isDirty: true });
   },
 }));

@@ -7,7 +7,9 @@ import type {
   ReportData,
   ResponseLength,
   ReviewType,
+  SPSDomain,
 } from '@/types/report';
+import { DEFAULT_SPS_DOMAINS } from '@/lib/constants';
 import type {
   AnalyticsAISummaryRequest,
   AnalyticsAISummaryResponse,
@@ -15,7 +17,7 @@ import type {
   AnalyticsResponse,
 } from '@/types/analytics';
 
-// isoControls is stored as a JSON string in SQLite; parse it back to an array on every read.
+// isoControls and spsDomainsJson are stored as JSON strings in SQLite; parse them on every read.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseReport(raw: any): ReportData {
   let isoControls = raw.isoControls ?? [];
@@ -28,9 +30,20 @@ function parseReport(raw: any): ReportData {
     }
   }
 
+  let spsDomains: SPSDomain[] = DEFAULT_SPS_DOMAINS;
+  if (typeof raw.spsDomainsJson === 'string' && raw.spsDomainsJson !== '[]' && raw.spsDomainsJson.trim() !== '') {
+    try {
+      const parsed = JSON.parse(raw.spsDomainsJson);
+      if (Array.isArray(parsed) && parsed.length > 0) spsDomains = parsed as SPSDomain[];
+    } catch {
+      console.error('Failed to parse spsDomainsJson. Falling back to defaults.');
+    }
+  }
+
   return {
     ...raw,
     isoControls: Array.isArray(isoControls) ? isoControls : [],
+    spsDomains,
   };
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useReportStore } from '@/store/reportStore';
-import { SECURITY_LEVELS, TRENDS, getScoreColorClass } from '@/lib/constants';
+import { SECURITY_LEVELS, TRENDS, getScoreColorClass, DEFAULT_SPS_DOMAINS } from '@/lib/constants';
 import { calculateGlobalSecurityScore } from '@/lib/scoring';
 import { FormCard, FormField } from './GeneralInfoForm';
 
@@ -13,8 +13,10 @@ export default function ExecutiveSummaryForm() {
 
   const scoreColor = getScoreColorClass(report.securityScore);
   const hasPercentile = typeof report.scorePercentile === 'number';
-  const scoreBreakdown = report.scoreBreakdown ?? calculateGlobalSecurityScore(report).scoreBreakdown;
-  const { complianceDetails, maturityDetails, assetProtectionDetails, riskPostureDetails, operationalDetails, componentScores, weightedContributions } = scoreBreakdown;
+  const spsDomains = Array.isArray(report.spsDomains) && report.spsDomains.length > 0
+    ? report.spsDomains : DEFAULT_SPS_DOMAINS;
+  const scoreBreakdown = report.scoreBreakdown ?? calculateGlobalSecurityScore({ id: report.id, spsDomains }).scoreBreakdown;
+  const { domainResults } = scoreBreakdown;
 
   return (
     <div id="search-editor-section-executive" className="animate-fadeIn">
@@ -64,8 +66,8 @@ export default function ExecutiveSummaryForm() {
               >
                 شرح مبسط: كيف انحسبت الدرجة؟
               </button>
-              <p className="text-[11px] leading-5 text-text-muted">
-                SPI = clamp(round(0.25×Compliance + 0.20×Maturity + 0.15×AssetProtection + 0.25×RiskPosture + 0.15×Operational), 0, 100)
+              <p className="text-[11px] leading-5 text-text-muted ltr text-left">
+                SPS = clamp(round(Σ DomainScore × DomainWeight), 0, 100)
               </p>
             </div>
           </div>
@@ -90,7 +92,7 @@ export default function ExecutiveSummaryForm() {
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-border shadow-2xl" dir="rtl">
             <div className="sticky top-0 bg-white border-b border-border px-5 py-4 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-[900] text-navy-950">شرح بسيط جدا للدرجة العالمية</h3>
+                <h3 className="text-lg font-[900] text-navy-950">شرح بسيط جدا لدرجة وضع الأمان (SPS v1)</h3>
                 <p className="text-xs text-text-muted mt-1">هنا نشرح كل رقم بطريقة مباشرة وواضحة.</p>
               </div>
               <button
@@ -105,83 +107,61 @@ export default function ExecutiveSummaryForm() {
 
             <div className="p-5 space-y-4 text-sm text-text-primary leading-7">
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                <div className="font-bold text-navy-900">المعادلة النهائية (SPI v2)</div>
-                <div className="text-xs text-text-muted mt-1 break-words">
-                  SPI = clamp(round(0.25×Compliance + 0.20×Maturity + 0.15×AssetProtection + 0.25×RiskPosture + 0.15×Operational), 0, 100)
+                <div className="font-bold text-navy-900">المعادلة النهائية (SPS v1)</div>
+                <div className="text-xs text-text-muted mt-1 break-words ltr text-left">
+                  SPS = clamp(round(Σ DomainScore × DomainWeight), 0, 100) | DomainScore = Σ(sm.value × sm.weight) / Σ(sm.weight)
                 </div>
                 <div className="mt-2 text-sm">
                   النتيجة الحالية: <span className="font-[900] text-navy-900">{scoreBreakdown.finalScore}/100</span>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border p-4">
-                <div className="font-bold text-navy-900 mb-1">1) الامتثال (Compliance) — وزن 25%</div>
-                <div className="text-xs text-text-muted">نسبة الامتثال لمعايير ISO 27001 مباشرة.</div>
-                <div className="mt-2">القيمة المدخلة: <span className="font-bold">{complianceDetails.inputValue}%</span></div>
-                <div className="mt-1">النتيجة = <span className="font-[900] text-navy-900">{complianceDetails.score}/100</span></div>
-                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.25 × {complianceDetails.score} = <span className="font-bold">{weightedContributions.compliance}</span></div>
-              </div>
-
-              <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
-                <div className="font-bold text-violet-900 mb-1">2) النضج الأمني (Maturity) — وزن 20%</div>
-                <div className="text-xs text-text-muted">متوسط درجات النضج عبر جميع المجالات الأمنية (مقياس 1-5 يُطبّع إلى 0-100).</div>
-                <div className="mt-2">عدد المجالات: <span className="font-bold">{maturityDetails.domainCount}</span></div>
-                {maturityDetails.usedNeutralDefault && (
-                  <div className="text-xs text-amber-700 mt-1">لا توجد مجالات مدخلة — تم استخدام القيمة المحايدة (50)</div>
-                )}
-                <div className="mt-1">النتيجة = <span className="font-[900] text-violet-900">{maturityDetails.score}/100</span></div>
-                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.20 × {maturityDetails.score} = <span className="font-bold">{weightedContributions.maturity}</span></div>
-              </div>
-
-              <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
-                <div className="font-bold text-cyan-900 mb-1">3) حماية الأصول (Asset Protection) — وزن 15%</div>
-                <div className="text-xs text-text-muted">متوسط مستوى الحماية لجميع الأصول الحيوية.</div>
-                <div className="mt-2">عدد الأصول: <span className="font-bold">{assetProtectionDetails.assetCount}</span></div>
-                {assetProtectionDetails.usedNeutralDefault && (
-                  <div className="text-xs text-amber-700 mt-1">لا توجد أصول مدخلة — تم استخدام القيمة المحايدة (50)</div>
-                )}
-                <div className="mt-1">النتيجة = <span className="font-[900] text-cyan-900">{assetProtectionDetails.score}/100</span></div>
-                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.15 × {assetProtectionDetails.score} = <span className="font-bold">{weightedContributions.assetProtection}</span></div>
-              </div>
-
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                <div className="font-bold text-danger-500 mb-1">4) وضع المخاطر (Risk Posture) — وزن 25%</div>
-                <div className="text-xs text-text-muted">يبدأ من 100 ويُخصم بناء على شدة وحالة كل خطر. المخاطر المغلقة لا تخصم. المخاطر قيد المعالجة تخصم نصف الخصم.</div>
-                <div className="mt-2">إجمالي المخاطر: <span className="font-bold">{riskPostureDetails.totalRisks}</span> (مفتوحة: {riskPostureDetails.openRisks} | قيد المعالجة: {riskPostureDetails.inProgressRisks} | مغلقة: {riskPostureDetails.closedRisks})</div>
-                <div>إجمالي الخصم: <span className="font-bold">{riskPostureDetails.totalDeduction}</span></div>
-                <div className="mt-1">النتيجة = max(0, 100 - {riskPostureDetails.totalDeduction}) = <span className="font-[900] text-danger-500">{riskPostureDetails.score}/100</span></div>
-                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.25 × {riskPostureDetails.score} = <span className="font-bold">{weightedContributions.riskPosture}</span></div>
-              </div>
-
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-                <div className="font-bold text-success-700 mb-1">5) الكفاءة التشغيلية (Operational) — وزن 15%</div>
-                <div className="text-xs text-text-muted">يجمع بين تحقيق مؤشرات الأداء (70%) وامتثال SLA (30%).</div>
-                <div className="mt-2">تحقيق مؤشرات الأداء: <span className="font-bold">{operationalDetails.kpiAchievement}%</span>{operationalDetails.kpiUsedNeutralDefault ? ' (محايد)' : ''}</div>
-                <div>امتثال SLA: <span className="font-bold">{operationalDetails.slaCompliance}%</span>{operationalDetails.slaUsedNeutralDefault ? ' (محايد)' : ` (MTTC: ${operationalDetails.slaMTTC} / هدف: ${operationalDetails.slaMTTCTarget})`}</div>
-                <div className="mt-1">النتيجة = 0.70×{operationalDetails.kpiAchievement} + 0.30×{operationalDetails.slaCompliance} = <span className="font-[900] text-success-700">{operationalDetails.score}/100</span></div>
-                <div className="text-xs text-text-muted mt-1">المساهمة الموزونة: 0.15 × {operationalDetails.score} = <span className="font-bold">{weightedContributions.operational}</span></div>
-                {operationalDetails.normalizedKpis.length > 0 && (
-                  <div className="mt-2 rounded-lg border border-green-200 bg-white p-2">
-                    <div className="text-xs font-bold text-green-900 mb-1">تفصيل كل KPI (بعد التطبيع)</div>
-                    <div className="space-y-1 text-xs">
-                      {operationalDetails.normalizedKpis.map((kpi, index) => (
-                        <div key={`${kpi.id || kpi.title}-${index}`}>
-                          {kpi.title}: {kpi.normalized}% (الفعلي {kpi.actual} / الهدف {kpi.target} - {kpi.lowerBetter ? 'الأقل أفضل' : 'الأعلى أفضل'})
-                        </div>
-                      ))}
+              {/* Per-domain breakdown */}
+              {domainResults.map((d, i) => {
+                const domain = spsDomains.find((x) => x.id === d.id);
+                const tones = [
+                  'border-blue-200 bg-blue-50 text-blue-900',
+                  'border-violet-200 bg-violet-50 text-violet-900',
+                  'border-teal-200 bg-teal-50 text-teal-900',
+                  'border-amber-200 bg-amber-50 text-amber-900',
+                  'border-red-200 bg-red-50 text-red-900',
+                  'border-green-200 bg-green-50 text-green-900',
+                ];
+                return (
+                  <div key={d.id} className={`rounded-xl border p-4 ${tones[i % tones.length]}`}>
+                    <div className="font-bold mb-1">
+                      {i + 1}) {d.nameAr} — وزن {Math.round(d.domainWeight * 100)}%
+                    </div>
+                    {domain?.subMetrics.map((sm) => (
+                      <div key={sm.id} className="text-xs">
+                        {sm.nameAr}: <span className="font-semibold">{sm.value}</span> (و:{sm.weight})
+                      </div>
+                    ))}
+                    {d.usedNeutralDefault && (
+                      <div className="text-xs text-amber-700 mt-1">قيمة محايدة — لا توجد مقاييس مدخلة (50)</div>
+                    )}
+                    <div className="mt-1 text-xs">
+                      درجة المجال = <span className="font-bold">{d.domainScore}/100</span>
+                    </div>
+                    <div className="text-xs text-text-muted mt-0.5">
+                      المساهمة: {Math.round(d.domainWeight * 100)}% × {d.domainScore} = <span className="font-bold">{d.domainContribution}</span>
                     </div>
                   </div>
-                )}
-              </div>
+                );
+              })}
 
               <div className="rounded-xl border border-navy-200 bg-navy-50 p-4">
                 <div className="font-bold text-navy-900">التجميع النهائي</div>
-                <div className="mt-2">
-                  <div>0.25×{componentScores.compliance} + 0.20×{componentScores.maturity} + 0.15×{componentScores.assetProtection} + 0.25×{componentScores.riskPosture} + 0.15×{componentScores.operational}</div>
-                  <div>= {weightedContributions.compliance} + {weightedContributions.maturity} + {weightedContributions.assetProtection} + {weightedContributions.riskPosture} + {weightedContributions.operational}</div>
-                  <div className="mt-1">= <span className="font-bold">{scoreBreakdown.rawScore}</span></div>
+                <div className="mt-2 text-xs space-y-0.5">
+                  {domainResults.map((d) => (
+                    <div key={d.id}>
+                      {Math.round(d.domainWeight * 100)}% × {d.domainScore} ({d.nameAr}) = {d.domainContribution}
+                    </div>
+                  ))}
+                  <div className="pt-1 font-bold">
+                    المجموع = {scoreBreakdown.rawScore} → النتيجة النهائية = {scoreBreakdown.finalScore}/100
+                  </div>
                 </div>
-                <div className="mt-2">النتيجة النهائية: <span className="font-[900] text-lg text-navy-900">{scoreBreakdown.finalScore}/100</span></div>
                 {hasPercentile && (
                   <div className="mt-2">المقارنة مع باقي التقارير: <span className="font-bold">أعلى من {report.scorePercentile}% من التقارير</span></div>
                 )}
@@ -190,15 +170,9 @@ export default function ExecutiveSummaryForm() {
               <div className="rounded-xl border border-border bg-surface p-4">
                 <div className="font-bold text-navy-900 mb-1">المرجعية العلمية والمنهجية</div>
                 <div className="text-xs text-text-muted leading-6 mb-2">
-                  هذا النموذج مبني على مبادئ قياس المخاطر في NIST/ISO ومعيار CVSS لشدة الثغرات، بينما الأوزان الرقمية الحالية هي معايرة داخلية قابلة للمراجعة.
+                  نموذج SPS v1 مبني على متوسط مرجح ثنائي المستوى، مرجعيته NIST CSF 2.0 وISO/IEC 27001:2022 وNIST SP 800-30.
                 </div>
                 <ul className="list-disc pr-5 text-xs text-text-muted space-y-1">
-                  <li>
-                    NIST SP 800-30 Rev.1:{' '}
-                    <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.SP.800-30r1" target="_blank" rel="noreferrer">
-                      doi.org/10.6028/NIST.SP.800-30r1
-                    </a>
-                  </li>
                   <li>
                     NIST CSF 2.0:{' '}
                     <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.CSWP.29" target="_blank" rel="noreferrer">
@@ -206,9 +180,9 @@ export default function ExecutiveSummaryForm() {
                     </a>
                   </li>
                   <li>
-                    FIRST CVSS v4.0:{' '}
-                    <a className="text-blue-700 hover:underline" href="https://www.first.org/cvss/v4.0/specification-document" target="_blank" rel="noreferrer">
-                      first.org/cvss/v4.0/specification-document
+                    NIST SP 800-30 Rev.1:{' '}
+                    <a className="text-blue-700 hover:underline" href="https://doi.org/10.6028/NIST.SP.800-30r1" target="_blank" rel="noreferrer">
+                      doi.org/10.6028/NIST.SP.800-30r1
                     </a>
                   </li>
                   <li>

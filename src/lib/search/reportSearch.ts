@@ -6,7 +6,7 @@ export type SearchSectionKey =
   | 'general'
   | 'executive'
   | 'risks'
-  | 'assets'
+  | 'sps'
   | 'kpi'
   | 'efficiency'
   | 'sla'
@@ -22,7 +22,7 @@ const SECTION_META: Record<SearchSectionKey, SectionMeta> = {
   general: { label: 'معلومات التقرير', step: 0 },
   executive: { label: 'الملخص التنفيذي', step: 1 },
   risks: { label: 'المخاطر الرئيسية', step: 2 },
-  assets: { label: 'حماية الأصول الحيوية', step: 3 },
+  sps: { label: 'مؤشرات وضع الأمان', step: 3 },
   kpi: { label: 'المؤشرات والمعايير', step: 4 },
   efficiency: { label: 'مؤشرات الكفاءة التشغيلية', step: 5 },
   sla: { label: 'مقاييس الاستجابة', step: 6 },
@@ -259,14 +259,14 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
     }));
   }
 
-  for (const asset of report.assets) {
+  for (const domain of (report.spsDomains ?? [])) {
     push(createEntry({
-      id: `asset-${asset.id}`,
-      section: 'assets',
-      title: asset.name || 'أصل حيوي',
-      snippet: asset.value || asset.gaps,
-      textParts: [asset.name, asset.value, asset.gaps, asset.protectionLevel],
-      targetId: `search-${surface}-asset-${asset.id}`,
+      id: `sps-${domain.id}`,
+      section: 'sps',
+      title: domain.nameAr || domain.nameEn || 'مجال SPS',
+      snippet: domain.subMetrics.map((sm) => sm.nameAr).join('، '),
+      textParts: [domain.nameAr, domain.nameEn, ...domain.subMetrics.map((sm) => sm.nameAr)],
+      targetId: createSectionTargetId(surface, 'sps'),
       surface,
     }));
   }

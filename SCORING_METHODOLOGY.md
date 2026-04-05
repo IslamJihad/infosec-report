@@ -1,250 +1,174 @@
-# Scoring Methodology — Security Posture Index (SPI v2)
+# Security Posture Score (SPS) — Methodology v1.0
 
-## Purpose
-This document explains how the global Security Posture Index (SPI) is computed. Every component is scored 0–100, and the final score is a weighted average — no penalty/bonus gymnastics, no clamping surprises.
-
-## Final Equation
-
-```text
-SPI = clamp(round(
-  0.25 × ComplianceScore
-+ 0.20 × MaturityScore
-+ 0.15 × AssetProtectionScore
-+ 0.25 × RiskPostureScore
-+ 0.15 × OperationalScore
-), 0, 100)
-```
-
-All weights sum to **1.0**. Output is always **0–100**.
+> **Version:** SPS v1 | **Effective:** April 2026  
+> **Standards basis:** NIST CSF 2.0, ISO/IEC 27001:2022, NIST SP 800-30 Rev.1
 
 ---
 
-## Component Equations
+## 1. Overview
 
-### 1) ComplianceScore (weight 25%)
+The Security Posture Score (SPS) is a single composite metric (0–100) that measures an organisation's current cybersecurity posture across six weighted domains. It replaces the previous SPI v2 formula.
 
-```text
-ComplianceScore = clamp(kpiCompliance, 0, 100)
+The SPS is a **two-tier weighted average**:
+
+```
+SPS = clamp(round(Σ(DomainScore × DomainWeight)), 0, 100)
+
+DomainScore = Σ(subMetric.value × subMetric.weight) / Σ(subMetric.weight)
 ```
 
-Direct ISO 27001 compliance percentage. No transformation needed.
+All sub-metric values are direct inputs in the range **0–100**. All sub-metric weights are relative integers (not percentages of a 100 total). All domain weights are decimal fractions that sum to exactly **1.0**.
 
-### 2) MaturityScore (weight 20%)
-
-```text
-For each domain with score on 1–5 scale:
-  normalized = ((score - 1) / 4) × 100
-  → 1→0, 2→25, 3→50, 4→75, 5→100
-
-For scores already on 0–100 scale (> 5):
-  normalized = clamp(score, 0, 100)
-
-MaturityScore = average(normalizedScores)
-```
-
-If no maturity domains exist: **MaturityScore = 50** (neutral default).
-
-### 3) AssetProtectionScore (weight 15%)
-
-```text
-AssetProtectionScore = average(asset.protectionLevel for each asset)
-```
-
-Each `protectionLevel` is clamped to 0–100. If no assets exist: **AssetProtectionScore = 50** (neutral default).
-
-### 4) RiskPostureScore (weight 25%)
-
-This is the most critical component. It starts at 100 and deducts per-risk based on severity band and status:
-
-```text
-RiskPostureScore = max(0, 100 - totalDeduction)
-```
-
-#### Risk Severity Bands (probability × impact)
-
-| Band | prob × impact | Description |
-| --- | --- | --- |
-| Critical | ≥ 15 | Catastrophic exposure |
-| High | 10–14 | Serious exposure |
-| Medium | 5–9 | Moderate concern |
-| Low | 1–4 | Minor issue |
-
-#### Deduction Table
-
-| Severity Band | Open | In-Progress | Closed |
-| --- | --- | --- | --- |
-| Critical | −25 | −12 | 0 |
-| High | −15 | −7 | 0 |
-| Medium | −8 | −4 | 0 |
-| Low | −3 | −1.5 | 0 |
-
-Key principles:
-- **No double-counting**: each risk contributes exactly one deduction
-- **In-progress gets partial credit**: reflects active mitigation efforts
-- **Closed risks = zero deduction**: resolved means resolved
-- **Severity-proportional**: a critical open risk (−25) hurts 8× more than a low open risk (−3)
-- If no risks exist: **RiskPostureScore = 100**
-
-### 5) OperationalScore (weight 15%)
-
-Combines KPI achievement and SLA compliance into one coherent metric:
-
-```text
-OperationalScore = 0.70 × KPIAchievement + 0.30 × SLACompliance
-```
-
-**KPIAchievement** (0–100):
-```text
-For each KPI:
-  if lowerBetter:
-    normalized = (actual == 0) ? 100 : clamp((target / actual) × 100, 0, 100)
-  else:
-    normalized = clamp((actual / target) × 100, 0, 100)
-
-KPIAchievement = average(normalizedKPIs)
-```
-If no KPIs exist: **KPIAchievement = 50** (neutral default).
-
-**SLACompliance** (0–100):
-```text
-if MTTC ≤ target:
-  SLACompliance = 100
-else:
-  SLACompliance = max(0, 100 - ((MTTC - target) / target) × 100)
-```
-At 2× target → 0. At 1.5× target → 50. If no SLA data: **SLACompliance = 50** (neutral default).
+**Neutral default:** When no sub-metric values have been entered (`spsDomainsJson = '[]'`), every sub-metric defaults to **50**, yielding a neutral SPS of **50**.
 
 ---
 
-## Score Interpretation Bands
+## 2. Domain Weights
 
-| Score | Level (Arabic) | Level (English) |
-| --- | --- | --- |
-| 90–100 | ممتاز | Excellent |
-| 75–89 | جيد جداً | Very Good |
-| 60–74 | جيد | Good |
-| 45–59 | متوسط | Average |
-| 30–44 | ضعيف | Weak |
-| 0–29 | حرج | Critical |
+| # | Domain (Arabic) | Domain (English) | ID | Weight |
+|---|---|---|---|---|
+| 1 | إدارة الثغرات | Vulnerability Management | `vuln-mgmt` | 25% |
+| 2 | الاستجابة للحوادث | Incident Response | `incident-response` | 20% |
+| 3 | الامتثال | Compliance | `compliance` | 20% |
+| 4 | الوعي الأمني | Security Awareness | `security-awareness` | 15% |
+| 5 | إدارة المخاطر | Risk Management | `risk-mgmt` | 10% |
+| 6 | تعزيز البنية التحتية | Infrastructure Hardening | `infra-hardening` | 10% |
+| | **Total** | | | **100%** |
 
 ---
 
-## Worked Example
+## 3. Sub-Metrics per Domain
 
-**Inputs:**
-- Compliance: 72%
-- Maturity domains: [3, 4, 3, 2, 3, 4, 3, 3] (1–5 scale)
-- Assets: protection levels [70, 60, 55]
-- Risks:
-  - 1 critical open (5×4=20)
-  - 2 high open (4×3=12 each)
-  - 1 medium in-progress (3×3=9)
-  - 1 low closed (2×1=2)
-- KPI average achievement: 75%
-- MTTC: 30h, target: 24h
+### 3.1 إدارة الثغرات — Vulnerability Management (25%)
 
-**Calculation:**
+| Sub-Metric | Arabic | Relative Weight |
+|---|---|---|
+| `sla-compliance` | الامتثال لاتفاقيات SLA | 40 |
+| `mean-time-to-patch` | متوسط وقت التصحيح | 30 |
+| `vuln-density` | كثافة الثغرات | 15 |
+| `scan-coverage` | تغطية المسح الأمني | 15 |
 
-| Step | Component | Calculation | Score |
-| --- | --- | --- | --- |
-| 1 | Compliance | 72 | 72.0 |
-| 2 | Maturity | avg(50, 75, 50, 25, 50, 75, 50, 50) | 53.1 |
-| 3 | Asset Protection | avg(70, 60, 55) | 61.7 |
-| 4 | Risk Posture | 100 − (25 + 15 + 15 + 4 + 0) = 100 − 59 | 41.0 |
-| 5 | Operational | 0.70×75 + 0.30×75 = 52.5 + 22.5 | 75.0 |
+**Scoring guidance:**
+- SLA Compliance: % of critical/high vulns patched within agreed SLA window
+- Mean Time to Patch: normalised — 0 days = 100, ≥60 days = 0
+- Vulnerability Density: inverse of vuln count per asset — lower density = higher score
+- Scan Coverage: % of in-scope assets scanned in the last 30 days
 
-Risk deduction breakdown:
-- Critical open (5×4=20): −25
-- High open (4×3=12): −15
-- High open (4×3=12): −15
-- Medium in-progress (3×3=9): −4
-- Low closed (2×1=2): 0
+### 3.2 الاستجابة للحوادث — Incident Response (20%)
 
-SLA compliance: max(0, 100 − ((30−24)/24)×100) = max(0, 100 − 25) = 75
+| Sub-Metric | Arabic | Relative Weight |
+|---|---|---|
+| `mttr-efficiency` | كفاءة MTTR | 35 |
+| `mttd` | متوسط وقت الاكتشاف | 25 |
+| `incident-recurrence` | تكرار الحوادث | 20 |
+| `ir-plan-testing` | اختبار خطة الاستجابة | 20 |
 
-**Final SPI:**
-```text
-= round(0.25×72 + 0.20×53.1 + 0.15×61.7 + 0.25×41 + 0.15×75)
-= round(18.0 + 10.6 + 9.3 + 10.3 + 11.3)
-= round(59.5)
-= 60 → "Good / جيد"
+**Scoring guidance:**
+- MTTR Efficiency: normalised vs target MTTC — at target = 100, 2× target = 0
+- MTTD: normalised — at target = 100, 2× target = 0
+- Incident Recurrence: % of incidents that did NOT recur within 90 days
+- IR Plan Testing: % of playbooks tested in the last 12 months
+
+### 3.3 الامتثال — Compliance (20%)
+
+| Sub-Metric | Arabic | Relative Weight |
+|---|---|---|
+| `framework-avg` | متوسط أطر الامتثال | 60 |
+| `audit-closure` | إغلاق ملاحظات التدقيق | 25 |
+| `policy-currency` | حداثة السياسات | 15 |
+
+**Scoring guidance:**
+- Framework Average: average ISO 27001 control implementation % across all 14 domains
+- Audit Finding Closure: % of audit findings closed within agreed timeline
+- Policy Currency: % of security policies reviewed/updated in the last 12 months
+
+### 3.4 الوعي الأمني — Security Awareness (15%)
+
+| Sub-Metric | Arabic | Relative Weight |
+|---|---|---|
+| `training-completion` | إتمام التدريب | 30 |
+| `phishing-click-rate` | معدل النقر على التصيد | 40 |
+| `phishing-report-rate` | معدل الإبلاغ عن التصيد | 30 |
+
+**Scoring guidance:**
+- Training Completion: % of staff who completed mandatory security awareness training
+- Phishing Click Rate: inverse — 0% click rate = 100, 30%+ click rate = 0
+- Phishing Report Rate: % of simulated phishing emails reported by staff
+
+### 3.5 إدارة المخاطر — Risk Management (10%)
+
+| Sub-Metric | Arabic | Relative Weight |
+|---|---|---|
+| `risk-register` | اكتمال سجل المخاطر | 35 |
+| `risk-mitigation` | تقدم معالجة المخاطر | 35 |
+| `vendor-risk` | تقييم مخاطر الموردين | 30 |
+
+**Scoring guidance:**
+- Risk Register Completeness: % of identified risks with full fields (owner, treatment, date)
+- Risk Mitigation Progress: % of accepted/mitigated risks vs total open risks
+- Vendor Risk Assessment: % of critical vendors with completed risk assessments
+
+### 3.6 تعزيز البنية التحتية — Infrastructure Hardening (10%)
+
+| Sub-Metric | Arabic | Relative Weight |
+|---|---|---|
+| `endpoint-protection` | حماية نقاط النهاية | 30 |
+| `mfa-adoption` | المصادقة متعددة العوامل | 25 |
+| `encryption-compliance` | امتثال التشفير | 25 |
+| `cloud-security` | وضع أمان السحابة | 20 |
+
+**Scoring guidance:**
+- Endpoint Protection: % of endpoints with active, updated EDR/AV
+- MFA Adoption: % of privileged accounts with MFA enforced
+- Encryption Compliance: % of data stores (at rest + in transit) meeting encryption policy
+- Cloud Security Posture: CSP security score or manual normalised % from cloud assessment
+
+---
+
+## 4. Rating Scale
+
+| SPS Range | Rating | Arabic |
+|---|---|---|
+| 90–100 | Excellent | ممتاز |
+| 80–89 | Strong | قوي |
+| 70–79 | Moderate | متوسط |
+| 60–69 | Below Average | دون المتوسط |
+| 0–59 | Critical | حرج |
+
+---
+
+## 5. Worked Example
+
+**Inputs (illustrative):**
+
+| Domain | Σ(value × weight) / Σ(weights) | DomainScore | DomainWeight | Contribution |
+|---|---|---|---|---|
+| Vulnerability Management | (80×40 + 65×30 + 70×15 + 85×15) / 100 | 74.8 | 0.25 | 18.7 |
+| Incident Response | (70×35 + 60×25 + 80×20 + 50×20) / 100 | 65.5 | 0.20 | 13.1 |
+| Compliance | (75×60 + 80×25 + 90×15) / 100 | 78.5 | 0.20 | 15.7 |
+| Security Awareness | (90×30 + 85×40 + 70×30) / 100 | 82.0 | 0.15 | 12.3 |
+| Risk Management | (60×35 + 55×35 + 65×30) / 100 | 59.8 | 0.10 | 6.0 |
+| Infrastructure Hardening | (80×30 + 75×25 + 70×25 + 65×20) / 100 | 73.3 | 0.10 | 7.3 |
+
+```
+rawScore = 18.7 + 13.1 + 15.7 + 12.3 + 6.0 + 7.3 = 73.1
+SPS = clamp(round(73.1), 0, 100) = 73  →  Rating: Moderate (متوسط)
 ```
 
-This result makes sense: decent compliance and operations, but dragged down by 3 unresolved high/critical risks and below-average maturity.
+---
+
+## 6. Standards References
+
+| Standard | Relevance |
+|---|---|
+| **NIST CSF 2.0** (NIST.CSWP.29) | Domain selection and function mapping (Identify, Protect, Detect, Respond, Recover) |
+| **ISO/IEC 27001:2022** | Compliance domain sub-metrics, control coverage tracking |
+| **NIST SP 800-30 Rev.1** | Risk management scoring principles and likelihood/impact framework |
 
 ---
 
-## Neutral Defaults for Missing Data
+## 7. Governance Notes
 
-| Missing Data | Default | Rationale |
-| --- | --- | --- |
-| No maturity domains | 50 | Neutral — doesn't help or hurt |
-| No assets | 50 | Neutral — doesn't help or hurt |
-| No efficiency KPIs | 50 | Neutral — doesn't help or hurt |
-| No SLA data | 50 | Neutral — doesn't help or hurt |
-| No risks | 100 | No risks = perfect risk posture |
-
-The neutral default of 50 ensures incomplete reports aren't unfairly penalized (0 would punish) or inflated (100 would reward doing nothing).
-
----
-
-## Standards-to-Implementation Mapping
-
-| Standard | What it supports | Where used in model |
-| --- | --- | --- |
-| NIST SP 800-30 Rev.1 | Likelihood-impact risk assessment | Probability × impact severity bands and per-risk deductions |
-| NIST CSF 2.0 | Governance-driven measurable cyber risk | Weighted component model covering all CSF functions |
-| ISO/IEC 27001:2022 | Risk-based ISMS and control effectiveness | Compliance score, maturity domains, asset protection |
-| FIRST CVSS v4.0 | Structured severity communication | Severity band approach for risk scoring |
-
-Sources:
-- NIST SP 800-30 Rev.1: https://doi.org/10.6028/NIST.SP.800-30r1
-- NIST CSF 2.0: https://doi.org/10.6028/NIST.CSWP.29
-- FIRST CVSS v4.0: https://www.first.org/cvss/v4.0/specification-document
-- ISO/IEC 27001:2022: https://www.iso.org/standard/27001
-
-## Calibration Boundary (Governance Note)
-
-The standards above justify the method family (risk-based, measurable, transparent scoring). They do not prescribe this exact equation or these exact coefficients.
-
-Internal calibration choices in v2:
-- Component weights: `0.25 / 0.20 / 0.15 / 0.25 / 0.15`
-- Risk deductions: Critical(25/12), High(15/7), Medium(8/4), Low(3/1.5)
-- Operational sub-weights: KPI 70%, SLA 30%
-- Neutral default: 50
-
-These values should be approved and periodically reviewed by security governance (e.g., CISO and Risk Committee).
-
----
-
-## Audit Fields Available Per Report
-
-The score response includes these auditable objects for traceability:
-- `complianceDetails`
-- `maturityDetails` (including per-domain normalized scores)
-- `assetProtectionDetails` (including per-asset protection levels)
-- `riskPostureDetails` (including per-risk deduction records with band, status, and deduction)
-- `operationalDetails` (including per-KPI normalization and SLA compliance)
-- `componentScores` (all 5 component scores)
-- `weightedContributions` (final weighted value of each component)
-
-These fields allow reviewers to reproduce each sub-step without re-running code.
-
-## Data Quality and Compatibility Rules
-
-- Maturity values stored as `1..5` are normalized to `0..100` using `(score-1)/4 × 100`.
-- Numeric inputs are clamped to valid bounds before scoring.
-- The final score is always constrained to `0..100` for cross-report comparability.
-
-## Change Control
-
-- Formula version: `v2` (replaces v1)
-- Key changes from v1:
-  - Replaced penalty/bonus bolt-on model with pure weighted-component average
-  - Fixed risk double-counting (critical risks were penalized in both critical ratio and open ratio)
-  - Added in-progress risk partial credit
-  - Fixed maturity normalization (1→0 instead of 1→20)
-  - Added neutral defaults (50) for missing data instead of 0
-  - Merged efficiency bonus and SLA penalty into single Operational component
-  - All components now scored 0–100 on equal footing
-- Recommendation: keep formula version attached to each report for future recalibration audits.
+- Domain weights (25%/20%/20%/15%/10%/10%) reflect the organisation's risk priorities as of April 2026 and should be reviewed **annually** by the CISO against peer benchmarks.
+- Sub-metric relative weights within each domain are fixed but may be adjusted with documented justification.
+- The neutral default of **50** for all sub-metrics when no data is entered ensures a mid-range starting SPS that does not artificially inflate or deflate the score before real data is available.

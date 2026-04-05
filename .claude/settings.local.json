@@ -6,7 +6,8 @@
       "Bash(grep -n \"id:'R-\\\\|id:'I-\\\\|id:'K-\\\\|{id,ttl\\\\|{id,title\\\\|risks:\\\\[{\" \"/d/infosec-report/ISO27001-CISO-Command-Suite .html\")",
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
       "Bash(grep -n \"scoreBreakdown\\\\|calculateScore\\\\|RiskPenalty\\\\|EfficiencyBonus\" /d/infosec-report/src/components/forms/*.tsx)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && head -50 {}')"
     ]
   }
 }

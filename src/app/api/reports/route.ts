@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getPersistedAppSettings } from '@/lib/db/appSettings';
 import { buildPercentileMap, calculateGlobalSecurityScore } from '@/lib/scoring';
+import { DEFAULT_SPS_DOMAINS } from '@/lib/constants';
+import type { SPSDomain } from '@/types/report';
+
+function parseSPSDomains(json: string): SPSDomain[] {
+  if (!json || json === '[]') return DEFAULT_SPS_DOMAINS;
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) && parsed.length > 0 ? (parsed as SPSDomain[]) : DEFAULT_SPS_DOMAINS;
+  } catch {
+    return DEFAULT_SPS_DOMAINS;
+  }
+}
 
 const REPORT_INCLUDE = {
   decisions: { orderBy: { sortOrder: 'asc' as const } },
@@ -37,7 +49,8 @@ export async function GET() {
 
     const scoredReports = await Promise.all(
       reports.map(async (report) => {
-        const scoreResult = calculateGlobalSecurityScore(report);
+        const spsDomains = parseSPSDomains(report.spsDomainsJson);
+        const scoreResult = calculateGlobalSecurityScore({ id: report.id, spsDomains });
         if (report.securityScore !== scoreResult.securityScore) {
           await prisma.report.update({
             where: { id: report.id },
@@ -47,6 +60,7 @@ export async function GET() {
 
         return {
           ...report,
+          spsDomains,
           securityScore: scoreResult.securityScore,
           scoreBreakdown: scoreResult.scoreBreakdown,
         };
@@ -166,7 +180,8 @@ export async function POST() {
       },
     });
 
-    const scoreResult = calculateGlobalSecurityScore(report);
+    const spsDomains = parseSPSDomains(report.spsDomainsJson);
+    const scoreResult = calculateGlobalSecurityScore({ id: report.id, spsDomains });
     if (report.securityScore !== scoreResult.securityScore) {
       await prisma.report.update({
         where: { id: report.id },
@@ -178,6 +193,7 @@ export async function POST() {
 
     return NextResponse.json({
       ...report,
+      spsDomains,
       securityScore: scoreResult.securityScore,
       scoreBreakdown: scoreResult.scoreBreakdown,
       scorePercentile: percentileMap[report.id] ?? 0,

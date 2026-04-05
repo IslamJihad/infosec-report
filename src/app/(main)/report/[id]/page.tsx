@@ -10,7 +10,7 @@ import TopBar from '@/components/layout/TopBar';
 import GeneralInfoForm from '@/components/forms/GeneralInfoForm';
 import ExecutiveSummaryForm from '@/components/forms/ExecutiveSummaryForm';
 import RisksForm from '@/components/forms/RisksForm';
-import AssetProtectionForm from '@/components/forms/AssetProtectionForm';
+import SPSDomainsForm from '@/components/forms/SPSDomainsForm';
 import KPIForm from '@/components/forms/KPIForm';
 import EfficiencyForm from '@/components/forms/EfficiencyForm';
 import SLAForm from '@/components/forms/SLAForm';
@@ -23,7 +23,7 @@ const FORM_SECTIONS = [
   GeneralInfoForm,        // 0: معلومات التقرير
   ExecutiveSummaryForm,   // 1: الملخص التنفيذي
   RisksForm,              // 2: المخاطر الرئيسية
-  AssetProtectionForm,    // 3: حماية الأصول الحيوية
+  SPSDomainsForm,         // 3: مؤشرات وضع الأمان
   KPIForm,                // 4: المؤشرات والمعايير
   EfficiencyForm,         // 5: مؤشرات الكفاءة التشغيلية
   SLAForm,                // 6: مقاييس الاستجابة
