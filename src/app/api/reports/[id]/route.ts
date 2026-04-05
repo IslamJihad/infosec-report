@@ -24,6 +24,136 @@ const REPORT_INCLUDE = {
   efficiencyKPIs: { orderBy: { sortOrder: 'asc' as const } },
 };
 
+const REPORT_STRING_FIELDS = [
+  'title',
+  'orgName',
+  'subject',
+  'recipientName',
+  'period',
+  'issueDate',
+  'version',
+  'author',
+  'classification',
+  'logoBase64',
+  'summary',
+  'securityLevel',
+  'trend',
+  'status',
+  'chairNote',
+  'bmSector',
+] as const;
+
+const REPORT_INT_FIELDS = [
+  'kpiCritical',
+  'kpiVuln',
+  'kpiTotal',
+  'kpiCompliance',
+  'prevCritical',
+  'prevVuln',
+  'prevTotal',
+  'prevCompliance',
+  'vulnCritical',
+  'vulnHigh',
+  'vulnMedium',
+  'vulnLow',
+  'incOpen',
+  'incProgress',
+  'incClosed',
+  'incWatch',
+  'slaBreach',
+  'vulnResolved',
+  'vulnRecurring',
+  'bmScore',
+  'bmCompliance',
+] as const;
+
+const REPORT_FLOAT_FIELDS = ['slaMTTC', 'slaMTTCTarget', 'slaRate'] as const;
+const REPORT_BOOLEAN_FIELDS = ['showSLA', 'showMaturity'] as const;
+
+function toStringValue(value: unknown, fallback = ''): string {
+  if (typeof value === 'string') return value;
+  if (value == null) return fallback;
+  return String(value);
+}
+
+function toIntValue(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
+}
+
+function toFloatValue(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toBooleanValue(value: unknown, fallback = false): boolean {
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return fallback;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function pickPersistedId(item: Record<string, unknown>): string | undefined {
+  const id = typeof item.id === 'string' ? item.id.trim() : '';
+  const reportId = typeof item.reportId === 'string' ? item.reportId.trim() : '';
+  if (!id || id.startsWith('new-') || !reportId) return undefined;
+  return id;
+}
+
+function sanitizeReportScalarData(
+  scalarData: Record<string, unknown>,
+  spsDomains: unknown,
+): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+
+  for (const field of REPORT_STRING_FIELDS) {
+    const value = scalarData[field];
+    if (value !== undefined) {
+      normalized[field] = toStringValue(value);
+    }
+  }
+
+  for (const field of REPORT_INT_FIELDS) {
+    const value = scalarData[field];
+    if (value !== undefined) {
+      normalized[field] = toIntValue(value, 0);
+    }
+  }
+
+  for (const field of REPORT_FLOAT_FIELDS) {
+    const value = scalarData[field];
+    if (value !== undefined) {
+      normalized[field] = toFloatValue(value, 0);
+    }
+  }
+
+  for (const field of REPORT_BOOLEAN_FIELDS) {
+    const value = scalarData[field];
+    if (value !== undefined) {
+      normalized[field] = toBooleanValue(value, false);
+    }
+  }
+
+  const isoControls = scalarData.isoControls;
+  if (Array.isArray(isoControls)) {
+    normalized.isoControls = JSON.stringify(isoControls);
+  } else if (typeof isoControls === 'string') {
+    normalized.isoControls = isoControls;
+  }
+
+  if (Array.isArray(spsDomains)) {
+    normalized.spsDomainsJson = JSON.stringify(spsDomains);
+  } else if (typeof scalarData.spsDomainsJson === 'string') {
+    normalized.spsDomainsJson = scalarData.spsDomainsJson;
+  }
+
+  return normalized;
+}
+
 async function buildReportPercentiles(currentReportId: string, currentScore: number) {
   const allScores = await prisma.report.findMany({
     select: { id: true, securityScore: true },
@@ -73,7 +203,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const data = await req.json();
+    const data = await req.json() as Record<string, unknown>;
 
     // Separate nested relations from scalar fields
     const {
@@ -88,171 +218,184 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       ...scalarData
     } = data;
 
-    delete scalarData.id;
-    delete scalarData.createdAt;
-    delete scalarData.updatedAt;
-    delete scalarData.securityScore;
-    delete scalarData.scoreBreakdown;
-    delete scalarData.scorePercentile;
-
-    // Stringify JSON-serialized array fields before writing to SQLite
-    if (Array.isArray(scalarData.isoControls)) {
-      scalarData.isoControls = JSON.stringify(scalarData.isoControls);
-    }
-    if (Array.isArray(spsDomains)) {
-      scalarData.spsDomainsJson = JSON.stringify(spsDomains);
+    const exists = await prisma.report.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) {
+      return NextResponse.json({ error: 'التقرير غير موجود' }, { status: 404 });
     }
 
-    // Update scalar fields
-    await prisma.report.update({
-      where: { id },
-      data: scalarData,
-    });
+    const normalizedScalarData = sanitizeReportScalarData(scalarData, spsDomains);
 
-    // Update decisions
-    if (decisions) {
-      await prisma.decision.deleteMany({ where: { reportId: id } });
-      if (decisions.length > 0) {
-        await prisma.decision.createMany({
-          data: decisions.map((d: Record<string, unknown>, i: number) => ({
-            id: (d.id as string)?.startsWith?.('new-') ? undefined : d.id,
-            reportId: id,
-            title: d.title || '',
-            description: d.description || '',
-            budget: d.budget || '',
-            department: d.department || '',
-            timeline: d.timeline || '',
-            owner: d.owner || '',
-            sortOrder: i,
-          })),
-        });
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.report.update({
+        where: { id },
+        data: normalizedScalarData,
+      });
+
+      // Update decisions
+      if (Array.isArray(decisions)) {
+        await tx.decision.deleteMany({ where: { reportId: id } });
+        if (decisions.length > 0) {
+          await tx.decision.createMany({
+            data: decisions.map((d, i) => {
+              const item = d as Record<string, unknown>;
+              return {
+                id: pickPersistedId(item),
+                reportId: id,
+                title: toStringValue(item.title),
+                description: toStringValue(item.description),
+                budget: toStringValue(item.budget),
+                department: toStringValue(item.department),
+                timeline: toStringValue(item.timeline),
+                owner: toStringValue(item.owner),
+                sortOrder: i,
+              };
+            }),
+          });
+        }
       }
-    }
 
-    // Update risks
-    if (risks) {
-      await prisma.risk.deleteMany({ where: { reportId: id } });
-      if (risks.length > 0) {
-        await prisma.risk.createMany({
-          data: risks.map((r: Record<string, unknown>, i: number) => ({
-            id: (r.id as string)?.startsWith?.('new-') ? undefined : r.id,
-            reportId: id,
-            description: r.description || '',
-            system: r.system || '',
-            severity: typeof r.severity === 'string' ? (r.severity.trim().toLowerCase() || 'medium') : 'medium',
-            status: typeof r.status === 'string' ? (r.status.trim().toLowerCase() || 'open') : 'open',
-            probability: r.probability || 3,
-            impact: r.impact || 3,
-            worstCase: r.worstCase || '',
-            requiredControls: r.requiredControls || '',
-            affectedAssets: r.affectedAssets || '',
-            sortOrder: i,
-          })),
-        });
+      // Update risks
+      if (Array.isArray(risks)) {
+        await tx.risk.deleteMany({ where: { reportId: id } });
+        if (risks.length > 0) {
+          await tx.risk.createMany({
+            data: risks.map((r, i) => {
+              const item = r as Record<string, unknown>;
+              return {
+                id: pickPersistedId(item),
+                reportId: id,
+                description: toStringValue(item.description),
+                system: toStringValue(item.system),
+                severity: toStringValue(item.severity, 'medium').trim().toLowerCase() || 'medium',
+                status: toStringValue(item.status, 'open').trim().toLowerCase() || 'open',
+                probability: clamp(toIntValue(item.probability, 3), 1, 5),
+                impact: clamp(toIntValue(item.impact, 3), 1, 5),
+                worstCase: toStringValue(item.worstCase),
+                requiredControls: toStringValue(item.requiredControls),
+                affectedAssets: toStringValue(item.affectedAssets),
+                sortOrder: i,
+              };
+            }),
+          });
+        }
       }
-    }
 
-    // Update maturity domains
-    if (maturityDomains) {
-      await prisma.maturityDomain.deleteMany({ where: { reportId: id } });
-      if (maturityDomains.length > 0) {
-        await prisma.maturityDomain.createMany({
-          data: maturityDomains.map((m: Record<string, unknown>, i: number) => ({
-            id: (m.id as string)?.startsWith?.('new-') ? undefined : m.id,
-            reportId: id,
-            name: (typeof m.name === 'string' && m.name.trim()) ? m.name.trim() : `بند ${i + 1}`,
-            score: (() => {
-              const raw = Number(m.score);
-              if (!Number.isFinite(raw)) return 0;
-              if (raw > 0 && raw <= 5) return Math.round(raw * 20);
-              return Math.max(0, Math.min(100, Math.round(raw)));
-            })(),
-            sortOrder: i,
-          })),
-        });
+      // Update maturity domains
+      if (Array.isArray(maturityDomains)) {
+        await tx.maturityDomain.deleteMany({ where: { reportId: id } });
+        if (maturityDomains.length > 0) {
+          await tx.maturityDomain.createMany({
+            data: maturityDomains.map((m, i) => {
+              const item = m as Record<string, unknown>;
+              const rawScore = toFloatValue(item.score, 0);
+              const score = rawScore > 0 && rawScore <= 5
+                ? Math.round(rawScore * 20)
+                : clamp(Math.round(rawScore), 0, 100);
+
+              return {
+                id: pickPersistedId(item),
+                reportId: id,
+                name: toStringValue(item.name, `بند ${i + 1}`).trim() || `بند ${i + 1}`,
+                score,
+                sortOrder: i,
+              };
+            }),
+          });
+        }
       }
-    }
 
-    // Update recommendations
-    if (recommendations) {
-      await prisma.recommendation.deleteMany({ where: { reportId: id } });
-      if (recommendations.length > 0) {
-        await prisma.recommendation.createMany({
-          data: recommendations.map((r: Record<string, unknown>, i: number) => ({
-            id: (r.id as string)?.startsWith?.('new-') ? undefined : r.id,
-            reportId: id,
-            title: r.title || '',
-            description: r.description || '',
-            priority: r.priority || 'medium',
-            department: r.department || '',
-            timeline: r.timeline || '',
-            owner: r.owner || '',
-            sortOrder: i,
-          })),
-        });
+      // Update recommendations
+      if (Array.isArray(recommendations)) {
+        await tx.recommendation.deleteMany({ where: { reportId: id } });
+        if (recommendations.length > 0) {
+          await tx.recommendation.createMany({
+            data: recommendations.map((r, i) => {
+              const item = r as Record<string, unknown>;
+              return {
+                id: pickPersistedId(item),
+                reportId: id,
+                title: toStringValue(item.title),
+                description: toStringValue(item.description),
+                priority: toStringValue(item.priority, 'medium').trim().toLowerCase() || 'medium',
+                department: toStringValue(item.department),
+                timeline: toStringValue(item.timeline),
+                owner: toStringValue(item.owner),
+                sortOrder: i,
+              };
+            }),
+          });
+        }
       }
-    }
 
-    // Update assets
-    if (assets) {
-      await prisma.asset.deleteMany({ where: { reportId: id } });
-      if (assets.length > 0) {
-        await prisma.asset.createMany({
-          data: assets.map((a: Record<string, unknown>, i: number) => ({
-            id: (a.id as string)?.startsWith?.('new-') ? undefined : a.id,
-            reportId: id,
-            name: a.name || '',
-            value: a.value || '',
-            protectionLevel: a.protectionLevel || 0,
-            gaps: a.gaps || '',
-            sortOrder: i,
-          })),
-        });
+      // Update assets
+      if (Array.isArray(assets)) {
+        await tx.asset.deleteMany({ where: { reportId: id } });
+        if (assets.length > 0) {
+          await tx.asset.createMany({
+            data: assets.map((a, i) => {
+              const item = a as Record<string, unknown>;
+              return {
+                id: pickPersistedId(item),
+                reportId: id,
+                name: toStringValue(item.name),
+                value: toStringValue(item.value),
+                protectionLevel: clamp(toIntValue(item.protectionLevel, 0), 0, 100),
+                gaps: toStringValue(item.gaps),
+                sortOrder: i,
+              };
+            }),
+          });
+        }
       }
-    }
 
-    // Update challenges
-    if (challenges) {
-      await prisma.challenge.deleteMany({ where: { reportId: id } });
-      if (challenges.length > 0) {
-        await prisma.challenge.createMany({
-          data: challenges.map((c: Record<string, unknown>, i: number) => ({
-            id: (c.id as string)?.startsWith?.('new-') ? undefined : c.id,
-            reportId: id,
-            title: c.title || '',
-            type: c.type || 'budget',
-            rootCause: c.rootCause || '',
-            requirement: c.requirement || '',
-            sortOrder: i,
-          })),
-        });
+      // Update challenges
+      if (Array.isArray(challenges)) {
+        await tx.challenge.deleteMany({ where: { reportId: id } });
+        if (challenges.length > 0) {
+          await tx.challenge.createMany({
+            data: challenges.map((c, i) => {
+              const item = c as Record<string, unknown>;
+              return {
+                id: pickPersistedId(item),
+                reportId: id,
+                title: toStringValue(item.title),
+                type: toStringValue(item.type, 'budget').trim().toLowerCase() || 'budget',
+                rootCause: toStringValue(item.rootCause),
+                requirement: toStringValue(item.requirement),
+                sortOrder: i,
+              };
+            }),
+          });
+        }
       }
-    }
 
-    // Update efficiency KPIs
-    if (efficiencyKPIs) {
-      await prisma.efficiencyKPI.deleteMany({ where: { reportId: id } });
-      if (efficiencyKPIs.length > 0) {
-        await prisma.efficiencyKPI.createMany({
-          data: efficiencyKPIs.map((e: Record<string, unknown>, i: number) => ({
-            id: (e.id as string)?.startsWith?.('new-') ? undefined : e.id,
-            reportId: id,
-            title: e.title || '',
-            val: (e.val as number) || 0,
-            target: (e.target as number) || 100,
-            unit: (e.unit as string) || '%',
-            description: e.description || '',
-            lowerBetter: Boolean(e.lowerBetter),
-            sortOrder: i,
-          })),
-        });
+      // Update efficiency KPIs
+      if (Array.isArray(efficiencyKPIs)) {
+        await tx.efficiencyKPI.deleteMany({ where: { reportId: id } });
+        if (efficiencyKPIs.length > 0) {
+          await tx.efficiencyKPI.createMany({
+            data: efficiencyKPIs.map((e, i) => {
+              const item = e as Record<string, unknown>;
+              return {
+                id: pickPersistedId(item),
+                reportId: id,
+                title: toStringValue(item.title),
+                val: toFloatValue(item.val, 0),
+                target: toFloatValue(item.target, 100),
+                unit: toStringValue(item.unit, '%') || '%',
+                description: toStringValue(item.description),
+                lowerBetter: toBooleanValue(item.lowerBetter, false),
+                sortOrder: i,
+              };
+            }),
+          });
+        }
       }
-    }
 
-    // Return updated report
-    const updated = await prisma.report.findUnique({
-      where: { id },
-      include: REPORT_INCLUDE,
+      return tx.report.findUnique({
+        where: { id },
+        include: REPORT_INCLUDE,
+      });
     });
 
     if (!updated) {
@@ -279,7 +422,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     });
   } catch (error) {
     console.error('Error updating report:', error);
-    return NextResponse.json({ error: 'فشل في حفظ التقرير' }, { status: 500 });
+    const detail = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'فشل في حفظ التقرير', detail }, { status: 500 });
   }
 }
 

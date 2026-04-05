@@ -88,7 +88,7 @@ export default function ReportPreviewPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#dde2eb] px-4 py-8">
-        <div className="max-w-[900px] mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="max-w-[794px] mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="h-[68px] bg-slate-200/80 animate-pulse" />
           <div className="h-[900px] bg-gradient-to-b from-slate-100 to-white animate-pulse" />
           <div className="p-4 text-center text-sm text-slate-500">جاري تحميل التقرير...</div>
@@ -181,7 +181,7 @@ export default function ReportPreviewPage() {
       </div>
 
       {/* Report */}
-      <div className="py-6">
+      <div className="report-preview-shell py-6">
         <ReportPreview report={report} />
       </div>
     </div>

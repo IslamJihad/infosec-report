@@ -264,7 +264,7 @@ export default function ReportPreview({ report }: Props) {
   );
 
   return (
-    <div className="report-page max-w-[900px] mx-auto bg-white shadow-xl" dir="rtl">
+    <div className="report-page bg-white shadow-xl" dir="rtl">
       {/* ═══════ COVER PAGE ═══════ */}
       <div id="search-preview-section-general" className="report-cover" style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', height: '1123px', maxHeight: '1123px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0', pageBreakAfter: 'always', boxSizing: 'border-box', margin: 0, padding: 0 }}>
         <div className="report-cover-decoration" style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 15% 80%,rgba(26,92,46,.06) 0%,transparent 50%),radial-gradient(circle at 85% 20%,rgba(201,162,39,.07) 0%,transparent 50%)', pointerEvents: 'none' }} />
@@ -361,11 +361,11 @@ export default function ReportPreview({ report }: Props) {
 
 {/* ═══════ TOC ═══════ */}
 
-      <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '24px 44px', minHeight: '100vh', display: 'flex', flexDirection: 'column', pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
+      <div className="report-toc" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '24px 44px', minHeight: '1123px', display: 'flex', flexDirection: 'column', pageBreakAfter: 'always' }}>
 
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: '#94a3b8', marginBottom: 16, textTransform: 'uppercase' }}>فهرس التقرير — الحالة الراهنة</div>
 
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div className="report-toc-body" style={{ flex: 1, overflow: 'auto' }}>
         <table className="report-preview-table w-full border-collapse text-[10px]">
 
           <tbody>

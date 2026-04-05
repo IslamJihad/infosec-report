@@ -81,40 +81,73 @@
   margin: 0;
 }
 
+:root {
+  --report-a4-width: 794px;
+  --report-a4-height: 1123px;
+}
+
+.report-page {
+  width: var(--report-a4-width);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
 @media print {
-  * {
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  
+  html,
   body {
-    background: #fff !important;
+    height: auto;
+    width: 100%;
     margin: 0 !important;
     padding: 0 !important;
+    background: #fff !important;
   }
-  
-  html, body {
-    height: 100%;
-    width: 100%;
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   
   .no-print {
     display: none !important;
   }
-  
-  .report-page {
-    box-shadow: none !important;
-    max-width: 100% !important;
+
+  .report-preview-shell {
     margin: 0 !important;
     padding: 0 !important;
   }
   
+  .report-page {
+    width: var(--report-a4-width) !important;
+    min-width: var(--report-a4-width) !important;
+    max-width: var(--report-a4-width) !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  .report-page,
+  .report-page * {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
   .report-section {
     page-break-inside: avoid;
-    padding-left: 32px !important;
-    padding-right: 32px !important;
-    padding-top: 18px !important;
-    padding-bottom: 18px !important;
+    padding-left: 44px !important;
+    padding-right: 44px !important;
+    padding-top: 32px !important;
+    padding-bottom: 32px !important;
+  }
+
+  .report-toc {
+    min-height: var(--report-a4-height) !important;
+    page-break-before: auto !important;
+    page-break-after: always !important;
+  }
+
+  .report-toc-body {
+    overflow: visible !important;
   }
 
   .report-table-wrapper {
@@ -130,25 +163,28 @@
     display: table-header-group !important;
   }
 
-  .report-preview-table tr,
+  .report-preview-table tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   .report-preview-table td,
   .report-preview-table th {
-    page-break-inside: avoid !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    vertical-align: top !important;
+    line-height: 1.7 !important;
   }
   
   .report-cover {
     page-break-after: always !important;
-    height: 1123px !important;
-    max-height: 1123px !important;
+    height: var(--report-a4-height) !important;
+    max-height: var(--report-a4-height) !important;
     overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-  }
-
-  .report-cover-decoration {
-    display: none !important;
   }
 
   .report-footer {

@@ -71,8 +71,16 @@ export async function updateReport(id: string, data: Partial<ReportData>): Promi
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('فشل في حفظ التقرير');
-  return parseReport(await res.json());
+
+  const payload = await res.json().catch(() => null as { error?: string; detail?: string } | null);
+
+  if (!res.ok) {
+    const message = payload?.error || 'فشل في حفظ التقرير';
+    const detail = payload?.detail;
+    throw new Error(detail ? `${message}: ${detail}` : message);
+  }
+
+  return parseReport(payload);
 }
 
 export async function deleteReport(id: string): Promise<void> {
