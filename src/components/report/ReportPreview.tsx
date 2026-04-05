@@ -129,22 +129,13 @@ function renderFormattedText(
       {segments.map((segment, index) => {
         if (segment.kind === 'bullets') {
           return (
-            <ul
-              key={`bullets-${index}`}
-              style={{
-                margin: 0,
-                paddingInlineStart: 18,
-                display: 'grid',
-                gap: 4,
-                listStylePosition: 'outside',
-              }}
-            >
+            <div key={`bullets-${index}`} style={{ display: 'grid', gap: 4 }}>
               {segment.items.map((item, itemIndex) => (
-                <li key={`bullet-item-${itemIndex}`} style={baseTextStyle}>
-                  {item}
-                </li>
+                <p key={`bullet-item-${itemIndex}`} style={{ ...baseTextStyle, margin: 0 }}>
+                  - {item}
+                </p>
               ))}
-            </ul>
+            </div>
           );
         }
 
@@ -300,31 +291,41 @@ export default function ReportPreview({ report }: Props) {
             </div>
           )}
         </div>
+        {r.chairNote && (
+          <div
+            style={{
+              position: 'absolute',
+              zIndex: 2,
+              left: '40px',
+              right: '40px',
+              bottom: '74px',
+              border: '1px solid rgba(26,92,46,.15)',
+              borderRadius: 8,
+              padding: '9px 12px',
+              background: 'rgba(244,250,240,.92)',
+              pageBreakInside: 'avoid',
+            }}
+          >
+            <div style={{ fontSize: 8, letterSpacing: 1.4, color: '#6b8f71', marginBottom: 5 }}>
+              كلمة رئيس مجلس الإدارة / كبار المسؤولين
+            </div>
+            <div style={{ maxHeight: 104, overflow: 'hidden' }}>
+              {renderFormattedText(r.chairNote, {
+                fontSize: 10,
+                lineHeight: 1.8,
+                color: '#2d4a31',
+                gap: 4,
+              })}
+            </div>
+          </div>
+        )}
+
         <div style={{ position: 'absolute', zIndex: 2, left: '40px', right: '40px', bottom: '12px', borderTop: '1px solid rgba(26,92,46,.12)', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,.6)', pageBreakInside: 'avoid' }}>
           <div style={{ fontSize: 9, color: '#5a7a5e', lineHeight: 1.6 }}>مقدَّم من<br /><strong style={{ color: '#1a3a1f', fontSize: '10px' }}>{r.author}</strong></div>
           <div style={{ fontSize: 8, color: '#8aaa8e', fontFamily: 'monospace' }}>v{r.version} · {dateF}</div>
         </div>
       </div>
-      {/* ═══════ CISO NOTE ═══════ */}
-      {r.chairNote && (
-        <div style={{ background: 'linear-gradient(135deg,#f4faf0,#fdf8ec)', borderBottom: '1px solid #d4e8cc', padding: '18px 44px', pageBreakBefore: 'avoid', pageBreakAfter: 'avoid' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            <div style={{ width: 32, height: 32, background: '#1a5c2e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0, marginTop: 2 }}>C</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 8, letterSpacing: 2, color: '#8aaa8e', textTransform: 'uppercase', marginBottom: 5 }}>ملاحظة CISO — ما الجديد مقارنةً بالتقرير السابق</div>
-              <div style={{ fontSize: 12, color: '#2d4a31', lineHeight: 2 }}>
-                {renderFormattedText(r.chairNote, {
-                  fontSize: 12,
-                  lineHeight: 2,
-                  color: '#2d4a31',
-                  gap: 8,
-                })}
-              </div>
-              <div style={{ fontSize: 9, color: '#8aaa8e', marginTop: 5 }}>{r.author} · {dateF}</div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
 {/* ═══════ TOC ═══════ */}
 
@@ -385,15 +386,21 @@ export default function ReportPreview({ report }: Props) {
       <div id="search-preview-section-executive" className="report-section px-11 py-8 border-b border-gray-100">
         {SH('exec', 'الملخص التنفيذي', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 20, marginBottom: 18, alignItems: 'start' }}>
-          <div style={{ background: '#1e293b', color: '#fff', borderRadius: 4, padding: '18px 22px', textAlign: 'center', minWidth: 110 }}>
-            <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: -2, color: scoreColor(finalScore) }}>{finalScore}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 2 }}>/ 100</div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', marginTop: 7, paddingTop: 7, borderTop: '1px solid rgba(255,255,255,.1)' }}>{finalScore >= 75 ? 'وضع جيد' : finalScore >= 50 ? 'يستوجب الانتباه' : 'خطر مرتفع'}</div>
-            {typeof r.scorePercentile === 'number' && (
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,.65)', marginTop: 6 }}>
-                {getPercentileText(r.scorePercentile)}
-              </div>
-            )}
+          <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+            <div style={{ background: '#1e293b', color: '#fff', borderRadius: 4, padding: '18px 22px', textAlign: 'center', minWidth: 110 }}>
+              <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: -2, color: scoreColor(finalScore) }}>{finalScore}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 2 }}>/ 100</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', marginTop: 7, paddingTop: 7, borderTop: '1px solid rgba(255,255,255,.1)' }}>{finalScore >= 75 ? 'وضع جيد' : finalScore >= 50 ? 'يستوجب الانتباه' : 'خطر مرتفع'}</div>
+              {typeof r.scorePercentile === 'number' && (
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,.65)', marginTop: 6 }}>
+                  {getPercentileText(r.scorePercentile)}
+                </div>
+              )}
+            </div>
+
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 2, fontSize: 10, fontWeight: 700, background: trendUp ? '#f0fdf4' : trendDown ? '#fef2f2' : '#f1f5f9', color: trendUp ? '#16a34a' : trendDown ? '#dc2626' : '#94a3b8' }}>
+              {trendUp ? '↑' : trendDown ? '↓' : '→'} {r.trend}
+            </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
@@ -415,16 +422,13 @@ export default function ReportPreview({ report }: Props) {
                 );
               })}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 2, fontSize: 10, fontWeight: 700, background: trendUp ? '#f0fdf4' : trendDown ? '#fef2f2' : '#f1f5f9', color: trendUp ? '#16a34a' : trendDown ? '#dc2626' : '#94a3b8' }}>{trendUp ? '↑' : trendDown ? '↓' : '→'} {r.trend}</span>
-              <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.9, flex: 1 }}>
-                {renderFormattedText(r.summary, {
-                  fontSize: 11,
-                  lineHeight: 1.9,
-                  color: '#475569',
-                  gap: 8,
-                })}
-              </div>
+            <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.9 }}>
+              {renderFormattedText(r.summary, {
+                fontSize: 11,
+                lineHeight: 1.9,
+                color: '#475569',
+                gap: 8,
+              })}
             </div>
             <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
               <div style={{ background: '#f8fafc', padding: '8px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 800, color: '#1e293b' }}>
