@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { normalizeAIModel, type AIProvider } from '@/lib/ai/models';
 
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 60_000;
 const MAX_ATTEMPTS = 3;
 const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 
@@ -95,6 +95,23 @@ export async function generateProviderReply(input: ProviderChatInput): Promise<s
   throw new ProviderRequestError(input.provider, 'Provider request failed.');
 }
 
+export async function* generateProviderReplyStream(input: ProviderChatInput): AsyncGenerator<string> {
+  try {
+    if (input.provider === 'nvidia') {
+      for await (const chunk of generateWithNvidiaStream(input)) {
+        yield chunk;
+      }
+      return;
+    }
+
+    for await (const chunk of generateWithGeminiStream(input)) {
+      yield chunk;
+    }
+  } catch (error: unknown) {
+    throw normalizeError(input.provider, error);
+  }
+}
+
 async function generateWithGemini(input: ProviderChatInput): Promise<string> {
   const modelName = normalizeAIModel('gemini', input.model);
   const genAI = new GoogleGenerativeAI(input.apiKey);
@@ -186,4 +203,151 @@ async function generateWithNvidia(input: ProviderChatInput): Promise<string> {
   }
 
   return 'لا يوجد رد';
+}
+
+async function* generateWithGeminiStream(input: ProviderChatInput): AsyncGenerator<string> {
+  const modelName = normalizeAIModel('gemini', input.model);
+  const genAI = new GoogleGenerativeAI(input.apiKey);
+
+  const model = genAI.getGenerativeModel({
+    model: modelName,
+    systemInstruction: {
+      role: 'user',
+      parts: [{ text: input.systemPrompt }],
+    },
+    generationConfig: {
+      maxOutputTokens: input.maxOutputTokens ?? 2000,
+      temperature: input.temperature ?? 0.3,
+    },
+  });
+
+  const geminiHistory = input.history.map((message) => ({
+    role: (message.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
+    parts: [{ text: message.content }],
+  }));
+
+  const chat = model.startChat({ history: geminiHistory });
+  const streamed = await withTimeout('gemini', chat.sendMessageStream(input.userMessage), REQUEST_TIMEOUT_MS);
+
+  for await (const chunk of streamed.stream) {
+    const text = chunk.text()?.toString() ?? '';
+    if (text) {
+      yield text;
+    }
+  }
+}
+
+async function* generateWithNvidiaStream(input: ProviderChatInput): AsyncGenerator<string> {
+  const modelName = normalizeAIModel('nvidia', input.model);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        accept: 'text/event-stream',
+        'content-type': 'application/json',
+        authorization: `Bearer ${input.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: modelName,
+        stream: true,
+        max_tokens: input.maxOutputTokens ?? 2000,
+        temperature: input.temperature ?? 0.3,
+        messages: [
+          { role: 'system', content: input.systemPrompt },
+          ...input.history.map((message) => ({ role: message.role, content: message.content })),
+          { role: 'user', content: input.userMessage },
+        ],
+      }),
+      signal: controller.signal,
+    });
+  } catch (error: unknown) {
+    throw normalizeError('nvidia', error);
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    clearTimeout(timeout);
+    throw new ProviderRequestError('nvidia', `NVIDIA API ${response.status}`, {
+      statusCode: response.status,
+      retryable: RETRYABLE_STATUS_CODES.has(response.status),
+      cause: errorText,
+    });
+  }
+
+  if (!response.body) {
+    clearTimeout(timeout);
+    throw new ProviderRequestError('nvidia', 'NVIDIA streaming response body is empty.');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line || !line.startsWith('data:')) continue;
+
+        const payloadStr = line.slice(5).trim();
+        if (!payloadStr || payloadStr === '[DONE]') continue;
+
+        const payload = JSON.parse(payloadStr) as {
+          choices?: Array<{
+            delta?: {
+              content?: string | Array<{ type?: string; text?: string }>;
+            };
+            message?: {
+              content?: string | Array<{ type?: string; text?: string }>;
+            };
+          }>;
+        };
+
+        const delta = payload.choices?.[0]?.delta?.content ?? payload.choices?.[0]?.message?.content;
+        if (typeof delta === 'string') {
+          if (delta) yield delta;
+          continue;
+        }
+
+        if (Array.isArray(delta)) {
+          const text = delta
+            .filter((item) => item?.type === 'text' && typeof item.text === 'string')
+            .map((item) => item.text)
+            .join('');
+
+          if (text) yield text;
+        }
+      }
+    }
+
+    const remainder = buffer.trim();
+    if (remainder.startsWith('data:')) {
+      const payloadStr = remainder.slice(5).trim();
+      if (payloadStr && payloadStr !== '[DONE]') {
+        const payload = JSON.parse(payloadStr) as {
+          choices?: Array<{
+            delta?: {
+              content?: string;
+            };
+          }>;
+        };
+        const chunk = payload.choices?.[0]?.delta?.content;
+        if (chunk) yield chunk;
+      }
+    }
+  } finally {
+    clearTimeout(timeout);
+    reader.releaseLock();
+  }
 }

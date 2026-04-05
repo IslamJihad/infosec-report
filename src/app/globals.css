@@ -187,4 +187,38 @@
     outline: none !important;
     background: transparent !important;
   }
+
+  .ai-review-modal {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    direction: rtl !important;
+  }
+
+  .ai-review-shell {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .ai-review-no-print {
+    display: none !important;
+  }
+
+  .ai-review-main {
+    display: block !important;
+    min-height: auto !important;
+  }
+
+  .ai-review-print-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
 }

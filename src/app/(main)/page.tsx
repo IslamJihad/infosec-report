@@ -6,6 +6,7 @@ import type { ReportData } from '@/types/report';
 import { fetchReports, createReport, deleteReport, duplicateReport } from '@/lib/api';
 import { getScoreColorClass } from '@/lib/constants';
 import Link from 'next/link';
+import AppSwitcher from '@/components/isms/AppSwitcher';
 
 export default function DashboardPage() {
   const [reports, setReports] = useState<ReportData[]>([]);
@@ -67,6 +68,10 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <div style={{ direction: 'ltr' }}>
+              <AppSwitcher />
+            </div>
+
             <Link href="/analytics" className="bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-200 cursor-pointer flex items-center gap-2 no-underline backdrop-blur-sm">
               📈 التحليلات
             </Link>

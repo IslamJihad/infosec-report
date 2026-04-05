@@ -261,14 +261,18 @@ export interface AppSettings {
 export interface AIMessage {
   role: 'user' | 'assistant';
   content: string;
+  timestamp?: string;
 }
 
 export type ReviewType = 'full' | 'exec' | 'board' | 'risk' | 'gaps';
+export type ResponseLength = 'brief' | 'standard' | 'detailed';
 
 export interface AIConversationHistoryItem {
   id: string;
   reportId: string;
   reviewType: string;
+  title?: string;
+  pinned?: boolean;
   createdAt: string;
   messageCount: number;
   lastUserMessage: string;
@@ -280,4 +284,10 @@ export interface AIReviewResponse {
   content: string;
   messages: AIMessage[];
   conversationId: string | null;
+  suggestions?: string[];
+}
+
+export interface AIReviewRecommendation {
+  recommended: ReviewType;
+  reason: string;
 }

@@ -3,6 +3,7 @@
 import { useReportStore } from '@/store/reportStore';
 import { NAV_ITEMS } from '@/lib/constants';
 import ReportSearchDropdown from '@/components/search/ReportSearchDropdown';
+import AppSwitcher from '@/components/isms/AppSwitcher';
 import type { ReportSearchResult } from '@/lib/search/reportSearch';
 
 interface TopBarSearchProps {
@@ -34,6 +35,10 @@ export default function TopBar({ currentStep, onStepChange, onPreview, onAIRevie
       <h1 className="text-lg font-[800] text-navy-950">{title}</h1>
 
       <div className="flex items-center gap-3">
+        <div style={{ direction: 'ltr' }}>
+          <AppSwitcher />
+        </div>
+
         {/* Save status */}
         <span className="text-xs text-text-muted ml-3">
           {isSaving ? (

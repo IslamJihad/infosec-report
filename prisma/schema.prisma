@@ -152,6 +152,8 @@ model AIConversation {
   reportId   String
   report     Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
   reviewType String @default("full")
+  title      String?
+  pinned     Boolean @default(false)
   messages   String @default("[]")
   createdAt  DateTime @default(now())
 }
@@ -187,4 +189,183 @@ model AppSettings {
   aiModel         String @default("gemini-2.5-flash")
   defaultOrgName  String @default("")
   defaultAuthor   String @default("")
+}
+
+model IsmsWorkspace {
+  id            String   @id @default("default")
+  orgName       String   @default("")
+  cisoName      String   @default("")
+  scope         String   @default("")
+  certBody      String   @default("")
+  targetDate    String   @default("")
+  industry      String   @default("")
+  employeeCount String   @default("")
+
+  clauseStatus  String   @default("{}")
+  controlStatus String   @default("{}")
+  soaData       String   @default("{}")
+  docStatus     String   @default("{}")
+  dailyChecks   String   @default("{}")
+  dailyNotes    String   @default("{}")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  risks         IsmsRisk[]
+  assets        IsmsAsset[]
+  incidents     IsmsIncident[]
+  tasks         IsmsTask[]
+  team          IsmsTeamMember[]
+  kpis          IsmsKpi[]
+  suppliers     IsmsSupplier[]
+  awareness     IsmsAwareness[]
+  audits        IsmsAudit[]
+  ncas          IsmsNca[]
+}
+
+model IsmsRisk {
+  id          String        @id @default(uuid())
+  workspaceId String        @default("default")
+  workspace   IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String        @default("")
+  category    String        @default("")
+  asset       String        @default("")
+  likelihood  Int           @default(1)
+  impact      Int           @default(1)
+  treatment   String        @default("Mitigate")
+  treatDesc   String        @default("")
+  owner       String        @default("")
+  targetDate  String        @default("")
+  status      String        @default("Open")
+  sortOrder   Int           @default(0)
+  createdAt   DateTime      @default(now())
+}
+
+model IsmsAsset {
+  id             String        @id @default(uuid())
+  workspaceId    String        @default("default")
+  workspace      IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String        @default("")
+  type           String        @default("Information")
+  classification String        @default("Internal")
+  criticality    String        @default("Medium")
+  owner          String        @default("")
+  location       String        @default("")
+  description    String        @default("")
+  sortOrder      Int           @default(0)
+}
+
+model IsmsIncident {
+  id          String        @id @default(uuid())
+  workspaceId String        @default("default")
+  workspace   IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String        @default("")
+  detectedAt  String        @default("")
+  severity    String        @default("Medium")
+  category    String        @default("Other")
+  description String        @default("")
+  impact      String        @default("")
+  actions     String        @default("")
+  lessons     String        @default("")
+  status      String        @default("Open")
+  sortOrder   Int           @default(0)
+  createdAt   DateTime      @default(now())
+}
+
+model IsmsTask {
+  id          String        @id @default(uuid())
+  workspaceId String        @default("default")
+  workspace   IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String        @default("")
+  description String        @default("")
+  assignee    String        @default("")
+  priority    String        @default("Medium")
+  domain      String        @default("General")
+  dueDate     String        @default("")
+  status      String        @default("todo")
+  notes       String        @default("")
+  sortOrder   Int           @default(0)
+}
+
+model IsmsTeamMember {
+  id          String        @id @default(uuid())
+  workspaceId String        @default("default")
+  workspace   IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String        @default("")
+  role        String        @default("")
+  department  String        @default("")
+}
+
+model IsmsKpi {
+  id          String        @id @default(uuid())
+  workspaceId String        @default("default")
+  workspace   IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String        @default("")
+  category    String        @default("")
+  unit        String        @default("%")
+  target      Float         @default(100)
+  current     Float         @default(0)
+  frequency   String        @default("Monthly")
+  trend       String        @default("flat")
+  sortOrder   Int           @default(0)
+}
+
+model IsmsSupplier {
+  id            String        @id @default(uuid())
+  workspaceId   String        @default("default")
+  workspace     IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name          String        @default("")
+  category      String        @default("")
+  riskLevel     String        @default("Medium")
+  dataAccess    String        @default("")
+  service       String        @default("")
+  contractExp   String        @default("")
+  nextReview    String        @default("")
+  assessment    String        @default("Not Started")
+  notes         String        @default("")
+  sortOrder     Int           @default(0)
+}
+
+model IsmsAwareness {
+  id             String        @id @default(uuid())
+  workspaceId    String        @default("default")
+  workspace      IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title          String        @default("")
+  type           String        @default("Online Training")
+  sessionDate    String        @default("")
+  audience       String        @default("")
+  completionRate Float         @default(0)
+  status         String        @default("Completed")
+  notes          String        @default("")
+  sortOrder      Int           @default(0)
+}
+
+model IsmsAudit {
+  id          String        @id @default(uuid())
+  workspaceId String        @default("default")
+  workspace   IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String        @default("")
+  scope       String        @default("")
+  auditDate   String        @default("")
+  auditor     String        @default("")
+  clauses     String        @default("")
+  auditType   String        @default("Internal")
+  status      String        @default("Planned")
+  findings    String        @default("")
+  sortOrder   Int           @default(0)
+}
+
+model IsmsNca {
+  id               String        @id @default(uuid())
+  workspaceId      String        @default("default")
+  workspace        IsmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reference        String        @default("")
+  type             String        @default("NC")
+  description      String        @default("")
+  rootCause        String        @default("")
+  correctiveAction String        @default("")
+  owner            String        @default("")
+  dueDate          String        @default("")
+  status           String        @default("Open")
+  sortOrder        Int           @default(0)
 }

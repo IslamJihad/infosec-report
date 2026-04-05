@@ -1,9 +1,11 @@
 import type {
+  AIReviewRecommendation,
   AIConversationHistoryItem,
   AIMessage,
   AIReviewResponse,
   AppSettings,
   ReportData,
+  ResponseLength,
   ReviewType,
 } from '@/types/report';
 import type {
@@ -97,12 +99,13 @@ export async function testAIConnection(data: Pick<AppSettings, 'aiProvider' | 'a
 export async function aiReview(
   reportId: string,
   reviewType: ReviewType,
-  reportData: Partial<ReportData>
+  reportData: Partial<ReportData>,
+  options: { responseLength?: ResponseLength } = {}
 ): Promise<AIReviewResponse> {
   const res = await fetch('/api/ai/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reportId, reviewType, reportData }),
+    body: JSON.stringify({ reportId, reviewType, reportData, responseLength: options.responseLength }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'خطأ في الاتصال بالذكاء الاصطناعي' }));
@@ -115,17 +118,169 @@ export async function aiFollowUp(
   reportId: string,
   question: string,
   history: AIMessage[],
-  conversationId?: string | null
+  conversationId?: string | null,
+  options: { responseLength?: ResponseLength } = {}
 ): Promise<AIReviewResponse> {
   const res = await fetch('/api/ai/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reportId, followUp: true, question, history, conversationId }),
+    body: JSON.stringify({
+      reportId,
+      followUp: true,
+      question,
+      history,
+      conversationId,
+      responseLength: options.responseLength,
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'خطأ' }));
     throw new Error(err.error);
   }
+  return res.json();
+}
+
+export type AIReviewStreamEvent =
+  | { type: 'chunk'; chunk: string }
+  | { type: 'done'; payload: AIReviewResponse }
+  | { type: 'error'; error: string };
+
+async function* parseReviewStream(response: Response): AsyncGenerator<AIReviewStreamEvent> {
+  if (!response.body) {
+    throw new Error('رد البث لا يحتوي على بيانات.');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
+
+        const parsed = JSON.parse(line) as {
+          type?: string;
+          chunk?: string;
+          error?: string;
+          content?: string;
+          messages?: AIMessage[];
+          conversationId?: string | null;
+          suggestions?: string[];
+        };
+
+        if (parsed.type === 'chunk' && typeof parsed.chunk === 'string') {
+          yield { type: 'chunk', chunk: parsed.chunk };
+          continue;
+        }
+
+        if (parsed.type === 'error') {
+          yield { type: 'error', error: parsed.error || 'حدث خطأ أثناء البث.' };
+          continue;
+        }
+
+        if (parsed.type === 'done') {
+          yield {
+            type: 'done',
+            payload: {
+              content: typeof parsed.content === 'string' ? parsed.content : '',
+              messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+              conversationId: typeof parsed.conversationId === 'string' || parsed.conversationId === null
+                ? parsed.conversationId
+                : null,
+              suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : undefined,
+            },
+          };
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+export async function* aiReviewStream(
+  reportId: string,
+  reviewType: ReviewType,
+  reportData: Partial<ReportData>,
+  options: { responseLength?: ResponseLength } = {}
+): AsyncGenerator<AIReviewStreamEvent> {
+  const res = await fetch('/api/ai/review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      reportId,
+      reviewType,
+      reportData,
+      responseLength: options.responseLength,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'خطأ في الاتصال بالذكاء الاصطناعي' }));
+    throw new Error(err.error || 'خطأ غير معروف');
+  }
+
+  yield* parseReviewStream(res);
+}
+
+export async function* aiFollowUpStream(
+  reportId: string,
+  question: string,
+  history: AIMessage[],
+  conversationId?: string | null,
+  options: { responseLength?: ResponseLength } = {}
+): AsyncGenerator<AIReviewStreamEvent> {
+  const res = await fetch('/api/ai/review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      reportId,
+      followUp: true,
+      question,
+      history,
+      conversationId,
+      responseLength: options.responseLength,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'خطأ في الاتصال بالذكاء الاصطناعي' }));
+    throw new Error(err.error || 'خطأ غير معروف');
+  }
+
+  yield* parseReviewStream(res);
+}
+
+export async function getReviewRecommendation(
+  reportId: string,
+  reportData: Partial<ReportData>
+): Promise<AIReviewRecommendation> {
+  const res = await fetch('/api/ai/review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      reportId,
+      reportData,
+      action: 'recommend',
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'فشل جلب التوصية الذكية' }));
+    throw new Error(err.error || 'فشل جلب التوصية الذكية');
+  }
+
   return res.json();
 }
 
@@ -141,6 +296,57 @@ export async function fetchAIHistory(reportId: string): Promise<AIConversationHi
 
   const payload = await res.json();
   return Array.isArray(payload.conversations) ? payload.conversations : [];
+}
+
+export async function renameAIConversation(id: string, title: string): Promise<AIConversationHistoryItem> {
+  const res = await fetch('/api/ai/history', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, title }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'فشل تحديث عنوان المحادثة' }));
+    throw new Error(err.error || 'فشل تحديث عنوان المحادثة');
+  }
+
+  const payload = await res.json();
+  if (!payload?.conversation) {
+    throw new Error('تعذر قراءة بيانات المحادثة بعد التحديث');
+  }
+
+  return payload.conversation as AIConversationHistoryItem;
+}
+
+export async function togglePinAIConversation(id: string, pinned: boolean): Promise<AIConversationHistoryItem> {
+  const res = await fetch('/api/ai/history', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, pinned }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'فشل تحديث حالة التثبيت' }));
+    throw new Error(err.error || 'فشل تحديث حالة التثبيت');
+  }
+
+  const payload = await res.json();
+  if (!payload?.conversation) {
+    throw new Error('تعذر قراءة بيانات المحادثة بعد التحديث');
+  }
+
+  return payload.conversation as AIConversationHistoryItem;
+}
+
+export async function deleteAIConversation(id: string): Promise<void> {
+  const res = await fetch(`/api/ai/history?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'فشل حذف المحادثة' }));
+    throw new Error(err.error || 'فشل حذف المحادثة');
+  }
 }
 
 export async function fetchAnalytics(options: AnalyticsQueryOptions = {}): Promise<AnalyticsResponse> {
