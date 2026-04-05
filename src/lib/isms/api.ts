@@ -14,6 +14,21 @@ import type {
 
 const BASE = "/api/isms";
 
+export interface IsmsExportPayload {
+  exportedAt: string;
+  workspace: IsmsWorkspaceView;
+  risks: IsmsRisk[];
+  assets: IsmsAsset[];
+  incidents: IsmsIncident[];
+  tasks: IsmsTask[];
+  team: IsmsTeamMember[];
+  kpis: IsmsKpi[];
+  suppliers: IsmsSupplier[];
+  awareness: IsmsAwareness[];
+  audits: IsmsAudit[];
+  ncas: IsmsNca[];
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     cache: "no-store",
@@ -65,6 +80,17 @@ export async function getWorkspace(): Promise<IsmsWorkspaceView> {
 export async function updateWorkspace(data: Partial<IsmsWorkspaceView>): Promise<IsmsWorkspaceView> {
   return request<IsmsWorkspaceView>(`${BASE}/workspace`, {
     method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function exportIsmsData(): Promise<IsmsExportPayload> {
+  return request<IsmsExportPayload>(`${BASE}/export`);
+}
+
+export async function importIsmsData(data: Partial<IsmsExportPayload>): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>(`${BASE}/import`, {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }

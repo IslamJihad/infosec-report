@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import type { ReportData } from '@/types/report';
 import { fetchReport } from '@/lib/api';
 import { buildReportSearchIndex, searchReportIndex, type ReportSearchResult } from '@/lib/search/reportSearch';
@@ -11,26 +11,49 @@ import Link from 'next/link';
 
 export default function ReportPreviewPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await fetchReport(id);
-        setReport(data);
-      } catch {
-        router.push('/');
-      } finally {
-        setLoading(false);
-      }
+  const loadReport = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await fetchReport(id);
+      setReport(data);
+    } catch (error) {
+      console.error('Failed to load preview report:', error);
+      setReport(null);
+      setLoadError('تعذر تحميل التقرير. يرجى إعادة المحاولة.');
+    } finally {
+      setLoading(false);
     }
-    load();
-  }, [id, router]);
+  }, [id]);
+
+  useEffect(() => {
+    void loadReport();
+  }, [loadReport]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const isEditable = Boolean(target && (target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'));
+
+      if (isEditable) return;
+
+      if (event.key === '/') {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const searchIndex = useMemo(() => {
     if (!report) return [];
@@ -64,10 +87,37 @@ export default function ReportPreviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#dde2eb]">
-        <div className="text-center">
-          <div className="text-4xl animate-spin inline-block mb-3">⚙️</div>
-          <p className="text-text-muted text-sm">جاري تحميل التقرير...</p>
+      <div className="min-h-screen bg-[#dde2eb] px-4 py-8">
+        <div className="max-w-[900px] mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="h-[68px] bg-slate-200/80 animate-pulse" />
+          <div className="h-[900px] bg-gradient-to-b from-slate-100 to-white animate-pulse" />
+          <div className="p-4 text-center text-sm text-slate-500">جاري تحميل التقرير...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#dde2eb] px-4">
+        <div className="w-full max-w-[560px] rounded-2xl border border-red-200 bg-white shadow-xl p-6 text-center" dir="rtl">
+          <div className="text-2xl mb-3">⚠️</div>
+          <h2 className="text-lg font-bold text-slate-800 mb-2">تعذر فتح المعاينة</h2>
+          <p className="text-sm text-slate-600 mb-5">{loadError}</p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => void loadReport()}
+              className="bg-navy-800 text-white border-none rounded-lg px-4 py-2 text-sm font-bold hover:bg-navy-900 transition-colors cursor-pointer"
+            >
+              إعادة المحاولة
+            </button>
+            <Link
+              href={`/report/${id}`}
+              className="bg-white text-navy-900 border border-navy-200 rounded-lg px-4 py-2 text-sm font-bold no-underline hover:bg-navy-50 transition-colors"
+            >
+              الرجوع للمحرر
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -113,6 +163,12 @@ export default function ReportPreviewPage() {
                 onClose={() => setSearchOpen(false)}
               />
             </div>
+
+            {searchQuery.trim().length >= 2 && (
+              <span className="text-[11px] text-white/75 px-2 py-1 rounded-md bg-white/10">
+                {searchResults.length} نتيجة
+              </span>
+            )}
 
             <button
               onClick={() => window.print()}

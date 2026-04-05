@@ -1,6 +1,5 @@
 ﻿'use client';
 
-import { useRef, useEffect } from 'react';
 import type { ReportData } from '@/types/report';
 import {
   formatArabicDate,
@@ -11,148 +10,248 @@ import {
   CHALLENGE_TYPES,
 } from '@/lib/constants';
 import { calculateGlobalSecurityScore, getPercentileText } from '@/lib/scoring';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 interface Props {
   report: ReportData;
 }
 
-function drawKpiComboChart(canvas: HTMLCanvasElement, r: ReportData) {
-  const DPR = 2;
-  const W = canvas.offsetWidth || 680;
-  const H = 200;
-  canvas.width = W * DPR;
-  canvas.height = H * DPR;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  ctx.scale(DPR, DPR);
+type SectionId = 'exec' | 'eff' | 'risks' | 'assets' | 'ind' | 'sla' | 'act' | 'mat';
 
-  const labels = ['حوادث حرجة', 'ثغرات مكتشفة', 'إجمالي الحوادث', 'امتثال ISO%'];
-  const cur = [r.kpiCritical, r.kpiVuln, r.kpiTotal, r.kpiCompliance];
-  const prev = [r.prevCritical, r.prevVuln, r.prevTotal, r.prevCompliance];
-  const curColors = ['#dc2626', '#d97706', '#1e3a5f', '#16a34a'];
+interface SectionDefinition {
+  id: SectionId;
+  title: string;
+  rag: string;
+  visible: boolean;
+}
 
-  const PAD = { top: 28, right: 20, bottom: 52, left: 36 };
-  const cW = W - PAD.left - PAD.right;
-  const cH = H - PAD.top - PAD.bottom;
-  const N = labels.length;
-  const grpW = cW / N;
-  const barW = Math.min(28, Math.floor((grpW - 14) / 2));
-  const maxVal = Math.max(...cur, ...prev, 1);
+function ensureArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
 
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, W, H);
+function formatMetricValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
 
-  for (let v = 0; v <= 4; v++) {
-    const y = PAD.top + cH * (1 - v / 4);
-    ctx.strokeStyle = v === 0 ? '#cbd5e1' : '#f1f5f9';
-    ctx.lineWidth = v === 0 ? 1 : 0.5;
-    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
-    ctx.fillStyle = '#94a3b8'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText(String(Math.round(maxVal * v / 4)), PAD.left - 4, y + 3);
+const BULLET_LINE_PATTERN = /^[-*•]\s+/;
+
+const MULTILINE_TEXT_STYLE = {
+  whiteSpace: 'pre-wrap' as const,
+  overflowWrap: 'anywhere' as const,
+  wordBreak: 'break-word' as const,
+};
+
+type RenderSegment =
+  | { kind: 'paragraph'; lines: string[] }
+  | { kind: 'bullets'; items: string[] };
+
+interface MultilineRenderOptions {
+  fontSize?: number;
+  lineHeight?: number;
+  color?: string;
+  fontWeight?: number | string;
+  emptyText?: string;
+  gap?: number;
+}
+
+function renderFormattedText(
+  value: string | null | undefined,
+  options: MultilineRenderOptions = {},
+) {
+  const normalized = (value ?? '').replace(/\r\n?/g, '\n').trim();
+
+  const baseTextStyle = {
+    ...MULTILINE_TEXT_STYLE,
+    fontSize: options.fontSize ?? 10,
+    lineHeight: options.lineHeight ?? 1.8,
+    color: options.color ?? '#475569',
+    fontWeight: options.fontWeight,
+  };
+
+  if (!normalized) {
+    return <span style={baseTextStyle}>{options.emptyText ?? '—'}</span>;
   }
 
-  labels.forEach((lbl, gi) => {
-    const gx = PAD.left + gi * grpW;
-    const cx = gx + grpW / 2;
-    const sx = cx - barW - 2;
+  const segments: RenderSegment[] = [];
+  const paragraphBuffer: string[] = [];
+  const bulletBuffer: string[] = [];
 
-    // prev bar
-    const pHgt = Math.max(2, (prev[gi] / maxVal) * cH);
-    const pY = PAD.top + cH - pHgt;
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(sx, pY, barW, pHgt);
-    ctx.fillStyle = '#94a3b8'; ctx.font = '8px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(String(prev[gi]), sx + barW / 2, pY - 3);
+  const flushParagraph = () => {
+    if (paragraphBuffer.length === 0) return;
+    segments.push({ kind: 'paragraph', lines: [...paragraphBuffer] });
+    paragraphBuffer.length = 0;
+  };
 
-    // current bar
-    const cHgt = Math.max(2, (cur[gi] / maxVal) * cH);
-    const cY = PAD.top + cH - cHgt;
-    ctx.fillStyle = curColors[gi];
-    ctx.fillRect(sx + barW + 4, cY, barW, cHgt);
-    ctx.fillStyle = curColors[gi]; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(String(cur[gi]), sx + barW + 4 + barW / 2, cY - 3);
+  const flushBullets = () => {
+    if (bulletBuffer.length === 0) return;
+    segments.push({ kind: 'bullets', items: [...bulletBuffer] });
+    bulletBuffer.length = 0;
+  };
 
-    ctx.fillStyle = '#334155'; ctx.font = 'bold 8.5px sans-serif'; ctx.textAlign = 'center';
-    const words = lbl.split(' ');
-    ctx.fillText(words.slice(0, Math.ceil(words.length / 2)).join(' '), cx, H - PAD.bottom + 14);
-    if (words.length > 2) ctx.fillText(words.slice(Math.ceil(words.length / 2)).join(' '), cx, H - PAD.bottom + 25);
-    else if (words.length === 2 && lbl.length > 6) ctx.fillText(words[1], cx, H - PAD.bottom + 25);
-  });
+  for (const rawLine of normalized.split('\n')) {
+    const line = rawLine.trimEnd();
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushParagraph();
+      flushBullets();
+      continue;
+    }
+
+    if (BULLET_LINE_PATTERN.test(trimmed)) {
+      flushParagraph();
+      bulletBuffer.push(trimmed.replace(BULLET_LINE_PATTERN, '').trim() || '—');
+      continue;
+    }
+
+    flushBullets();
+    paragraphBuffer.push(line);
+  }
+
+  flushParagraph();
+  flushBullets();
+
+  if (segments.length === 0) {
+    return <span style={baseTextStyle}>{options.emptyText ?? '—'}</span>;
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: options.gap ?? 6 }}>
+      {segments.map((segment, index) => {
+        if (segment.kind === 'bullets') {
+          return (
+            <ul
+              key={`bullets-${index}`}
+              style={{
+                margin: 0,
+                paddingInlineStart: 18,
+                display: 'grid',
+                gap: 4,
+                listStylePosition: 'outside',
+              }}
+            >
+              {segment.items.map((item, itemIndex) => (
+                <li key={`bullet-item-${itemIndex}`} style={baseTextStyle}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={`paragraph-${index}`} style={{ ...baseTextStyle, margin: 0 }}>
+            {segment.lines.join('\n')}
+          </p>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function ReportPreview({ report }: Props) {
   const r = report;
   const dateF = formatArabicDate(r.issueDate);
-  const kpiChartRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    const el = kpiChartRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver(() => { if (kpiChartRef.current) drawKpiComboChart(kpiChartRef.current, r); });
-    obs.observe(el);
-    drawKpiComboChart(el, r);
-    return () => obs.disconnect();
-  }, [r]);
+  const risks = ensureArray(r.risks);
+  const assets = ensureArray(r.assets);
+  const recommendations = ensureArray(r.recommendations);
+  const challenges = ensureArray(r.challenges);
+  const maturityDomains = ensureArray(r.maturityDomains);
+  const effKPIs = ensureArray(r.efficiencyKPIs);
 
-  const totalVuln = r.vulnCritical + r.vulnHigh + r.vulnMedium + r.vulnLow || 1;
-  const sortedRisks = [...r.risks].sort((a, b) => b.probability * b.impact - a.probability * a.impact);
+  const totalVulnRaw = r.vulnCritical + r.vulnHigh + r.vulnMedium + r.vulnLow;
+  const totalVuln = totalVulnRaw > 0 ? totalVulnRaw : 1;
+  const sortedRisks = [...risks].sort((a, b) => b.probability * b.impact - a.probability * a.impact);
   const critRisks = sortedRisks.filter(risk => risk.probability * risk.impact >= 15).length;
-  const avgProt = r.assets.length ? Math.round(r.assets.reduce((s, a) => s + a.protectionLevel, 0) / r.assets.length) : 70;
-  const avgMat = r.maturityDomains.length > 0
-    ? (r.maturityDomains.reduce((a, m) => a + m.score, 0) / r.maturityDomains.length).toFixed(1)
-    : '0';
+  const avgProt = assets.length > 0
+    ? Math.round(assets.reduce((sum, asset) => sum + asset.protectionLevel, 0) / assets.length)
+    : 70;
+  const avgMatValue = maturityDomains.length > 0
+    ? maturityDomains.reduce((sum, domain) => sum + domain.score, 0) / maturityDomains.length
+    : 0;
+  const avgMat = avgMatValue.toFixed(1);
   const trendUp = r.trend.includes('↑') || r.trend.includes('↗');
   const trendDown = r.trend.includes('↓') || r.trend.includes('↘');
-  const effKPIs = r.efficiencyKPIs ?? [];
-  const scoreResult = r.scoreBreakdown
-    ? { securityScore: r.securityScore, scoreBreakdown: r.scoreBreakdown }
-    : calculateGlobalSecurityScore(r);
-  const finalScore = scoreResult.securityScore;
-  const scoreBreakdown = scoreResult.scoreBreakdown;
+  const fallbackScoreResult = calculateGlobalSecurityScore(r);
+  const scoreBreakdown = r.scoreBreakdown ?? fallbackScoreResult.scoreBreakdown;
+  const finalScore = r.scoreBreakdown ? r.securityScore : fallbackScoreResult.securityScore;
   const { componentScores, weightedContributions, riskPostureDetails, operationalDetails } = scoreBreakdown;
 
   const scoreColor = (s: number) => s >= 75 ? '#16a34a' : s >= 50 ? '#d97706' : '#dc2626';
-  const ragColor = (rag: string) => rag === 'r' ? '#dc2626' : rag === 'a' ? '#f59e0b' : rag === 'g' ? '#22c55e' : '#94a3b8';
-  const ragLabel = (rag: string) => rag === 'r' ? 'يستوجب تدخلاً' : rag === 'a' ? 'يستوجب متابعة' : rag === 'g' ? 'وضع جيد' : '';
-  const ragBg   = (rag: string) => rag === 'r' ? '#fef2f2' : rag === 'a' ? '#fffbeb' : rag === 'g' ? '#f0fdf4' : '#f8fafc';
-  const ragBorder = (rag: string) => rag === 'r' ? 'rgba(220,38,38,.15)' : rag === 'a' ? 'rgba(120,53,15,.12)' : 'rgba(20,83,45,.12)';
+  const ragColor = (rag: string) => {
+    if (rag === 'r') return '#dc2626';
+    if (rag === 'a') return '#f59e0b';
+    if (rag === 'g') return '#16a34a';
+    return '#64748b';
+  };
+  const ragLabel = (rag: string) => {
+    if (rag === 'r') return 'يستوجب تدخلاً';
+    if (rag === 'a') return 'يستوجب متابعة';
+    if (rag === 'g') return 'وضع جيد';
+    return 'لا عناصر';
+  };
+  const ragBg = (rag: string) => {
+    if (rag === 'r') return '#fef2f2';
+    if (rag === 'a') return '#fffbeb';
+    if (rag === 'g') return '#f0fdf4';
+    return '#f1f5f9';
+  };
+  const ragBorder = (rag: string) => {
+    if (rag === 'r') return 'rgba(220,38,38,.15)';
+    if (rag === 'a') return 'rgba(120,53,15,.12)';
+    if (rag === 'g') return 'rgba(20,83,45,.12)';
+    return 'rgba(100,116,139,.2)';
+  };
 
-  const slaOk = r.slaMTTC <= r.slaMTTCTarget;
+  const targetMttc = Math.max(1, Number(r.slaMTTCTarget) || 24);
+  const currentMttc = Math.max(0, Number(r.slaMTTC) || 0);
+  const slaOk = currentMttc <= targetMttc;
+  const slaCompliance = Math.min(100, Math.round((targetMttc / Math.max(currentMttc, 0.1)) * 100));
+  const hasActions = recommendations.length > 0 || challenges.length > 0;
 
-  // Precompute which sections are shown → ordinal numbers
-  type SecId = 'exec' | 'risks' | 'assets' | 'ind' | 'eff' | 'sla' | 'act' | 'mat';
-  const shownSections: SecId[] = [
-    'exec',
-    ...(effKPIs.length > 0 ? ['eff' as SecId] : []),
-    'risks',
-    ...(r.assets.length > 0 ? ['assets' as SecId] : []),
-    'ind',
-    ...(r.showSLA ? ['sla' as SecId] : []),
-    'act',
-    ...(r.showMaturity && r.maturityDomains.length > 0 ? ['mat' as SecId] : []),
+  const sectionDefinitions: SectionDefinition[] = [
+    { id: 'exec', title: 'الملخص التنفيذي', rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r', visible: true },
+    { id: 'eff', title: 'الكفاءة التشغيلية', rag: 'a', visible: effKPIs.length > 0 },
+    { id: 'risks', title: 'المخاطر الرئيسية', rag: critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r', visible: true },
+    { id: 'assets', title: 'الأصول الحيوية', rag: avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r', visible: assets.length > 0 },
+    { id: 'ind', title: 'مؤشرات الأداء', rag: r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r', visible: true },
+    { id: 'sla', title: 'مقاييس الاستجابة', rag: slaOk ? 'g' : 'r', visible: r.showSLA },
+    { id: 'act', title: 'التوصيات والاعتمادات', rag: hasActions ? 'g' : 'n', visible: true },
+    { id: 'mat', title: 'تقييم مستوى الامتثال', rag: avgMatValue >= 80 ? 'g' : avgMatValue >= 60 ? 'a' : 'r', visible: r.showMaturity && maturityDomains.length > 0 },
   ];
-  const secNum = (id: SecId) => shownSections.indexOf(id) + 1;
 
-  // TOC items
-  const toc = shownSections.map(id => {
-    const map: Record<SecId, { title: string; rag: string }> = {
-      exec:   { title: 'الملخص التنفيذي',             rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r' },
-      risks:  { title: 'المخاطر الرئيسية',             rag: critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r' },
-      assets: { title: 'الأصول الحيوية',               rag: avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r' },
-      ind:    { title: 'مؤشرات الأداء',               rag: r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r' },
-      eff:    { title: 'الكفاءة التشغيلية',            rag: 'a' },
-      sla:    { title: 'مقاييس الاستجابة',             rag: slaOk ? 'g' : 'r' },
-      act:    { title: 'التوصيات والاعتمادات',         rag: r.recommendations.length > 0 ? 'g' : 'n' },
-      mat:    { title: 'تقييم مستوى الامتثال',         rag: parseFloat(avgMat) >= 80 ? 'g' : parseFloat(avgMat) >= 60 ? 'a' : 'r' },
-    };
-    return { ...map[id], num: secNum(id) };
-  });
+  const visibleSections = sectionDefinitions.filter((section) => section.visible);
+  const sectionNumberMap = new Map<SectionId, number>();
+  visibleSections.forEach((section, index) => sectionNumberMap.set(section.id, index + 1));
+  const secNum = (id: SectionId) => sectionNumberMap.get(id) ?? 0;
 
-  // Section header helper
-  const SH = (id: SecId, title: string, rag?: string) => (
+  const toc = visibleSections.map((section) => ({
+    num: secNum(section.id),
+    title: section.title,
+    rag: section.rag,
+  }));
+
+  const kpiChartData = [
+    { label: 'حوادث حرجة', previous: r.prevCritical, current: r.kpiCritical },
+    { label: 'ثغرات مكتشفة', previous: r.prevVuln, current: r.kpiVuln },
+    { label: 'إجمالي الحوادث', previous: r.prevTotal, current: r.kpiTotal },
+    { label: 'امتثال ISO%', previous: r.prevCompliance, current: r.kpiCompliance },
+  ];
+
+  const SH = (id: SectionId, title: string, rag?: string) => (
     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
       <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: '#94a3b8', minWidth: 28 }}>{String(secNum(id)).padStart(2, '0')}</span>
-      <span style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', flex: 1, letterSpacing: -0.3 }}>{title}</span>
+      <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', flex: 1, letterSpacing: -0.2 }}>{title}</h2>
       {rag && (
         <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 9, fontWeight: 800, letterSpacing: 0.5, padding: '3px 10px', borderRadius: 2, background: ragBg(rag), color: ragColor(rag), border: `1px solid ${ragBorder(rag)}` }}>
           {ragLabel(rag)}
@@ -162,13 +261,13 @@ export default function ReportPreview({ report }: Props) {
   );
 
   return (
-    <div className="max-w-[820px] mx-auto bg-white shadow-lg" dir="rtl">
+    <div className="report-page max-w-[900px] mx-auto bg-white shadow-xl" dir="rtl">
       {/* ═══════ COVER PAGE ═══════ */}
       <div id="search-preview-section-general" className="report-cover" style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', height: '1123px', maxHeight: '1123px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0', pageBreakAfter: 'always', boxSizing: 'border-box', margin: 0, padding: 0 }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 15% 80%,rgba(26,92,46,.06) 0%,transparent 50%),radial-gradient(circle at 85% 20%,rgba(201,162,39,.07) 0%,transparent 50%)', pointerEvents: 'none' }} />
+        <div className="report-cover-decoration" style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 15% 80%,rgba(26,92,46,.06) 0%,transparent 50%),radial-gradient(circle at 85% 20%,rgba(201,162,39,.07) 0%,transparent 50%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, right: 0, width: 6, height: '100%', background: 'linear-gradient(180deg,#1a5c2e 0%,#c9a227 55%,rgba(201,162,39,.15) 100%)' }} />
-        <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(26,92,46,.04)', top: -80, left: -80, pointerEvents: 'none', zIndex: 1 }} />
-        <div style={{ position: 'absolute', width: 180, height: 180, borderRadius: '50%', background: 'rgba(201,162,39,.05)', bottom: 80, right: -50, pointerEvents: 'none', zIndex: 1 }} />
+        <div className="report-cover-decoration" style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(26,92,46,.04)', top: -80, left: -80, pointerEvents: 'none', zIndex: 1 }} />
+        <div className="report-cover-decoration" style={{ position: 'absolute', width: 180, height: 180, borderRadius: '50%', background: 'rgba(201,162,39,.05)', bottom: 80, right: -50, pointerEvents: 'none', zIndex: 1 }} />
         <div style={{ position: 'relative', zIndex: 2, padding: '24px 40px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
             {r.logoBase64 ? <img src={r.logoBase64} alt="شعار" style={{ maxHeight: 40, maxWidth: 140, objectFit: 'contain' }} /> : <div style={{ fontSize: 9, color: '#1a5c2e', border: '1px solid rgba(26,92,46,.25)', padding: '4px 10px', borderRadius: 6, letterSpacing: 0.5, background: 'rgba(255,255,255,.8)', fontWeight: 600 }}>{r.orgName}</div>}
@@ -189,7 +288,13 @@ export default function ReportPreview({ report }: Props) {
                 <div style={{ fontSize: 8, letterSpacing: 2, color: '#6b8f71', textTransform: 'uppercase', marginBottom: 7 }}>الموضوع</div>
                 <div style={{ width: 120, height: 1.5, margin: '0 auto 8px', background: 'linear-gradient(90deg,transparent,rgba(201,162,39,.9),transparent)' }} />
                 <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.95, color: '#1a3a1f', background: 'rgba(255,255,255,.55)', border: '1px solid rgba(26,92,46,.12)', borderRadius: 12, padding: '9px 13px' }}>
-                  {r.subject}
+                  {renderFormattedText(r.subject, {
+                    fontSize: 14,
+                    lineHeight: 1.95,
+                    color: '#1a3a1f',
+                    fontWeight: 800,
+                    gap: 8,
+                  })}
                 </div>
               </div>
             </div>
@@ -207,7 +312,14 @@ export default function ReportPreview({ report }: Props) {
             <div style={{ width: 32, height: 32, background: '#1a5c2e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0, marginTop: 2 }}>C</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 8, letterSpacing: 2, color: '#8aaa8e', textTransform: 'uppercase', marginBottom: 5 }}>ملاحظة CISO — ما الجديد مقارنةً بالتقرير السابق</div>
-              <div style={{ fontSize: 12, color: '#2d4a31', lineHeight: 2 }}>{r.chairNote}</div>
+              <div style={{ fontSize: 12, color: '#2d4a31', lineHeight: 2 }}>
+                {renderFormattedText(r.chairNote, {
+                  fontSize: 12,
+                  lineHeight: 2,
+                  color: '#2d4a31',
+                  gap: 8,
+                })}
+              </div>
               <div style={{ fontSize: 9, color: '#8aaa8e', marginTop: 5 }}>{r.author} · {dateF}</div>
             </div>
           </div>
@@ -221,7 +333,7 @@ export default function ReportPreview({ report }: Props) {
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: '#94a3b8', marginBottom: 16, textTransform: 'uppercase' }}>فهرس التقرير — الحالة الراهنة</div>
 
         <div style={{ flex: 1, overflow: 'auto' }}>
-        <table className="w-full border-collapse text-[10px]">
+        <table className="report-preview-table w-full border-collapse text-[10px]">
 
           <tbody>
 
@@ -270,7 +382,7 @@ export default function ReportPreview({ report }: Props) {
       
 
       {/* ═══════ EXEC SUMMARY ═══════ */}
-      <div id="search-preview-section-executive" className="px-11 py-7 border-b border-gray-100">
+      <div id="search-preview-section-executive" className="report-section px-11 py-8 border-b border-gray-100">
         {SH('exec', 'الملخص التنفيذي', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 20, marginBottom: 18, alignItems: 'start' }}>
           <div style={{ background: '#1e293b', color: '#fff', borderRadius: 4, padding: '18px 22px', textAlign: 'center', minWidth: 110 }}>
@@ -305,7 +417,14 @@ export default function ReportPreview({ report }: Props) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 2, fontSize: 10, fontWeight: 700, background: trendUp ? '#f0fdf4' : trendDown ? '#fef2f2' : '#f1f5f9', color: trendUp ? '#16a34a' : trendDown ? '#dc2626' : '#94a3b8' }}>{trendUp ? '↑' : trendDown ? '↓' : '→'} {r.trend}</span>
-              <span style={{ fontSize: 11, color: '#475569', lineHeight: 1.9, flex: 1 }}>{r.summary}</span>
+              <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.9, flex: 1 }}>
+                {renderFormattedText(r.summary, {
+                  fontSize: 11,
+                  lineHeight: 1.9,
+                  color: '#475569',
+                  gap: 8,
+                })}
+              </div>
             </div>
             <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
               <div style={{ background: '#f8fafc', padding: '8px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 800, color: '#1e293b' }}>
@@ -327,12 +446,12 @@ export default function ReportPreview({ report }: Props) {
 
       {/* ═══════ EFFICIENCY ═══════ */}
       {effKPIs.length > 0 && (
-        <div id="search-preview-section-efficiency" className="px-11 py-7 border-b border-gray-100">
+        <div id="search-preview-section-efficiency" className="report-section px-11 py-8 border-b border-gray-100">
           {SH('eff', 'الكفاءة التشغيلية', 'a')}
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, effKPIs.length)},1fr)`, gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
             {effKPIs.map((e) => {
               const good = e.lowerBetter ? e.val <= e.target : e.val >= e.target;
-              const pct = Math.min(100, Math.round(Math.abs(e.val) / Math.max(e.target, 1) * 100));
+              const pct = Math.min(100, Math.round((Math.abs(e.val) / Math.max(e.target, 1)) * 100));
               const mc = good ? '#16a34a' : '#dc2626';
               return (
                 <div id={`search-preview-efficiency-${e.id}`} key={e.id} style={{ background: '#fff', padding: '16px 18px' }}>
@@ -341,12 +460,21 @@ export default function ReportPreview({ report }: Props) {
                     <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: good ? '#f0fdf4' : '#fef2f2', color: mc }}>{good ? 'ضمن الهدف' : 'دون الهدف'}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-                    <span style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontFamily: 'monospace', color: mc }}>{e.val}</span>
+                    <span style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, fontFamily: 'monospace', color: mc }}>{formatMetricValue(e.val)}</span>
                     <span style={{ fontSize: 11, color: '#94a3b8' }}>{e.unit}</span>
                   </div>
-                  <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 6 }}>الهدف: {e.target}{e.unit}</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 6 }}>الهدف: {formatMetricValue(e.target)} {e.unit}</div>
                   <div style={{ height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: mc }} /></div>
-                  {e.description && <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 6, lineHeight: 1.7 }}>{e.description}</div>}
+                  {e.description && (
+                    <div style={{ marginTop: 6 }}>
+                      {renderFormattedText(e.description, {
+                        fontSize: 9,
+                        color: '#94a3b8',
+                        lineHeight: 1.7,
+                        gap: 4,
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -355,14 +483,20 @@ export default function ReportPreview({ report }: Props) {
       )}
 
       {/* ═══════ RISKS ═══════ */}
-      <div id="search-preview-section-risks" className="px-11 py-7 border-b border-gray-100" style={{ pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
+      <div id="search-preview-section-risks" className="report-section px-11 py-8 border-b border-gray-100" style={{ pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
         {SH('risks', 'المخاطر الرئيسية', critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r')}
         {critRisks > 0 && (
           <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.9, padding: '9px 13px', background: '#eff6ff', borderRight: '3px solid #2563eb', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>
             {critRisks} مخاطر بدرجة 15 أو أعلى — تهديد مباشر لاستمرارية الأعمال يستوجب المعالجة قبل نهاية الربع.
           </div>
         )}
-        <table className="w-full border-collapse text-[11px] mb-4">
+        {sortedRisks.length === 0 ? (
+          <div style={{ border: '1px dashed #cbd5e1', borderRadius: 6, padding: '18px 14px', fontSize: 11, color: '#64748b', background: '#f8fafc' }}>
+            لا توجد مخاطر مدخلة في هذا التقرير حالياً.
+          </div>
+        ) : (
+          <div className="report-table-wrapper overflow-x-auto">
+            <table className="report-preview-table w-full border-collapse text-[11px] mb-4 min-w-[760px]">
           <thead>
             <tr>{['#', 'وصف المخاطرة والنظام المتأثر', 'الخطورة', 'الحالة', 'الدرجة', 'السيناريو الأسوأ', 'الضوابط المطلوبة', 'الاصول الحيوية المتاثرة'].map(h => (
               <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
@@ -371,31 +505,139 @@ export default function ReportPreview({ report }: Props) {
           <tbody>
             {sortedRisks.map((risk, i) => {
               const score = risk.probability * risk.impact;
-              const sev = SEVERITY_MAP[risk.severity];
-              const st = STATUS_MAP[risk.status];
+              const sev = SEVERITY_MAP[(risk.severity || 'medium').toLowerCase()] || SEVERITY_MAP.medium;
+              const st = STATUS_MAP[(risk.status || 'open').toLowerCase()] || STATUS_MAP.open;
               const autoWC = score >= 20 ? 'توقف العمليات 48+ ساعة وخسائر مالية مباشرة' : score >= 15 ? 'اختراق بيانات وتبعات قانونية' : score >= 10 ? 'تعطل جزئي يؤثر على الإنتاجية' : 'تأثير محدود يمكن احتواؤه';
               return (
                 <tr id={`search-preview-risk-${risk.id}`} key={risk.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
-                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontWeight: 600, marginBottom: 3 }}>{risk.description}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>{risk.system}</div></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>
+                    <div style={{ marginBottom: risk.system ? 4 : 0 }}>
+                      {renderFormattedText(risk.description, {
+                        fontSize: 11,
+                        color: '#0f172a',
+                        fontWeight: 600,
+                        lineHeight: 1.7,
+                        gap: 4,
+                      })}
+                    </div>
+                    {risk.system ? (
+                      <div>
+                        {renderFormattedText(risk.system, {
+                          fontSize: 9,
+                          color: '#94a3b8',
+                          lineHeight: 1.6,
+                          gap: 3,
+                          emptyText: '',
+                        })}
+                      </div>
+                    ) : null}
+                  </td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${sev?.bgClass}`}>{sev?.label}</span></td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${st?.bgClass}`}>{st?.label}</span></td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 3, fontSize: 10, fontWeight: 900, fontFamily: 'monospace', background: score >= 20 ? '#450a0a' : score >= 15 ? '#fef2f2' : score >= 10 ? '#fffbeb' : '#f0fdf4', color: score >= 20 ? '#fff' : score >= 15 ? '#dc2626' : score >= 10 ? '#d97706' : '#16a34a' }}>{score}</span>
                   </td>
-                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: score >= 15 ? '#dc2626' : score >= 10 ? '#d97706' : '#94a3b8', fontWeight: score >= 15 ? 700 : 400, lineHeight: 1.8 }}>{risk.worstCase || autoWC}</td>
-                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{risk.requiredControls || '–'}</td>
-                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{risk.affectedAssets || '–'}</td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: score >= 15 ? '#dc2626' : score >= 10 ? '#d97706' : '#94a3b8', fontWeight: score >= 15 ? 700 : 400, lineHeight: 1.8 }}>
+                    {renderFormattedText(risk.worstCase || autoWC, {
+                      fontSize: 10,
+                      color: score >= 15 ? '#dc2626' : score >= 10 ? '#d97706' : '#94a3b8',
+                      fontWeight: score >= 15 ? 700 : 400,
+                      lineHeight: 1.8,
+                      gap: 4,
+                    })}
+                  </td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#475569', lineHeight: 1.8 }}>
+                    {renderFormattedText(risk.requiredControls, {
+                      fontSize: 10,
+                      color: '#475569',
+                      lineHeight: 1.8,
+                      emptyText: '–',
+                      gap: 4,
+                    })}
+                  </td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#475569', lineHeight: 1.8 }}>
+                    {renderFormattedText(risk.affectedAssets, {
+                      fontSize: 10,
+                      color: '#475569',
+                      lineHeight: 1.8,
+                      emptyText: '–',
+                      gap: 4,
+                    })}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+          </div>
+        )}
       </div>
-     {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
-      <div id="search-preview-section-kpi" className="px-11 py-7 border-b border-gray-100">
+
+      {/* ═══════ ASSETS ═══════ */}
+      {assets.length > 0 && (
+        <div id="search-preview-section-assets" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f9fcff' }}>
+          {SH('assets', 'الأصول الحيوية', avgProt >= 70 ? 'g' : avgProt >= 50 ? 'a' : 'r')}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>عدد الأصول الحيوية</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', fontFamily: 'monospace' }}>{assets.length}</div>
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>متوسط الحماية</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: scoreColor(avgProt), fontFamily: 'monospace' }}>{avgProt}%</div>
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>الحالة العامة</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: avgProt >= 70 ? '#15803d' : avgProt >= 50 ? '#a16207' : '#b91c1c' }}>
+                {avgProt >= 70 ? 'حماية جيدة' : avgProt >= 50 ? 'تحتاج متابعة' : 'تحتاج تدخل'}
+              </div>
+            </div>
+          </div>
+
+          <div className="report-table-wrapper overflow-x-auto">
+            <table className="report-preview-table w-full border-collapse text-[11px] min-w-[700px]">
+              <thead>
+                <tr>{['#', 'الأصل', 'القيمة', 'مستوى الحماية', 'الفجوات'].map((h) => (
+                  <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {assets.map((asset, i) => (
+                  <tr id={`search-preview-asset-${asset.id}`} key={asset.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 700 }}>{asset.name || '—'}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#475569', lineHeight: 1.8 }}>{asset.value || '—'}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', minWidth: 180 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, height: 6, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' }}>
+                          <div style={{ width: `${asset.protectionLevel}%`, height: '100%', background: asset.protectionLevel >= 80 ? '#15803d' : asset.protectionLevel >= 60 ? '#16a34a' : asset.protectionLevel >= 40 ? '#d97706' : '#dc2626' }} />
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'monospace', minWidth: 34 }}>{asset.protectionLevel}%</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#475569', lineHeight: 1.8 }}>
+                      {renderFormattedText(asset.gaps, {
+                        fontSize: 10,
+                        color: '#475569',
+                        lineHeight: 1.8,
+                        emptyText: '—',
+                        gap: 4,
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
+      <div id="search-preview-section-kpi" className="report-section px-11 py-8 border-b border-gray-100">
         {SH('ind', 'مؤشرات الأداء', r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r')}
-        <table className="w-full border-collapse text-[11px] mb-3">
+        <div className="report-table-wrapper overflow-x-auto">
+          <table className="report-preview-table w-full border-collapse text-[11px] mb-3 min-w-[640px]">
           <thead>
             <tr>{['المؤشر', 'الفترة السابقة', 'الفترة الحالية', 'التغيير'].map(h => (
               <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
@@ -404,11 +646,11 @@ export default function ReportPreview({ report }: Props) {
           <tbody>
             <tr><td colSpan={4} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>مؤشرات الحوادث والامتثال</td></tr>
             {([
-              { label: 'الحوادث الحرجة', prev: r.prevCritical, cur: r.kpiCritical, lower: true, bm: false },
-              { label: 'الثغرات المكتشفة', prev: r.prevVuln, cur: r.kpiVuln, lower: true, bm: false },
-              { label: 'إجمالي الحوادث', prev: r.prevTotal, cur: r.kpiTotal, lower: true, bm: false },
-              { label: 'امتثال ISO 27001', prevStr: `${r.prevCompliance}%`, curStr: `${r.kpiCompliance}%`, prev: r.prevCompliance, cur: r.kpiCompliance, lower: false, bm: r.bmCompliance > 0, bmStr: `${r.bmCompliance}%`, bmOk: r.kpiCompliance >= r.bmCompliance },
-            ] as Array<{ label: string; prev: number; cur: number; lower: boolean; bm: boolean; prevStr?: string; curStr?: string; bmStr?: string; bmOk?: boolean }>).map((row, i) => {
+              { label: 'الحوادث الحرجة', prev: r.prevCritical, cur: r.kpiCritical, lower: true },
+              { label: 'الثغرات المكتشفة', prev: r.prevVuln, cur: r.kpiVuln, lower: true },
+              { label: 'إجمالي الحوادث', prev: r.prevTotal, cur: r.kpiTotal, lower: true },
+              { label: 'امتثال ISO 27001', prevStr: `${r.prevCompliance}%`, curStr: `${r.kpiCompliance}%`, prev: r.prevCompliance, cur: r.kpiCompliance, lower: false },
+            ] as Array<{ label: string; prev: number; cur: number; lower: boolean; prevStr?: string; curStr?: string }>).map((row, i) => {
               const info = getDeltaInfo(row.cur, row.prev, row.lower);
               const g = info.colorClass.includes('success'); const b = info.colorClass.includes('danger');
               return (
@@ -420,19 +662,9 @@ export default function ReportPreview({ report }: Props) {
                 </tr>
               );
             })}
-            <tr><td colSpan={4} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>مقاييس الاستجابة</td></tr>
-            {([
-              { label: 'وقت الاحتواء MTTC (ساعة)', cur: r.slaMTTC, bm: false },
-            ] as Array<{ label: string; cur: number; bm: boolean }>).map((row, i) => (
-              <tr key={row.label} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
-                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 600 }}>{row.label}</td>
-                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8' }}>—</td>
-                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 800, fontFamily: 'monospace' }}>{row.cur}</td>
-                <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>—</td>
-              </tr>
-            ))}
           </tbody>
-        </table>
+          </table>
+        </div>
 
         {/* KPI Combo Chart */}
         <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden', marginBottom: 14 }}>
@@ -444,8 +676,21 @@ export default function ReportPreview({ report }: Props) {
               ))}
             </div>
           </div>
-          <div style={{ padding: '16px 20px', background: '#fff' }}>
-            <canvas ref={kpiChartRef} width={680} height={200} style={{ width: '100%', display: 'block' }} />
+          <div style={{ padding: '12px 16px 6px', background: '#fff', height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={kpiChartData} margin={{ top: 10, right: 8, bottom: 12, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#475569' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(148,163,184,0.14)' }}
+                  contentStyle={{ borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12 }}
+                />
+                <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="previous" name="الفترة السابقة" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="current" name="الفترة الحالية" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
@@ -473,40 +718,102 @@ export default function ReportPreview({ report }: Props) {
         </div>
       </div>
 
+      {/* ═══════ SLA ═══════ */}
+      {r.showSLA && (
+        <div id="search-preview-section-sla" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+          {SH('sla', 'مقاييس الاستجابة', slaOk ? 'g' : 'r')}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 12 }}>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>MTTC الحالي</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: slaOk ? '#15803d' : '#b91c1c', fontFamily: 'monospace' }}>{formatMetricValue(currentMttc)}<span style={{ fontSize: 12, marginRight: 4 }}>ساعة</span></div>
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>الهدف المعتمد</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', fontFamily: 'monospace' }}>{formatMetricValue(targetMttc)}<span style={{ fontSize: 12, marginRight: 4 }}>ساعة</span></div>
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>الالتزام بالهدف</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: slaCompliance >= 90 ? '#15803d' : slaCompliance >= 70 ? '#a16207' : '#b91c1c', fontFamily: 'monospace' }}>{slaCompliance}%</div>
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>خروقات SLA</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: r.slaBreach > 0 ? '#b91c1c' : '#15803d', fontFamily: 'monospace' }}>{r.slaBreach}</div>
+            </div>
+          </div>
+
+          <div style={{ padding: '10px 12px', borderRadius: 4, border: `1px solid ${slaOk ? '#bbf7d0' : '#fecaca'}`, background: slaOk ? '#f0fdf4' : '#fef2f2', fontSize: 11, color: '#475569', lineHeight: 1.9 }}>
+            {slaOk
+              ? 'زمن الاحتواء الحالي ضمن الحد المستهدف، مما يدعم جاهزية الاستجابة التشغيلية.'
+              : 'زمن الاحتواء أعلى من الهدف المعتمد، ويوصى برفع الأتمتة التشغيلية وخطط الاحتواء السريع.'}
+            {typeof r.slaRate === 'number' && r.slaRate > 0 && (
+              <span style={{ fontWeight: 700, color: '#0f172a' }}> معدل الالتزام المسجل: {formatMetricValue(r.slaRate)}%</span>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {/* ═══════ ACTIONS (Recs + Challenges merged) ═══════ */}
-      <div id="search-preview-section-actions" className="px-11 py-7 border-b border-gray-100">
-        {SH('act', 'التوصيات والاعتمادات', r.recommendations.length > 0 ? 'g' : 'n')}
-        <table className="w-full border-collapse text-[11px]">
+      <div id="search-preview-section-actions" className="report-section px-11 py-8 border-b border-gray-100">
+        {SH('act', 'التوصيات والاعتمادات', hasActions ? 'g' : 'n')}
+        {!hasActions ? (
+          <div style={{ border: '1px dashed #cbd5e1', borderRadius: 6, padding: '18px 14px', fontSize: 11, color: '#64748b', background: '#f8fafc' }}>
+            لا توجد توصيات أو تحديات حالياً.
+          </div>
+        ) : (
+          <div className="report-table-wrapper overflow-x-auto">
+            <table className="report-preview-table w-full border-collapse text-[11px] min-w-[680px]">
           <thead>
             <tr>{['#', 'التوصية / الاعتماد', 'الأولوية / النوع', 'صاحب القرار'].map(h => (
               <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '9px 12px', textAlign: 'right', fontWeight: 600, fontSize: 9, letterSpacing: 0.5 }}>{h}</th>
             ))}</tr>
           </thead>
           <tbody>
-            {r.recommendations.length > 0 && (
+            {recommendations.length > 0 && (
               <tr><td colSpan={4} style={{ background: '#f8fafc', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>توصيات تشغيلية</td></tr>
             )}
-            {r.recommendations.map((rec, i) => {
+            {recommendations.map((rec, i) => {
               const pri = PRIORITY_MAP[rec.priority];
               return (
                 <tr id={`search-preview-recommendation-${rec.id}`} key={rec.id} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
-                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{rec.title}</div><div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{rec.description}</div></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{rec.title}</div>
+                    <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>
+                      {renderFormattedText(rec.description, {
+                        fontSize: 10,
+                        color: '#475569',
+                        lineHeight: 1.8,
+                        emptyText: '—',
+                        gap: 4,
+                      })}
+                    </div>
+                  </td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${pri?.bgClass}`}>{pri?.label}</span></td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>{rec.owner ? <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 2, background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' }}>{rec.owner}</span> : '—'}</td>
                 </tr>
               );
             })}
-            {r.challenges.length > 0 && (
+            {challenges.length > 0 && (
               <tr><td colSpan={4} style={{ background: '#fffbeb', fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, padding: '6px 12px' }}>اعتمادات استراتيجية تستوجب قراراً من الإدارة</td></tr>
             )}
-            {r.challenges.map((chal, i) => {
+            {challenges.map((chal, i) => {
               const ct = CHALLENGE_TYPES[chal.type] || CHALLENGE_TYPES.tech;
               return (
                 <tr id={`search-preview-challenge-${chal.id}`} key={chal.id} style={{ background: '#fffbeb' }}>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{String.fromCharCode(65 + i)}</td>
-                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{chal.title}</div><div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>{chal.rootCause}</div></td>
+                  <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{chal.title}</div>
+                    <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>
+                      {renderFormattedText(chal.rootCause, {
+                        fontSize: 10,
+                        color: '#475569',
+                        lineHeight: 1.8,
+                        emptyText: '—',
+                        gap: 4,
+                      })}
+                    </div>
+                  </td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}><span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${ct.bgClass}`}>{ct.label}</span></td>
                   <td style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#2563eb', fontWeight: 700 }}>{chal.requirement}</td>
                 </tr>
@@ -514,21 +821,23 @@ export default function ReportPreview({ report }: Props) {
             })}
           </tbody>
         </table>
+          </div>
+        )}
       </div>
 
       {/* ═══════ MATURITY ═══════ */}
-      {r.showMaturity && r.maturityDomains.length > 0 && (
-        <div id="search-preview-section-maturity" className="px-11 py-7 border-b border-gray-100" style={{ background: '#f8fafc' }}>
-          {SH('mat', 'تقييم مستوى الامتثال — ملحق تقييمي', parseFloat(avgMat) >= 80 ? 'g' : parseFloat(avgMat) >= 60 ? 'a' : 'r')}
+      {r.showMaturity && maturityDomains.length > 0 && (
+        <div id="search-preview-section-maturity" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+          {SH('mat', 'تقييم مستوى الامتثال — ملحق تقييمي', avgMatValue >= 80 ? 'g' : avgMatValue >= 60 ? 'a' : 'r')}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14, padding: '12px 16px', background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0' }}>
             <div>
               <div style={{ fontSize: 11, color: '#94a3b8' }}>متوسط الامتثال</div>
               <div style={{ fontSize: 22, fontWeight: 900, color: '#1e293b', fontFamily: 'monospace' }}>{avgMat}<span style={{ fontSize: 12, color: '#94a3b8' }}> %</span></div>
             </div>
-            <span style={{ fontSize: 10, color: '#94a3b8' }}>{parseFloat(avgMat) >= 85 ? 'امتثال ممتاز' : parseFloat(avgMat) >= 70 ? 'امتثال جيد' : parseFloat(avgMat) >= 50 ? 'امتثال متوسط' : 'يحتاج تحسيناً'}</span>
+            <span style={{ fontSize: 10, color: '#94a3b8' }}>{avgMatValue >= 85 ? 'امتثال ممتاز' : avgMatValue >= 70 ? 'امتثال جيد' : avgMatValue >= 50 ? 'امتثال متوسط' : 'يحتاج تحسيناً'}</span>
           </div>
           <div style={{ background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 14 }}>
-            {r.maturityDomains.map((domain) => (
+            {maturityDomains.map((domain) => (
               <div id={`search-preview-maturity-${domain.id}`} key={domain.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', borderBottom: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: 11, flex: 1 }}>{domain.name}</div>
                 <div style={{ width: 180, height: 6, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}><div style={{ width: `${domain.score}%`, height: '100%', borderRadius: 2, background: domain.score >= 85 ? '#15803d' : domain.score >= 70 ? '#16a34a' : domain.score >= 50 ? '#d97706' : '#dc2626' }} /></div>
@@ -540,8 +849,8 @@ export default function ReportPreview({ report }: Props) {
       )}
 
       {/* ═══════ FOOTER ═══════ */}
-      <div style={{ background: '#1e293b', color: 'rgba(255,255,255,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 44px', fontSize: 9, flexWrap: 'wrap', gap: 6, fontFamily: 'monospace' }}>
-        <span><strong style={{ color: 'rgba(255,255,255,.55)' }}>{r.classification}</strong> · للمستلم المحدد فقط</span>
+      <div className="report-footer" style={{ background: '#1e293b', color: 'rgba(255,255,255,.45)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 44px', fontSize: 9, flexWrap: 'wrap', gap: 6, fontFamily: 'monospace' }}>
+        <span><strong style={{ color: 'rgba(255,255,255,.75)' }}>{r.classification}</strong> · للمستلم المحدد فقط</span>
         <span>{r.orgName} · {r.author}</span>
         <span>{dateF} · v{r.version}</span>
       </div>

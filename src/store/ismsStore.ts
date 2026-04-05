@@ -15,6 +15,7 @@ import type {
 import {
   getWorkspace,
   updateWorkspace as updateWorkspaceApi,
+  importIsmsData,
   getRisks,
   createRisk,
   updateRisk as updateRiskApi,
@@ -57,6 +58,27 @@ import {
   deleteNca as deleteNcaApi,
 } from "@/lib/isms/api";
 
+function asIsoDate(value: unknown): string | null {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString();
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return "Workspace synchronization failed";
+}
+
 interface IsmsStore {
   workspace: IsmsWorkspaceView | null;
   risks: IsmsRisk[];
@@ -70,9 +92,15 @@ interface IsmsStore {
   audits: IsmsAudit[];
   ncas: IsmsNca[];
   isLoading: boolean;
+  isSavingWorkspace: boolean;
+  isDirty: boolean;
+  lastSavedAt: string | null;
+  lastWorkspaceError: string | null;
 
   loadAll: () => Promise<void>;
   updateWorkspace: (patch: Partial<IsmsWorkspaceView>) => Promise<void>;
+  flushWorkspace: () => Promise<void>;
+  importSnapshot: (payload: unknown) => Promise<void>;
 
   addRisk: (data: Partial<IsmsRisk>) => Promise<void>;
   updateRisk: (id: string, data: Partial<IsmsRisk>) => Promise<void>;
@@ -131,6 +159,10 @@ export const useIsmsStore = create<IsmsStore>((set, get) => ({
   audits: [],
   ncas: [],
   isLoading: false,
+  isSavingWorkspace: false,
+  isDirty: false,
+  lastSavedAt: null,
+  lastWorkspaceError: null,
 
   loadAll: async () => {
     set({ isLoading: true });
@@ -173,16 +205,29 @@ export const useIsmsStore = create<IsmsStore>((set, get) => ({
         awareness,
         audits,
         ncas,
+        isDirty: false,
+        isSavingWorkspace: false,
+        lastWorkspaceError: null,
+        lastSavedAt: asIsoDate(workspace.updatedAt),
       });
+    } catch (error) {
+      console.error("Failed to load ISMS workspace:", error);
+      set({ lastWorkspaceError: getErrorMessage(error) });
     } finally {
       set({ isLoading: false });
     }
   },
 
   updateWorkspace: async (patch) => {
+    if (Object.keys(patch).length === 0) {
+      return;
+    }
+
     const current = get().workspace;
     if (current) {
-      set({ workspace: { ...current, ...patch } });
+      set({ workspace: { ...current, ...patch }, isDirty: true, lastWorkspaceError: null });
+    } else {
+      set({ isDirty: true, lastWorkspaceError: null });
     }
 
     pendingWorkspacePatch = { ...pendingWorkspacePatch, ...patch };
@@ -191,18 +236,52 @@ export const useIsmsStore = create<IsmsStore>((set, get) => ({
       clearTimeout(workspacePatchTimer);
     }
 
-    workspacePatchTimer = setTimeout(async () => {
-      const flush = pendingWorkspacePatch;
-      pendingWorkspacePatch = {};
-      workspacePatchTimer = null;
+    workspacePatchTimer = setTimeout(() => {
+      void get().flushWorkspace();
+    }, 450);
+  },
 
-      try {
-        const updated = await updateWorkspaceApi(flush);
-        set({ workspace: updated });
-      } catch (error) {
-        console.error("Failed to update ISMS workspace:", error);
-      }
-    }, 400);
+  flushWorkspace: async () => {
+    if (workspacePatchTimer) {
+      clearTimeout(workspacePatchTimer);
+      workspacePatchTimer = null;
+    }
+
+    if (get().isSavingWorkspace) {
+      return;
+    }
+
+    const flush = pendingWorkspacePatch;
+    if (Object.keys(flush).length === 0) {
+      return;
+    }
+
+    pendingWorkspacePatch = {};
+    set({ isSavingWorkspace: true, lastWorkspaceError: null });
+
+    try {
+      const updated = await updateWorkspaceApi(flush);
+      set({
+        workspace: updated,
+        isSavingWorkspace: false,
+        isDirty: false,
+        lastWorkspaceError: null,
+        lastSavedAt: asIsoDate(updated.updatedAt) ?? new Date().toISOString(),
+      });
+    } catch (error) {
+      pendingWorkspacePatch = { ...flush, ...pendingWorkspacePatch };
+      set({
+        isSavingWorkspace: false,
+        isDirty: true,
+        lastWorkspaceError: getErrorMessage(error),
+      });
+      throw error;
+    }
+  },
+
+  importSnapshot: async (payload) => {
+    await importIsmsData(payload as Record<string, unknown>);
+    await get().loadAll();
   },
 
   addRisk: async (data) => {

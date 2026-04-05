@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { ReportSearchResult } from '@/lib/search/reportSearch';
 
 interface ReportSearchDropdownProps {
@@ -48,6 +48,7 @@ export default function ReportSearchDropdown({
 }: ReportSearchDropdownProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, ReportSearchResult[]>();
@@ -59,6 +60,16 @@ export default function ReportSearchDropdown({
 
     return Array.from(groups.entries());
   }, [results]);
+
+  const flatResults = useMemo(() => grouped.flatMap(([, sectionResults]) => sectionResults), [grouped]);
+
+  const indexById = useMemo(() => {
+    const map = new Map<string, number>();
+    flatResults.forEach((result, index) => {
+      map.set(result.id, index);
+    });
+    return map;
+  }, [flatResults]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -90,6 +101,29 @@ export default function ReportSearchDropdown({
 
   const showTypingHint = query.trim().length < 2;
 
+  const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (flatResults.length === 0) return;
+      setActiveIndex((current) => Math.min(flatResults.length - 1, current + 1));
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (flatResults.length === 0) return;
+      setActiveIndex((current) => Math.max(0, current - 1));
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      if (flatResults.length === 0) return;
+      event.preventDefault();
+      const selected = flatResults[activeIndex];
+      if (selected) onSelect(selected);
+    }
+  };
+
   return (
     <div
       ref={rootRef}
@@ -100,12 +134,20 @@ export default function ReportSearchDropdown({
         <input
           ref={inputRef}
           value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
+          onChange={(event) => {
+            setActiveIndex(0);
+            onQueryChange(event.target.value);
+          }}
+          onKeyDown={handleInputKeyDown}
           placeholder={placeholder}
           className="w-full border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white"
         />
         <div className="text-[11px] text-text-hint mt-2">
-          {showTypingHint ? 'اكتب حرفين على الأقل لبدء البحث الذكي.' : `${results.length} نتيجة مطابقة`}
+          {showTypingHint
+            ? 'اكتب حرفين على الأقل لبدء البحث الذكي.'
+            : results.length > 0
+              ? `${results.length} نتيجة مطابقة · ${Math.min(activeIndex + 1, results.length)} من ${results.length}`
+              : 'لا توجد نتائج مطابقة.'}
         </div>
       </div>
 
@@ -122,19 +164,27 @@ export default function ReportSearchDropdown({
               {section}
             </div>
             <div className="space-y-1">
-              {sectionResults.map((result) => (
+              {sectionResults.map((result) => {
+                const resultIndex = indexById.get(result.id) ?? -1;
+                const isActive = resultIndex === activeIndex;
+
+                return (
                 <button
                   type="button"
                   key={result.id}
                   onClick={() => onSelect(result)}
-                  className="w-full text-right p-2.5 rounded-xl border border-transparent hover:border-navy-200 hover:bg-navy-50/60 transition-all duration-150"
+                  onMouseEnter={() => {
+                    if (resultIndex >= 0) setActiveIndex(resultIndex);
+                  }}
+                  className={`w-full text-right p-2.5 rounded-xl border transition-all duration-150 ${isActive ? 'border-navy-300 bg-navy-50/70' : 'border-transparent hover:border-navy-200 hover:bg-navy-50/60'}`}
                 >
                   <div className="text-sm font-bold text-navy-950">{renderHighlighted(result.title, query)}</div>
                   <div className="text-xs text-text-muted mt-0.5 leading-5 line-clamp-2">
                     {renderHighlighted(result.snippet, query)}
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import IsmsSidebar from '@/components/isms/layout/IsmsSidebar';
 import IsmsTopBar from '@/components/isms/layout/IsmsTopBar';
+import IsmsUnsavedBanner from '@/components/isms/layout/IsmsUnsavedBanner';
 
 const ismsThemeVars = {
   '--isms-bg0': '#060a12',
@@ -20,7 +21,7 @@ const ismsThemeVars = {
   '--isms-purple': '#a78bfa',
   '--isms-teal': '#2dd4bf',
   '--isms-sidebar-width': '256px',
-  '--isms-topbar-height': '56px',
+  '--isms-topbar-height': '64px',
   '--isms-radius': '10px',
 } as CSSProperties;
 
@@ -40,6 +41,7 @@ export default function IsmsShellLayout({ children }: { children: ReactNode }) {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <IsmsTopBar />
+        <IsmsUnsavedBanner />
         <main style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>{children}</main>
       </div>
     </div>

@@ -111,6 +111,29 @@
   
   .report-section {
     page-break-inside: avoid;
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+    padding-top: 18px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .report-table-wrapper {
+    overflow: visible !important;
+  }
+
+  .report-preview-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .report-preview-table thead {
+    display: table-header-group !important;
+  }
+
+  .report-preview-table tr,
+  .report-preview-table td,
+  .report-preview-table th {
+    page-break-inside: avoid !important;
   }
   
   .report-cover {
@@ -122,6 +145,16 @@
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+  }
+
+  .report-cover-decoration {
+    display: none !important;
+  }
+
+  .report-footer {
+    background: #f8fafc !important;
+    color: #334155 !important;
+    border-top: 1px solid #cbd5e1 !important;
   }
 }
 
@@ -220,5 +253,17 @@
     width: 100% !important;
     max-width: 100% !important;
     padding: 0 !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .report-page {
+    max-width: calc(100% - 20px) !important;
+    margin: 10px !important;
+  }
+
+  .report-section {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
   }
 }

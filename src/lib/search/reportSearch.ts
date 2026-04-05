@@ -259,18 +259,16 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
     }));
   }
 
-  if (!isPreview) {
-    for (const asset of report.assets) {
-      push(createEntry({
-        id: `asset-${asset.id}`,
-        section: 'assets',
-        title: asset.name || 'أصل حيوي',
-        snippet: asset.value || asset.gaps,
-        textParts: [asset.name, asset.value, asset.gaps, asset.protectionLevel],
-        targetId: `search-editor-asset-${asset.id}`,
-        surface,
-      }));
-    }
+  for (const asset of report.assets) {
+    push(createEntry({
+      id: `asset-${asset.id}`,
+      section: 'assets',
+      title: asset.name || 'أصل حيوي',
+      snippet: asset.value || asset.gaps,
+      textParts: [asset.name, asset.value, asset.gaps, asset.protectionLevel],
+      targetId: `search-${surface}-asset-${asset.id}`,
+      surface,
+    }));
   }
 
   push(createEntry({
@@ -336,7 +334,7 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
       title: 'مقاييس الاستجابة',
       snippet: `MTTC ${report.slaMTTC} / الهدف ${report.slaMTTCTarget}`,
       textParts: [report.slaMTTC, report.slaMTTCTarget, report.slaRate, report.slaBreach],
-      targetId: isPreview ? createSectionTargetId(surface, 'kpi') : createSectionTargetId(surface, 'sla'),
+      targetId: createSectionTargetId(surface, 'sla'),
       surface,
     }));
   }

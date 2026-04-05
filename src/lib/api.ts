@@ -18,11 +18,19 @@ import type {
 // isoControls is stored as a JSON string in SQLite; parse it back to an array on every read.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseReport(raw: any): ReportData {
+  let isoControls = raw.isoControls ?? [];
+  if (typeof raw.isoControls === 'string') {
+    try {
+      isoControls = JSON.parse(raw.isoControls || '[]');
+    } catch {
+      console.error('Failed to parse isoControls payload. Falling back to an empty array.');
+      isoControls = [];
+    }
+  }
+
   return {
     ...raw,
-    isoControls: typeof raw.isoControls === 'string'
-      ? JSON.parse(raw.isoControls || '[]')
-      : (raw.isoControls ?? []),
+    isoControls: Array.isArray(isoControls) ? isoControls : [],
   };
 }
 
