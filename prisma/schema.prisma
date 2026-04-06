@@ -37,6 +37,7 @@ model Report {
   prevVuln       Int @default(0)
   prevTotal      Int @default(0)
   prevCompliance Int @default(0)
+  kpiComment     String @default("")
 
   // Vulnerability distribution
   vulnCritical   Int @default(0)

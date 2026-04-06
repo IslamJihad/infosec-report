@@ -275,7 +275,7 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
     id: 'kpi-main',
     section: 'kpi',
     title: 'المؤشرات والمعايير',
-    snippet: `امتثال ISO ${report.kpiCompliance}%`,
+    snippet: report.kpiComment?.trim() || `امتثال ISO ${report.kpiCompliance}%`,
     textParts: [
       report.kpiCritical,
       report.kpiVuln,
@@ -296,6 +296,7 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
       report.bmScore,
       report.bmCompliance,
       report.bmSector,
+      report.kpiComment,
     ],
     targetId: createSectionTargetId(surface, 'kpi'),
     surface,

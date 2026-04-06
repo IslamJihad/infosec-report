@@ -92,10 +92,26 @@
   margin: 0 auto;
 }
 
+.report-cover {
+  height: var(--report-a4-height);
+  max-height: var(--report-a4-height);
+}
+
+.report-toc {
+  min-height: var(--report-a4-height);
+  display: flex;
+  flex-direction: column;
+}
+
+.report-toc-body {
+  flex: 1;
+  overflow: auto;
+}
+
 @media print {
   :root {
     --report-a4-print-width: 210mm;
-    --report-a4-print-height: 296mm;
+    --report-a4-print-height: 295mm;
   }
 
   html,
@@ -195,23 +211,41 @@
   }
   
   .report-cover {
-    page-break-after: auto !important;
-    break-after: auto !important;
-    height: auto !important;
-    min-height: var(--report-a4-print-height) !important;
+    break-after: page !important;
+    height: var(--report-a4-print-height) !important;
     max-height: none !important;
     box-sizing: border-box !important;
-    break-inside: avoid-page !important;
-    overflow: hidden !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
   }
 
-  .report-cover + .report-toc {
-    page-break-before: always !important;
-    break-before: page !important;
+  .report-cover > div[style*="height: 920px"] {
+    flex: 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+  }
+
+  .report-toc {
+    break-before: avoid !important;
+    page-break-before: avoid !important;
+  }
+
+  .report-cover > div[style*="background: rgba(255,255,255,.6)"] {
+    display: none !important;
+  }
+
+  .report-cover > div[style*="maxHeight: 116"] {
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .report-footer {

@@ -51,6 +51,7 @@ export interface ReportData {
   prevVuln: number;
   prevTotal: number;
   prevCompliance: number;
+  kpiComment: string;
 
   vulnCritical: number;
   vulnHigh: number;

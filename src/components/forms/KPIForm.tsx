@@ -171,6 +171,20 @@ export default function KPIForm() {
             </div>
           </div>
         </div>
+
+        <div className="mt-5">
+          <div className="bg-navy-50 border border-border rounded-xl py-3 px-4 text-sm text-navy-800 mb-3">
+            📝 أضف ملاحظاتك التحليلية على نتائج المؤشرات والاتجاه العام.
+          </div>
+          <label className="text-sm font-bold text-text-secondary block mb-2">تعليق على النتائج</label>
+          <textarea
+            value={report.kpiComment || ''}
+            onChange={(e) => updateField('kpiComment', e.target.value)}
+            rows={4}
+            className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] resize-y min-h-[90px] hover:border-navy-200"
+            placeholder="مثال: انخفاض إجمالي الحوادث مقارنة بالفترة السابقة يعكس تحسناً في الاستجابة، لكن استمرار الثغرات الحرجة يتطلب تسريع الإغلاق."
+          />
+        </div>
       </FormCard>
 
     </div>

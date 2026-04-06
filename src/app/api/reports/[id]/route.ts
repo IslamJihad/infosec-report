@@ -40,6 +40,7 @@ const REPORT_STRING_FIELDS = [
   'trend',
   'status',
   'chairNote',
+  'kpiComment',
   'bmSector',
 ] as const;
 

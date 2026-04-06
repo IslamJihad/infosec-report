@@ -221,6 +221,7 @@ export default function ReportPreview({ report }: Props) {
   const slaOk = currentMttc <= targetMttc;
   const slaCompliance = Math.min(100, Math.round((targetMttc / Math.max(currentMttc, 0.1)) * 100));
   const hasActions = recommendations.length > 0 || challenges.length > 0;
+  const hasKpiComment = typeof r.kpiComment === 'string' && r.kpiComment.trim().length > 0;
 
   const sectionDefinitions: SectionDefinition[] = [
     { id: 'exec', title: 'الملخص التنفيذي', rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r', visible: true },
@@ -266,7 +267,7 @@ export default function ReportPreview({ report }: Props) {
   return (
     <div className="report-page bg-white shadow-xl" dir="rtl">
       {/* ═══════ COVER PAGE ═══════ */}
-      <div id="search-preview-section-general" className="report-cover" style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', height: '1123px', maxHeight: '1123px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0', pageBreakAfter: 'always', boxSizing: 'border-box', margin: 0, padding: 0 }}>
+      <div id="search-preview-section-general" className="report-cover" style={{ background: 'linear-gradient(160deg,#f8fdf5 0%,#f0f8ed 35%,#fdf8ec 70%,#fffcf0 100%)', color: '#1a3a1f', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', border: '1px solid #c8dfc0', boxSizing: 'border-box', margin: 0, padding: 0 }}>
         <div className="report-cover-decoration" style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 15% 80%,rgba(26,92,46,.06) 0%,transparent 50%),radial-gradient(circle at 85% 20%,rgba(201,162,39,.07) 0%,transparent 50%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: 0, right: 0, width: 6, height: '100%', background: 'linear-gradient(180deg,#1a5c2e 0%,#c9a227 55%,rgba(201,162,39,.15) 100%)' }} />
         <div className="report-cover-decoration" style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(26,92,46,.04)', top: -80, left: -80, pointerEvents: 'none', zIndex: 1 }} />
@@ -282,25 +283,6 @@ export default function ReportPreview({ report }: Props) {
           <div style={{ fontSize: 48, fontWeight: 900, lineHeight: 1.06, letterSpacing: -1.8, marginBottom: 8, color: '#1a3a1f' }}>تقرير أمن المعلومات<br /><span style={{ color: '#c9a227', fontSize: 44 }}>{r.period}</span></div>
           <div style={{ fontSize: 11, color: '#5a7a5e', marginBottom: 14, letterSpacing: 0.5 }}>{dateF}</div>
           <div style={{ width: 260, height: 1.8, background: 'linear-gradient(90deg,transparent,#c9a227,rgba(26,92,46,.4),transparent)', margin: '0 auto 22px' }} />
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 10, width: '100%', maxWidth: 680, marginBottom: 18 }}>
-            <div style={{ background: 'rgba(255,255,255,.75)', border: '1px solid rgba(26,92,46,.16)', borderRadius: 10, padding: '11px 10px', boxShadow: '0 8px 18px rgba(26,92,46,.06)' }}>
-              <div style={{ fontSize: 8, color: '#6b8f71', marginBottom: 5, fontWeight: 700, letterSpacing: 0.5 }}>الدرجة العالمية</div>
-              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: scoreColor(finalScore), fontFamily: 'monospace' }}>{finalScore}</div>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,.75)', border: '1px solid rgba(26,92,46,.16)', borderRadius: 10, padding: '11px 10px', boxShadow: '0 8px 18px rgba(26,92,46,.06)' }}>
-              <div style={{ fontSize: 8, color: '#6b8f71', marginBottom: 5, fontWeight: 700, letterSpacing: 0.5 }}>امتثال ISO</div>
-              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: scoreColor(r.kpiCompliance), fontFamily: 'monospace' }}>{r.kpiCompliance}%</div>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,.75)', border: '1px solid rgba(26,92,46,.16)', borderRadius: 10, padding: '11px 10px', boxShadow: '0 8px 18px rgba(26,92,46,.06)' }}>
-              <div style={{ fontSize: 8, color: '#6b8f71', marginBottom: 5, fontWeight: 700, letterSpacing: 0.5 }}>مخاطر حرجة</div>
-              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: critRisks === 0 ? '#16a34a' : critRisks <= 2 ? '#d97706' : '#dc2626', fontFamily: 'monospace' }}>{critRisks}</div>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,.75)', border: '1px solid rgba(26,92,46,.16)', borderRadius: 10, padding: '11px 10px', boxShadow: '0 8px 18px rgba(26,92,46,.06)' }}>
-              <div style={{ fontSize: 8, color: '#6b8f71', marginBottom: 5, fontWeight: 700, letterSpacing: 0.5 }}>درجة SPS</div>
-              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: scoreColor(finalScore), fontFamily: 'monospace' }}>{finalScore}</div>
-            </div>
-          </div>
 
           <div style={{ fontSize: 10, color: '#5a7a5e', marginBottom: 3 }}>مُعدّ ومقدَّم إلى</div>
           <div style={{ fontSize: 14, fontWeight: 800, color: '#1a3a1f', marginBottom: 3 }}>{r.recipientName}</div>
@@ -361,11 +343,11 @@ export default function ReportPreview({ report }: Props) {
 
 {/* ═══════ TOC ═══════ */}
 
-      <div className="report-toc" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '24px 44px', minHeight: '1123px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+      <div className="report-toc" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '24px 44px', boxSizing: 'border-box' }}>
 
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: '#94a3b8', marginBottom: 16, textTransform: 'uppercase' }}>فهرس التقرير — الحالة الراهنة</div>
 
-        <div className="report-toc-body" style={{ flex: 1, overflow: 'auto' }}>
+        <div className="report-toc-body">
         <table className="report-preview-table w-full border-collapse text-[10px]">
 
           <tbody>
@@ -598,10 +580,10 @@ export default function ReportPreview({ report }: Props) {
 
       {/* ═══════ SPS DOMAINS ═══════ */}
       <div id="search-preview-section-sps" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f9fcff' }}>
-        {SH('sps', 'مؤشرات وضع الأمان (SPS v1)', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
+        {SH('sps', 'مؤشرات وضع الأمان', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
-            <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>درجة SPS الإجمالية</div>
+            <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 4 }}>درجة الأمان الإجمالية</div>
             <div style={{ fontSize: 24, fontWeight: 900, color: scoreColor(finalScore), fontFamily: 'monospace' }}>{finalScore}/100</div>
           </div>
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
@@ -734,6 +716,21 @@ export default function ReportPreview({ report }: Props) {
             ))}
           </div>
         </div>
+
+        {hasKpiComment && (
+          <div style={{ marginTop: 12, border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ background: '#f8fafc', padding: '9px 16px', borderBottom: '1px solid #e2e8f0', fontSize: 10, fontWeight: 800, color: '#1e293b' }}>
+              تعليق على النتائج
+            </div>
+            <div style={{ padding: '12px 16px', background: '#fff' }}>
+              {renderFormattedText(r.kpiComment, {
+                fontSize: 11,
+                lineHeight: 1.9,
+                color: '#475569',
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ═══════ SLA ═══════ */}
@@ -773,7 +770,7 @@ export default function ReportPreview({ report }: Props) {
 
       {/* ═══════ ACTIONS (Recs + Challenges merged) ═══════ */}
       <div id="search-preview-section-actions" className="report-section px-11 py-8 border-b border-gray-100">
-        {SH('act', 'التوصيات والاعتمادات', hasActions ? 'g' : 'n')}
+        {SH('act', 'التوصيات والاعتمادات')}
         {!hasActions ? (
           <div style={{ border: '1px dashed #cbd5e1', borderRadius: 6, padding: '18px 14px', fontSize: 11, color: '#64748b', background: '#f8fafc' }}>
             لا توجد توصيات أو تحديات حالياً.
