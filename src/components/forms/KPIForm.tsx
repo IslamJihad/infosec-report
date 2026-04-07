@@ -17,7 +17,7 @@ export default function KPIForm() {
 
         <div className="grid grid-cols-2 gap-5">
           {/* Current Values */}
-          <div>
+          <div className="border-l border-border pl-5">
             <p className="text-sm font-[800] text-navy-950 mb-3">القيم الحالية</p>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <FormField label="حوادث حرجة" value={report.kpiCritical} onChange={(v) => updateField('kpiCritical', parseInt(v) || 0)} type="number" />
@@ -146,7 +146,7 @@ export default function KPIForm() {
 
         <div className="grid grid-cols-2 gap-5">
           {/* Vulnerability Distribution */}
-          <div>
+          <div className="border-l border-border pl-5">
             <p className="text-sm font-[800] text-navy-950 mb-3">توزيع الثغرات</p>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <FormField label="🔴 حرجة" value={report.vulnCritical} onChange={(v) => updateField('vulnCritical', parseInt(v) || 0)} type="number" />
