@@ -10,9 +10,12 @@ interface TopBarSearchProps {
   isOpen: boolean;
   query: string;
   results: ReportSearchResult[];
+  totalResults?: number;
+  hasMore?: boolean;
   onToggle: () => void;
   onClose: () => void;
   onQueryChange: (value: string) => void;
+  onLoadMore?: () => void;
   onSelect: (result: ReportSearchResult) => void;
 }
 
@@ -69,7 +72,10 @@ export default function TopBar({ currentStep, onStepChange, onPreview, onAIRevie
               isOpen={search.isOpen}
               query={search.query}
               results={search.results}
+              totalResults={search.totalResults}
+              hasMore={search.hasMore}
               onQueryChange={search.onQueryChange}
+              onLoadMore={search.onLoadMore}
               onSelect={search.onSelect}
               onClose={search.onClose}
             />

@@ -26,7 +26,7 @@ interface Props {
   report: ReportData;
 }
 
-type SectionId = 'exec' | 'eff' | 'risks' | 'sps' | 'ind' | 'sla' | 'act' | 'mat';
+type SectionId = 'exec' | 'eff' | 'risks' | 'assets' | 'sps' | 'ind' | 'sla' | 'act' | 'mat';
 
 interface SectionDefinition {
   id: SectionId;
@@ -154,11 +154,14 @@ export default function ReportPreview({ report }: Props) {
   const r = report;
   const dateF = formatArabicDate(r.issueDate);
 
+  const decisions = ensureArray(r.decisions);
   const risks = ensureArray(r.risks);
+  const assets = ensureArray(r.assets);
   const recommendations = ensureArray(r.recommendations);
   const challenges = ensureArray(r.challenges);
   const maturityDomains = ensureArray(r.maturityDomains);
   const effKPIs = ensureArray(r.efficiencyKPIs);
+  const isoControls = Array.isArray(r.isoControls) ? r.isoControls : [];
   const spsDomains = Array.isArray(r.spsDomains) && r.spsDomains.length > 0
     ? r.spsDomains : DEFAULT_SPS_DOMAINS;
 
@@ -221,12 +224,14 @@ export default function ReportPreview({ report }: Props) {
   const slaOk = currentMttc <= targetMttc;
   const slaCompliance = Math.min(100, Math.round((targetMttc / Math.max(currentMttc, 0.1)) * 100));
   const hasActions = recommendations.length > 0 || challenges.length > 0;
+  const hasAssets = assets.length > 0;
   const hasKpiComment = typeof r.kpiComment === 'string' && r.kpiComment.trim().length > 0;
 
   const sectionDefinitions: SectionDefinition[] = [
     { id: 'exec', title: 'الملخص التنفيذي', rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r', visible: true },
     { id: 'eff', title: 'الكفاءة التشغيلية', rag: 'a', visible: effKPIs.length > 0 },
     { id: 'risks', title: 'المخاطر الرئيسية', rag: critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r', visible: true },
+    { id: 'assets', title: 'حماية الأصول الحيوية', rag: avgProt >= 75 ? 'g' : avgProt >= 50 ? 'a' : 'r', visible: true },
     { id: 'sps', title: 'مؤشرات وضع الأمان', rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r', visible: true },
     { id: 'ind', title: 'مؤشرات الأداء', rag: r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r', visible: true },
     { id: 'sla', title: 'مقاييس الاستجابة', rag: slaOk ? 'g' : 'r', visible: r.showSLA },
@@ -446,6 +451,54 @@ export default function ReportPreview({ report }: Props) {
             </div>
           </div>
         </div>
+
+        {decisions.length > 0 && (
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ background: '#f8fafc', padding: '9px 16px', borderBottom: '1px solid #e2e8f0', fontSize: 10, fontWeight: 800, color: '#1e293b' }}>
+              القرارات الإدارية المعتمدة
+            </div>
+            <div style={{ display: 'grid', gap: 1, background: '#e2e8f0' }}>
+              {decisions.map((decision, index) => (
+                <div
+                  id={`search-preview-decision-${decision.id}`}
+                  key={decision.id}
+                  style={{
+                    background: '#fff',
+                    padding: '10px 14px',
+                    display: 'grid',
+                    gridTemplateColumns: '36px 1fr auto',
+                    gap: 12,
+                    alignItems: 'start',
+                  }}
+                >
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace', paddingTop: 1 }}>{index + 1}</div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{decision.title || 'قرار إداري'}</div>
+                    <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.8 }}>
+                      {renderFormattedText(decision.description, {
+                        fontSize: 10,
+                        color: '#475569',
+                        lineHeight: 1.8,
+                        emptyText: '—',
+                        gap: 4,
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gap: 3, justifyItems: 'end' }}>
+                    {decision.department && (
+                      <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 2, border: '1px solid #dbeafe', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700 }}>
+                        {decision.department}
+                      </span>
+                    )}
+                    {decision.owner && (
+                      <span style={{ fontSize: 9, color: '#64748b' }}>{decision.owner}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ═══════ EFFICIENCY ═══════ */}
@@ -574,6 +627,72 @@ export default function ReportPreview({ report }: Props) {
             })}
           </tbody>
         </table>
+          </div>
+        )}
+      </div>
+
+      {/* ═══════ ASSETS ═══════ */}
+      <div id="search-preview-section-assets" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+        {SH('assets', 'حماية الأصول الحيوية', avgProt >= 75 ? 'g' : avgProt >= 50 ? 'a' : 'r')}
+        {!hasAssets ? (
+          <div style={{ border: '1px dashed #cbd5e1', borderRadius: 6, padding: '18px 14px', fontSize: 11, color: '#64748b', background: '#fff' }}>
+            لا توجد أصول مدخلة في هذا التقرير حالياً.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 1, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+            {assets.map((asset, i) => (
+              <div
+                id={`search-preview-asset-${asset.id}`}
+                key={asset.id}
+                style={{
+                  background: '#fff',
+                  padding: '12px 14px',
+                  display: 'grid',
+                  gridTemplateColumns: '36px 1fr auto',
+                  gap: 12,
+                  alignItems: 'start',
+                }}
+              >
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace', paddingTop: 1 }}>{i + 1}</div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{asset.name || 'أصل حيوي'}</div>
+                  <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, lineHeight: 1.8 }}>
+                    {renderFormattedText(asset.value, {
+                      fontSize: 10,
+                      color: '#475569',
+                      lineHeight: 1.8,
+                      emptyText: '—',
+                      gap: 4,
+                    })}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.8 }}>
+                    {renderFormattedText(asset.gaps, {
+                      fontSize: 10,
+                      color: '#64748b',
+                      lineHeight: 1.8,
+                      emptyText: '—',
+                      gap: 4,
+                    })}
+                  </div>
+                </div>
+                <div style={{ display: 'grid', justifyItems: 'end', gap: 5 }}>
+                  <span style={{ fontSize: 9, color: '#94a3b8' }}>مستوى الحماية</span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      fontFamily: 'monospace',
+                      padding: '3px 8px',
+                      borderRadius: 2,
+                      color: asset.protectionLevel >= 70 ? '#15803d' : asset.protectionLevel >= 40 ? '#a16207' : '#b91c1c',
+                      background: asset.protectionLevel >= 70 ? '#f0fdf4' : asset.protectionLevel >= 40 ? '#fffbeb' : '#fef2f2',
+                    }}
+                  >
+                    {asset.protectionLevel}%
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -716,6 +835,45 @@ export default function ReportPreview({ report }: Props) {
             ))}
           </div>
         </div>
+
+        {isoControls.length > 0 && (
+          <div style={{ marginTop: 12, border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ background: '#f8fafc', padding: '9px 16px', borderBottom: '1px solid #e2e8f0', fontSize: 10, fontWeight: 800, color: '#1e293b' }}>
+              تقدم تطبيق ضوابط ISO 27001
+            </div>
+            <div className="report-table-wrapper overflow-x-auto">
+              <table className="report-preview-table w-full border-collapse text-[10px] min-w-[640px]">
+                <thead>
+                  <tr>
+                    {['#', 'المجال', 'المطبق حالياً', 'الإجمالي', 'التغطية', 'الفترة السابقة'].map((h) => (
+                      <th key={h} style={{ background: '#1e293b', color: '#fff', padding: '8px 10px', textAlign: 'right', fontWeight: 600, fontSize: 9 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {isoControls.map((control, i) => {
+                    const pct = control.totalControls > 0
+                      ? Math.round((control.currentApplied / control.totalControls) * 100)
+                      : 0;
+
+                    return (
+                      <tr id={`search-preview-iso-${control.domainId}`} key={control.domainId} style={{ background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace' }}>{i + 1}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0', fontWeight: 700 }}>{control.domainId} - {control.domainName}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontWeight: 700 }}>{control.currentApplied}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace' }}>{control.totalControls}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: pct >= 75 ? '#15803d' : pct >= 50 ? '#a16207' : '#b91c1c' }}>{pct}%</span>
+                        </td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace' }}>{control.previousApplied}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {hasKpiComment && (
           <div style={{ marginTop: 12, border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'hidden' }}>

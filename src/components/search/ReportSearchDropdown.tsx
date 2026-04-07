@@ -7,7 +7,10 @@ interface ReportSearchDropdownProps {
   isOpen: boolean;
   query: string;
   results: ReportSearchResult[];
+  totalResults?: number;
+  hasMore?: boolean;
   onQueryChange: (value: string) => void;
+  onLoadMore?: () => void;
   onSelect: (result: ReportSearchResult) => void;
   onClose: () => void;
   placeholder?: string;
@@ -41,7 +44,10 @@ export default function ReportSearchDropdown({
   isOpen,
   query,
   results,
+  totalResults,
+  hasMore,
   onQueryChange,
+  onLoadMore,
   onSelect,
   onClose,
   placeholder = 'ابحث عن أي قيمة داخل التقرير...',
@@ -100,26 +106,29 @@ export default function ReportSearchDropdown({
   if (!isOpen) return null;
 
   const showTypingHint = query.trim().length < 2;
+  const visibleCount = results.length;
+  const effectiveTotal = typeof totalResults === 'number' ? totalResults : visibleCount;
+  const boundedActiveIndex = flatResults.length === 0 ? 0 : Math.min(activeIndex, flatResults.length - 1);
 
   const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       if (flatResults.length === 0) return;
-      setActiveIndex((current) => Math.min(flatResults.length - 1, current + 1));
+      setActiveIndex(Math.min(flatResults.length - 1, boundedActiveIndex + 1));
       return;
     }
 
     if (event.key === 'ArrowUp') {
       event.preventDefault();
       if (flatResults.length === 0) return;
-      setActiveIndex((current) => Math.max(0, current - 1));
+      setActiveIndex(Math.max(0, boundedActiveIndex - 1));
       return;
     }
 
     if (event.key === 'Enter') {
       if (flatResults.length === 0) return;
       event.preventDefault();
-      const selected = flatResults[activeIndex];
+      const selected = flatResults[boundedActiveIndex];
       if (selected) onSelect(selected);
     }
   };
@@ -146,7 +155,7 @@ export default function ReportSearchDropdown({
           {showTypingHint
             ? 'اكتب حرفين على الأقل لبدء البحث الذكي.'
             : results.length > 0
-              ? `${results.length} نتيجة مطابقة · ${Math.min(activeIndex + 1, results.length)} من ${results.length}`
+              ? `${visibleCount} من ${effectiveTotal} نتيجة مطابقة · ${Math.min(boundedActiveIndex + 1, visibleCount)} من ${visibleCount}`
               : 'لا توجد نتائج مطابقة.'}
         </div>
       </div>
@@ -166,7 +175,7 @@ export default function ReportSearchDropdown({
             <div className="space-y-1">
               {sectionResults.map((result) => {
                 const resultIndex = indexById.get(result.id) ?? -1;
-                const isActive = resultIndex === activeIndex;
+                const isActive = resultIndex === boundedActiveIndex;
 
                 return (
                 <button
@@ -188,6 +197,18 @@ export default function ReportSearchDropdown({
             </div>
           </div>
         ))}
+
+        {!showTypingHint && hasMore && typeof onLoadMore === 'function' && (
+          <div className="pt-2 pb-1 px-1">
+            <button
+              type="button"
+              onClick={onLoadMore}
+              className="w-full rounded-xl border border-navy-200 bg-navy-50/70 text-navy-900 text-xs font-bold py-2.5 hover:bg-navy-100 transition-colors"
+            >
+              تحميل المزيد ({visibleCount}/{effectiveTotal})
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

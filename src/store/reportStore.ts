@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Asset, Challenge, EfficiencyKPI } from '@/types/report';
-import { DEFAULT_SPS_DOMAINS } from '@/lib/constants';
+import { DEFAULT_SPS_DOMAINS, NAV_ITEMS } from '@/lib/constants';
 
 interface ReportStore {
   report: ReportData | null;
@@ -91,7 +91,7 @@ export const useReportStore = create<ReportStore>((set, get) => ({
     },
     isDirty: false,
   }),
-  setStep: (step) => set({ currentStep: Math.max(0, Math.min(8, step)) }),
+  setStep: (step) => set({ currentStep: Math.max(0, Math.min(NAV_ITEMS.length - 1, step)) }),
   setSaving: (saving) => set({ isSaving: saving }),
   setLastSaved: (date) => set({ lastSaved: date }),
   setDirty: (dirty) => set({ isDirty: dirty }),

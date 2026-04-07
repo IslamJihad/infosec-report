@@ -54,12 +54,13 @@ export const NAV_ITEMS = [
   { icon: '🏢', label: 'معلومات التقرير', key: 0 },
   { icon: '📋', label: 'الملخص التنفيذي', key: 1 },
   { icon: '⚠️', label: 'المخاطر الرئيسية', key: 2 },
-  { icon: '🛡️', label: 'مؤشرات وضع الأمان', key: 3 },
-  { icon: '📊', label: 'المؤشرات والمعايير', key: 4 },
-  { icon: '⚡', label: 'مؤشرات الكفاءة التشغيلية', key: 5 },
-  { icon: '⏱️', label: 'مقاييس الاستجابة', key: 6 },
-  { icon: '✅', label: 'التوصيات والإجراءات', key: 7 },
-  { icon: '🧭', label: 'مستوى النضج الأمني', key: 8 },
+  { icon: '🏛️', label: 'حماية الأصول الحيوية', key: 3 },
+  { icon: '🛡️', label: 'مؤشرات وضع الأمان', key: 4 },
+  { icon: '📊', label: 'المؤشرات والمعايير', key: 5 },
+  { icon: '⚡', label: 'مؤشرات الكفاءة التشغيلية', key: 6 },
+  { icon: '⏱️', label: 'مقاييس الاستجابة', key: 7 },
+  { icon: '✅', label: 'التوصيات والإجراءات', key: 8 },
+  { icon: '🧭', label: 'مستوى النضج الأمني', key: 9 },
 ];
 
 export const CHALLENGE_TYPES: Record<string, { label: string; bgClass: string }> = {

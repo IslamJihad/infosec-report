@@ -10,6 +10,7 @@ import TopBar from '@/components/layout/TopBar';
 import GeneralInfoForm from '@/components/forms/GeneralInfoForm';
 import ExecutiveSummaryForm from '@/components/forms/ExecutiveSummaryForm';
 import RisksForm from '@/components/forms/RisksForm';
+import AssetProtectionForm from '@/components/forms/AssetProtectionForm';
 import SPSDomainsForm from '@/components/forms/SPSDomainsForm';
 import KPIForm from '@/components/forms/KPIForm';
 import EfficiencyForm from '@/components/forms/EfficiencyForm';
@@ -23,15 +24,18 @@ const FORM_SECTIONS = [
   GeneralInfoForm,        // 0: معلومات التقرير
   ExecutiveSummaryForm,   // 1: الملخص التنفيذي
   RisksForm,              // 2: المخاطر الرئيسية
-  SPSDomainsForm,         // 3: مؤشرات وضع الأمان
-  KPIForm,                // 4: المؤشرات والمعايير
-  EfficiencyForm,         // 5: مؤشرات الكفاءة التشغيلية
-  SLAForm,                // 6: مقاييس الاستجابة
-  RecommendationsForm,    // 7: التوصيات والإجراءات
-  MaturityForm,           // 8: مستوى النضج الأمني
+  AssetProtectionForm,    // 3: حماية الأصول الحيوية
+  SPSDomainsForm,         // 4: مؤشرات وضع الأمان
+  KPIForm,                // 5: المؤشرات والمعايير
+  EfficiencyForm,         // 6: مؤشرات الكفاءة التشغيلية
+  SLAForm,                // 7: مقاييس الاستجابة
+  RecommendationsForm,    // 8: التوصيات والإجراءات
+  MaturityForm,           // 9: مستوى النضج الأمني
 ];
 
 const MAX_STEP = FORM_SECTIONS.length - 1;
+const SEARCH_PAGE_SIZE = 40;
+const SEARCH_DEBOUNCE_MS = 220;
 
 function clampStep(step: number): number {
   return Math.max(0, Math.min(MAX_STEP, step));
@@ -53,6 +57,8 @@ export default function ReportEditorPage() {
   const [showAI, setShowAI] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE_SIZE);
   const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,7 +69,20 @@ export default function ReportEditorPage() {
     return buildReportSearchIndex(report, 'editor');
   }, [report]);
 
-  const searchResults = useMemo(() => searchReportIndex(searchIndex, searchQuery), [searchIndex, searchQuery]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setSearchLimit(SEARCH_PAGE_SIZE);
+  }, [searchQuery]);
+
+  const searchPage = useMemo(
+    () => searchReportIndex(searchIndex, debouncedSearchQuery, { limit: searchLimit }),
+    [searchIndex, debouncedSearchQuery, searchLimit],
+  );
+  const searchResults = searchPage.results;
 
   const syncStepToUrl = useCallback(
     (step: number) => {
@@ -228,9 +247,12 @@ export default function ReportEditorPage() {
             isOpen: searchOpen,
             query: searchQuery,
             results: searchResults,
+            totalResults: searchPage.total,
+            hasMore: searchPage.hasMore,
             onToggle: () => setSearchOpen((prev) => !prev),
             onClose: () => setSearchOpen(false),
             onQueryChange: setSearchQuery,
+            onLoadMore: () => setSearchLimit((prev) => prev + SEARCH_PAGE_SIZE),
             onSelect: handleSelectSearchResult,
           }}
         />

@@ -6,6 +6,7 @@ export type SearchSectionKey =
   | 'general'
   | 'executive'
   | 'risks'
+  | 'assets'
   | 'sps'
   | 'kpi'
   | 'efficiency'
@@ -22,12 +23,13 @@ const SECTION_META: Record<SearchSectionKey, SectionMeta> = {
   general: { label: 'معلومات التقرير', step: 0 },
   executive: { label: 'الملخص التنفيذي', step: 1 },
   risks: { label: 'المخاطر الرئيسية', step: 2 },
-  sps: { label: 'مؤشرات وضع الأمان', step: 3 },
-  kpi: { label: 'المؤشرات والمعايير', step: 4 },
-  efficiency: { label: 'مؤشرات الكفاءة التشغيلية', step: 5 },
-  sla: { label: 'مقاييس الاستجابة', step: 6 },
-  actions: { label: 'التوصيات والإجراءات', step: 7 },
-  maturity: { label: 'مستوى النضج الأمني', step: 8 },
+  assets: { label: 'حماية الأصول الحيوية', step: 3 },
+  sps: { label: 'مؤشرات وضع الأمان', step: 4 },
+  kpi: { label: 'المؤشرات والمعايير', step: 5 },
+  efficiency: { label: 'مؤشرات الكفاءة التشغيلية', step: 6 },
+  sla: { label: 'مقاييس الاستجابة', step: 7 },
+  actions: { label: 'التوصيات والإجراءات', step: 8 },
+  maturity: { label: 'مستوى النضج الأمني', step: 9 },
 };
 
 export interface SearchEntry {
@@ -54,6 +56,18 @@ export interface ReportSearchResult {
   sectionTargetId: string;
 }
 
+export interface ReportSearchPage {
+  results: ReportSearchResult[];
+  total: number;
+  shown: number;
+  hasMore: boolean;
+}
+
+export interface SearchOptions {
+  limit?: number;
+  minimumScore?: number;
+}
+
 const ARABIC_DIACRITICS = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g;
 
 function normalizeText(value: string): string {
@@ -73,7 +87,7 @@ function normalizeText(value: string): string {
 
 function tokenize(value: string): string[] {
   return normalizeText(value)
-    .split(' ')
+    .split(/[\s\-_/]+/g)
     .map((token) => token.trim())
     .filter((token) => token.length > 1);
 }
@@ -125,7 +139,7 @@ function scoreEntry(entry: SearchEntry, normalizedQuery: string, queryTokens: st
     if (text.startsWith(normalizedQuery)) score += 20;
   }
 
-  const words = Array.from(new Set(text.split(/\s+/g).filter((token) => token.length > 1))).slice(0, 45);
+  const words = Array.from(new Set(text.split(/\s+/g).filter((token) => token.length > 1))).slice(0, 60);
 
   for (const token of queryTokens) {
     if (text.includes(token)) {
@@ -150,6 +164,19 @@ function scoreEntry(entry: SearchEntry, normalizedQuery: string, queryTokens: st
   }
 
   return score;
+}
+
+function resolveMinimumScore(normalizedQuery: string, queryTokens: string[], override?: number): number {
+  if (typeof override === 'number' && Number.isFinite(override)) {
+    return Math.max(0, Math.round(override));
+  }
+
+  // Short or single-token queries need a lower threshold, otherwise valid matches get dropped.
+  if (queryTokens.length <= 1) {
+    return normalizedQuery.length <= 4 ? 13 : 15;
+  }
+
+  return 18;
 }
 
 function createSectionTargetId(surface: SearchSurface, section: SearchSectionKey): string {
@@ -233,18 +260,16 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
     surface,
   }));
 
-  if (!isPreview) {
-    for (const decision of report.decisions) {
-      push(createEntry({
-        id: `decision-${decision.id}`,
-        section: 'executive',
-        title: decision.title || 'قرار إداري',
-        snippet: decision.description,
-        textParts: [decision.title, decision.description, decision.department, decision.owner, decision.timeline, decision.budget],
-        targetId: `search-editor-decision-${decision.id}`,
-        surface,
-      }));
-    }
+  for (const decision of report.decisions) {
+    push(createEntry({
+      id: `decision-${decision.id}`,
+      section: 'executive',
+      title: decision.title || 'قرار إداري',
+      snippet: decision.description,
+      textParts: [decision.title, decision.description, decision.department, decision.owner, decision.timeline, decision.budget],
+      targetId: `search-${surface}-decision-${decision.id}`,
+      surface,
+    }));
   }
 
   for (const risk of report.risks) {
@@ -255,6 +280,18 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
       snippet: risk.system || risk.worstCase || risk.requiredControls,
       textParts: [risk.description, risk.system, risk.severity, risk.status, risk.worstCase, risk.requiredControls, risk.affectedAssets, risk.probability, risk.impact],
       targetId: `search-${surface}-risk-${risk.id}`,
+      surface,
+    }));
+  }
+
+  for (const asset of report.assets) {
+    push(createEntry({
+      id: `asset-${asset.id}`,
+      section: 'assets',
+      title: asset.name || 'أصل حيوي',
+      snippet: asset.value || asset.gaps,
+      textParts: [asset.name, asset.value, asset.gaps, asset.protectionLevel],
+      targetId: `search-${surface}-asset-${asset.id}`,
       surface,
     }));
   }
@@ -302,18 +339,16 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
     surface,
   }));
 
-  if (!isPreview) {
-    for (const control of report.isoControls) {
-      push(createEntry({
-        id: `iso-${control.domainId}`,
-        section: 'kpi',
-        title: `${control.domainId} ${control.domainName}`,
-        snippet: `${control.currentApplied}/${control.totalControls}`,
-        textParts: [control.domainId, control.domainName, control.totalControls, control.currentApplied, control.previousApplied],
-        targetId: `search-editor-iso-${control.domainId}`,
-        surface,
-      }));
-    }
+  for (const control of report.isoControls) {
+    push(createEntry({
+      id: `iso-${control.domainId}`,
+      section: 'kpi',
+      title: `${control.domainId} ${control.domainName}`,
+      snippet: `${control.currentApplied}/${control.totalControls}`,
+      textParts: [control.domainId, control.domainName, control.totalControls, control.currentApplied, control.previousApplied],
+      targetId: `search-${surface}-iso-${control.domainId}`,
+      surface,
+    }));
   }
 
   for (const kpi of report.efficiencyKPIs) {
@@ -381,30 +416,45 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
   return entries;
 }
 
-export function searchReportIndex(entries: SearchEntry[], query: string, limit = 40): ReportSearchResult[] {
+export function searchReportIndex(entries: SearchEntry[], query: string, options: SearchOptions = {}): ReportSearchPage {
   const normalizedQuery = normalizeText(query);
-  if (normalizedQuery.length < 2) return [];
+  if (normalizedQuery.length < 2) {
+    return {
+      results: [],
+      total: 0,
+      shown: 0,
+      hasMore: false,
+    };
+  }
 
   const queryTokens = tokenize(query);
-  const scored = entries
+  const safeLimit = Math.max(1, Math.round(options.limit ?? 40));
+  const minimumScore = resolveMinimumScore(normalizedQuery, queryTokens, options.minimumScore);
+
+  const ranked = entries
     .map((entry) => {
       const score = scoreEntry(entry, normalizedQuery, queryTokens);
       return { entry, score };
     })
-    .filter((item) => item.score >= 22)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(({ entry, score }) => ({
-      id: entry.id,
-      section: entry.section,
-      sectionLabel: entry.sectionLabel,
-      sectionStep: entry.sectionStep,
-      title: entry.title,
-      snippet: entry.snippet,
-      score,
-      targetId: entry.targetId,
-      sectionTargetId: entry.sectionTargetId,
-    }));
+    .filter((item) => item.score >= minimumScore)
+    .sort((a, b) => b.score - a.score || a.entry.sectionStep - b.entry.sectionStep);
 
-  return scored;
+  const visible = ranked.slice(0, safeLimit).map(({ entry, score }) => ({
+    id: entry.id,
+    section: entry.section,
+    sectionLabel: entry.sectionLabel,
+    sectionStep: entry.sectionStep,
+    title: entry.title,
+    snippet: entry.snippet,
+    score,
+    targetId: entry.targetId,
+    sectionTargetId: entry.sectionTargetId,
+  }));
+
+  return {
+    results: visible,
+    total: ranked.length,
+    shown: visible.length,
+    hasMore: ranked.length > visible.length,
+  };
 }

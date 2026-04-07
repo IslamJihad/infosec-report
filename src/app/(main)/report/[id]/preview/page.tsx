@@ -9,6 +9,9 @@ import ReportPreview from '@/components/report/ReportPreview';
 import ReportSearchDropdown from '@/components/search/ReportSearchDropdown';
 import Link from 'next/link';
 
+const SEARCH_PAGE_SIZE = 40;
+const SEARCH_DEBOUNCE_MS = 220;
+
 export default function ReportPreviewPage() {
   const params = useParams();
   const id = params.id as string;
@@ -17,6 +20,8 @@ export default function ReportPreviewPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE_SIZE);
 
   const loadReport = useCallback(async () => {
     setLoading(true);
@@ -60,7 +65,20 @@ export default function ReportPreviewPage() {
     return buildReportSearchIndex(report, 'preview');
   }, [report]);
 
-  const searchResults = useMemo(() => searchReportIndex(searchIndex, searchQuery), [searchIndex, searchQuery]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setSearchLimit(SEARCH_PAGE_SIZE);
+  }, [searchQuery]);
+
+  const searchPage = useMemo(
+    () => searchReportIndex(searchIndex, debouncedSearchQuery, { limit: searchLimit }),
+    [searchIndex, debouncedSearchQuery, searchLimit],
+  );
+  const searchResults = searchPage.results;
 
   const highlightTarget = useCallback((targetId: string) => {
     const target = document.getElementById(targetId);
@@ -158,7 +176,10 @@ export default function ReportPreviewPage() {
                 isOpen={searchOpen}
                 query={searchQuery}
                 results={searchResults}
+                totalResults={searchPage.total}
+                hasMore={searchPage.hasMore}
                 onQueryChange={setSearchQuery}
+                onLoadMore={() => setSearchLimit((prev) => prev + SEARCH_PAGE_SIZE)}
                 onSelect={handleSearchSelect}
                 onClose={() => setSearchOpen(false)}
               />
@@ -166,7 +187,7 @@ export default function ReportPreviewPage() {
 
             {searchQuery.trim().length >= 2 && (
               <span className="text-[11px] text-white/75 px-2 py-1 rounded-md bg-white/10">
-                {searchResults.length} نتيجة
+                {searchPage.shown} من {searchPage.total} نتيجة
               </span>
             )}
 
