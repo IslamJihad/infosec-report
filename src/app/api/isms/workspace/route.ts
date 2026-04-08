@@ -25,6 +25,10 @@ const SCALAR_FIELDS = [
   "employeeCount",
 ] as const;
 
+type WorkspacePersistenceData = Partial<
+  Record<(typeof SCALAR_FIELDS)[number] | (typeof JSON_FIELDS)[number], string>
+>;
+
 class WorkspaceValidationError extends Error {}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -120,7 +124,7 @@ export async function PUT(req: Request) {
     }
 
     const payload = rawPayload;
-    const data: Record<string, unknown> = {};
+    const data: WorkspacePersistenceData = {};
 
     for (const field of SCALAR_FIELDS) {
       if (field in payload) {
@@ -140,7 +144,7 @@ export async function PUT(req: Request) {
       create: {
         id: ISMS_WORKSPACE_ID,
         ...data,
-      } as any,
+      },
     });
 
     return NextResponse.json(parseWorkspace(workspace));
