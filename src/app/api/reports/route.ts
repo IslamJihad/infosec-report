@@ -2,18 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getPersistedAppSettings } from '@/lib/db/appSettings';
 import { buildPercentileMap, calculateGlobalSecurityScore } from '@/lib/scoring';
-import { DEFAULT_SPS_DOMAINS } from '@/lib/constants';
-import type { SPSDomain } from '@/types/report';
-
-function parseSPSDomains(json: string): SPSDomain[] {
-  if (!json || json === '[]') return DEFAULT_SPS_DOMAINS;
-  try {
-    const parsed = JSON.parse(json);
-    return Array.isArray(parsed) && parsed.length > 0 ? (parsed as SPSDomain[]) : DEFAULT_SPS_DOMAINS;
-  } catch {
-    return DEFAULT_SPS_DOMAINS;
-  }
-}
+import { parseSPSDomainsJson } from '@/lib/spsDomains';
 
 const REPORT_INCLUDE = {
   decisions: { orderBy: { sortOrder: 'asc' as const } },
@@ -49,12 +38,17 @@ export async function GET() {
 
     const scoredReports = await Promise.all(
       reports.map(async (report) => {
-        const spsDomains = parseSPSDomains(report.spsDomainsJson);
+        const spsDomains = parseSPSDomainsJson(report.spsDomainsJson);
         const scoreResult = calculateGlobalSecurityScore({ id: report.id, spsDomains });
-        if (report.securityScore !== scoreResult.securityScore) {
+        const normalizedSpsDomainsJson = JSON.stringify(spsDomains);
+
+        if (report.securityScore !== scoreResult.securityScore || report.spsDomainsJson !== normalizedSpsDomainsJson) {
           await prisma.report.update({
             where: { id: report.id },
-            data: { securityScore: scoreResult.securityScore },
+            data: {
+              securityScore: scoreResult.securityScore,
+              ...(report.spsDomainsJson !== normalizedSpsDomainsJson ? { spsDomainsJson: normalizedSpsDomainsJson } : {}),
+            },
           });
         }
 
@@ -180,12 +174,17 @@ export async function POST() {
       },
     });
 
-    const spsDomains = parseSPSDomains(report.spsDomainsJson);
+    const spsDomains = parseSPSDomainsJson(report.spsDomainsJson);
     const scoreResult = calculateGlobalSecurityScore({ id: report.id, spsDomains });
-    if (report.securityScore !== scoreResult.securityScore) {
+    const normalizedSpsDomainsJson = JSON.stringify(spsDomains);
+
+    if (report.securityScore !== scoreResult.securityScore || report.spsDomainsJson !== normalizedSpsDomainsJson) {
       await prisma.report.update({
         where: { id: report.id },
-        data: { securityScore: scoreResult.securityScore },
+        data: {
+          securityScore: scoreResult.securityScore,
+          ...(report.spsDomainsJson !== normalizedSpsDomainsJson ? { spsDomainsJson: normalizedSpsDomainsJson } : {}),
+        },
       });
     }
 

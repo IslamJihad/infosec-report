@@ -7,9 +7,8 @@ import type {
   ReportData,
   ResponseLength,
   ReviewType,
-  SPSDomain,
 } from '@/types/report';
-import { DEFAULT_SPS_DOMAINS } from '@/lib/constants';
+import { parseSPSDomainsJson } from '@/lib/spsDomains';
 import type {
   AnalyticsAISummaryRequest,
   AnalyticsAISummaryResponse,
@@ -30,15 +29,7 @@ function parseReport(raw: any): ReportData {
     }
   }
 
-  let spsDomains: SPSDomain[] = DEFAULT_SPS_DOMAINS;
-  if (typeof raw.spsDomainsJson === 'string' && raw.spsDomainsJson !== '[]' && raw.spsDomainsJson.trim() !== '') {
-    try {
-      const parsed = JSON.parse(raw.spsDomainsJson);
-      if (Array.isArray(parsed) && parsed.length > 0) spsDomains = parsed as SPSDomain[];
-    } catch {
-      console.error('Failed to parse spsDomainsJson. Falling back to defaults.');
-    }
-  }
+  const spsDomains = parseSPSDomainsJson(raw.spsDomainsJson);
 
   return {
     ...raw,

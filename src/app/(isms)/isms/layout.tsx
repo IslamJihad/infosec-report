@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import IsmsSidebar from '@/components/isms/layout/IsmsSidebar';
 import IsmsTopBar from '@/components/isms/layout/IsmsTopBar';
 import IsmsUnsavedBanner from '@/components/isms/layout/IsmsUnsavedBanner';
+import IsmsUnloadGuard from '@/components/isms/layout/IsmsUnloadGuard';
 
 const ismsThemeVars = {
   '--isms-bg0': '#060a12',
@@ -37,6 +38,7 @@ export default function IsmsShellLayout({ children }: { children: ReactNode }) {
         overflow: 'hidden',
       }}
     >
+      <IsmsUnloadGuard />
       <IsmsSidebar />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

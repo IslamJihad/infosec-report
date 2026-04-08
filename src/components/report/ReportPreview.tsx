@@ -24,6 +24,7 @@ import {
 
 interface Props {
   report: ReportData;
+  totalReportsCount: number;
 }
 
 type SectionId = 'exec' | 'eff' | 'risks' | 'assets' | 'sps' | 'ind' | 'sla' | 'act' | 'mat';
@@ -62,6 +63,15 @@ interface MultilineRenderOptions {
   fontWeight?: number | string;
   emptyText?: string;
   gap?: number;
+}
+
+interface KPIChartDatum {
+  label: string;
+  previousRaw: number;
+  currentRaw: number;
+  previousDisplay: number;
+  currentDisplay: number;
+  valueUnit: 'count' | 'percent';
 }
 
 function renderFormattedText(
@@ -150,7 +160,7 @@ function renderFormattedText(
   );
 }
 
-export default function ReportPreview({ report }: Props) {
+export default function ReportPreview({ report, totalReportsCount }: Props) {
   const r = report;
   const dateF = formatArabicDate(r.issueDate);
 
@@ -175,6 +185,7 @@ export default function ReportPreview({ report }: Props) {
   const avgMat = avgMatValue.toFixed(1);
   const trendUp = r.trend.includes('↑') || r.trend.includes('↗');
   const trendDown = r.trend.includes('↓') || r.trend.includes('↘');
+  const shouldShowTrendBadge = totalReportsCount > 1;
   const fallbackScoreResult = calculateGlobalSecurityScore({ id: r.id, spsDomains });
   const scoreBreakdown = r.scoreBreakdown ?? fallbackScoreResult.scoreBreakdown;
   const finalScore = r.scoreBreakdown ? r.securityScore : fallbackScoreResult.securityScore;
@@ -250,12 +261,28 @@ export default function ReportPreview({ report }: Props) {
     rag: section.rag,
   }));
 
-  const kpiChartData = [
-    { label: 'حوادث حرجة', previous: r.prevCritical, current: r.kpiCritical },
-    { label: 'ثغرات مكتشفة', previous: r.prevVuln, current: r.kpiVuln },
-    { label: 'إجمالي الحوادث', previous: r.prevTotal, current: r.kpiTotal },
-    { label: 'امتثال ISO%', previous: r.prevCompliance, current: r.kpiCompliance },
+  const kpiChartRows = [
+    { label: 'حوادث حرجة', previousRaw: r.prevCritical, currentRaw: r.kpiCritical, valueUnit: 'count' as const },
+    { label: 'ثغرات مكتشفة', previousRaw: r.prevVuln, currentRaw: r.kpiVuln, valueUnit: 'count' as const },
+    { label: 'إجمالي الحوادث', previousRaw: r.prevTotal, currentRaw: r.kpiTotal, valueUnit: 'count' as const },
+    { label: 'امتثال ISO%', previousRaw: r.prevCompliance, currentRaw: r.kpiCompliance, valueUnit: 'percent' as const },
   ];
+
+  const toDisplayPercent = (value: number, maxValue: number) => {
+    if (maxValue <= 0) return 0;
+    return Math.round((value / maxValue) * 1000) / 10;
+  };
+
+  const kpiChartData: KPIChartDatum[] = kpiChartRows.map((row) => {
+    const maxValue = Math.max(row.previousRaw, row.currentRaw, 1);
+    const bothZero = row.previousRaw === 0 && row.currentRaw === 0;
+
+    return {
+      ...row,
+      previousDisplay: bothZero ? 0 : toDisplayPercent(row.previousRaw, maxValue),
+      currentDisplay: bothZero ? 0 : toDisplayPercent(row.currentRaw, maxValue),
+    };
+  });
 
   const SH = (id: SectionId, title: string, rag?: string) => (
     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
@@ -417,9 +444,11 @@ export default function ReportPreview({ report }: Props) {
               )}
             </div>
 
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 2, fontSize: 10, fontWeight: 700, background: trendUp ? '#f0fdf4' : trendDown ? '#fef2f2' : '#f1f5f9', color: trendUp ? '#16a34a' : trendDown ? '#dc2626' : '#94a3b8' }}>
-              {trendUp ? '↑' : trendDown ? '↓' : '→'} {r.trend}
-            </span>
+            {shouldShowTrendBadge && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 2, fontSize: 10, fontWeight: 700, background: trendUp ? '#f0fdf4' : trendDown ? '#fef2f2' : '#f1f5f9', color: trendUp ? '#16a34a' : trendDown ? '#dc2626' : '#94a3b8' }}>
+                {trendUp ? '↑' : trendDown ? '↓' : '→'} {r.trend}
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
@@ -800,16 +829,38 @@ export default function ReportPreview({ report }: Props) {
               <BarChart data={kpiChartData} margin={{ top: 10, right: 8, bottom: 12, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#475569' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} allowDecimals={false} />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={{ stroke: '#cbd5e1' }}
+                  tickLine={false}
+                  tickFormatter={(value: number) => `${formatMetricValue(value)}%`}
+                />
                 <Tooltip
                   cursor={{ fill: 'rgba(148,163,184,0.14)' }}
                   contentStyle={{ borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12 }}
+                  labelFormatter={(label) => `المؤشر: ${label}`}
+                  formatter={(value, name, item) => {
+                    const entry = item?.payload as KPIChartDatum | undefined;
+                    const rawValue = name === 'الفترة السابقة' ? entry?.previousRaw : entry?.currentRaw;
+                    const rawText = typeof rawValue === 'number'
+                      ? entry?.valueUnit === 'percent'
+                        ? `${formatMetricValue(rawValue)}%`
+                        : formatMetricValue(rawValue)
+                      : '—';
+                    const relativeText = typeof value === 'number' ? `${formatMetricValue(value)}%` : String(value);
+
+                    return [`${relativeText} (الفعلي: ${rawText})`, name];
+                  }}
                 />
-                <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="previous" name="الفترة السابقة" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="current" name="الفترة الحالية" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+                <Legend verticalAlign="top" height={36} iconType="square" wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="previousDisplay" name="الفترة السابقة" fill="#cbd5e1" radius={[4, 4, 0, 0]} minPointSize={3} />
+                <Bar dataKey="currentDisplay" name="الفترة الحالية" fill="#1e3a5f" radius={[4, 4, 0, 0]} minPointSize={3} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div style={{ padding: '0 16px 12px', background: '#fff', fontSize: 9, color: '#64748b' }}>
+            عرض نسبي (0-100) لإظهار الفروقات بين المؤشرات المختلفة. القيم الفعلية موضحة في الجدول أعلاه.
           </div>
         </div>
 

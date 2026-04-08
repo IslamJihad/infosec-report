@@ -14,6 +14,8 @@ import type {
 
 const BASE = "/api/isms";
 
+type RequestTransportOptions = Pick<RequestInit, "keepalive" | "signal">;
+
 export interface IsmsExportPayload {
   exportedAt: string;
   workspace: IsmsWorkspaceView;
@@ -77,10 +79,15 @@ export async function getWorkspace(): Promise<IsmsWorkspaceView> {
   return request<IsmsWorkspaceView>(`${BASE}/workspace`);
 }
 
-export async function updateWorkspace(data: Partial<IsmsWorkspaceView>): Promise<IsmsWorkspaceView> {
+export async function updateWorkspace(
+  data: Partial<IsmsWorkspaceView>,
+  options?: RequestTransportOptions,
+): Promise<IsmsWorkspaceView> {
   return request<IsmsWorkspaceView>(`${BASE}/workspace`, {
     method: "PUT",
     body: JSON.stringify(data),
+    keepalive: options?.keepalive ?? true,
+    signal: options?.signal,
   });
 }
 

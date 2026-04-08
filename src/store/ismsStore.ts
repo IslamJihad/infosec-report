@@ -79,6 +79,21 @@ function getErrorMessage(error: unknown): string {
   return "Workspace synchronization failed";
 }
 
+type FlushWorkspaceOptions = {
+  keepalive?: boolean;
+};
+
+function hasWorkspacePatch(patch: Partial<IsmsWorkspaceView>): boolean {
+  return Object.keys(patch).length > 0;
+}
+
+function mergeWorkspacePatch(
+  base: Partial<IsmsWorkspaceView>,
+  patch: Partial<IsmsWorkspaceView>,
+): Partial<IsmsWorkspaceView> {
+  return { ...base, ...patch };
+}
+
 interface IsmsStore {
   workspace: IsmsWorkspaceView | null;
   risks: IsmsRisk[];
@@ -96,10 +111,12 @@ interface IsmsStore {
   isDirty: boolean;
   lastSavedAt: string | null;
   lastWorkspaceError: string | null;
+  _pendingWorkspacePatch: Partial<IsmsWorkspaceView>;
+  _inFlightWorkspacePatch: Partial<IsmsWorkspaceView> | null;
 
   loadAll: () => Promise<void>;
   updateWorkspace: (patch: Partial<IsmsWorkspaceView>) => Promise<void>;
-  flushWorkspace: () => Promise<void>;
+  flushWorkspace: (options?: FlushWorkspaceOptions) => Promise<void>;
   importSnapshot: (payload: unknown) => Promise<void>;
 
   addRisk: (data: Partial<IsmsRisk>) => Promise<void>;
@@ -143,9 +160,6 @@ interface IsmsStore {
   deleteNca: (id: string) => Promise<void>;
 }
 
-let workspacePatchTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingWorkspacePatch: Partial<IsmsWorkspaceView> = {};
-
 export const useIsmsStore = create<IsmsStore>((set, get) => ({
   workspace: null,
   risks: [],
@@ -163,6 +177,8 @@ export const useIsmsStore = create<IsmsStore>((set, get) => ({
   isDirty: false,
   lastSavedAt: null,
   lastWorkspaceError: null,
+  _pendingWorkspacePatch: {},
+  _inFlightWorkspacePatch: null,
 
   loadAll: async () => {
     set({ isLoading: true });
@@ -209,6 +225,8 @@ export const useIsmsStore = create<IsmsStore>((set, get) => ({
         isSavingWorkspace: false,
         lastWorkspaceError: null,
         lastSavedAt: asIsoDate(workspace.updatedAt),
+        _pendingWorkspacePatch: {},
+        _inFlightWorkspacePatch: null,
       });
     } catch (error) {
       console.error("Failed to load ISMS workspace:", error);
@@ -219,62 +237,71 @@ export const useIsmsStore = create<IsmsStore>((set, get) => ({
   },
 
   updateWorkspace: async (patch) => {
-    if (Object.keys(patch).length === 0) {
+    if (!hasWorkspacePatch(patch)) {
       return;
     }
 
-    const current = get().workspace;
-    if (current) {
-      set({ workspace: { ...current, ...patch }, isDirty: true, lastWorkspaceError: null });
-    } else {
-      set({ isDirty: true, lastWorkspaceError: null });
-    }
+    set((state) => ({
+      workspace: state.workspace ? { ...state.workspace, ...patch } : state.workspace,
+      _pendingWorkspacePatch: mergeWorkspacePatch(state._pendingWorkspacePatch, patch),
+      isDirty: true,
+      lastWorkspaceError: null,
+    }));
 
-    pendingWorkspacePatch = { ...pendingWorkspacePatch, ...patch };
-
-    if (workspacePatchTimer) {
-      clearTimeout(workspacePatchTimer);
-    }
-
-    workspacePatchTimer = setTimeout(() => {
-      void get().flushWorkspace();
-    }, 450);
+    void get().flushWorkspace();
   },
 
-  flushWorkspace: async () => {
-    if (workspacePatchTimer) {
-      clearTimeout(workspacePatchTimer);
-      workspacePatchTimer = null;
-    }
-
+  flushWorkspace: async (options = {}) => {
     if (get().isSavingWorkspace) {
       return;
     }
 
-    const flush = pendingWorkspacePatch;
-    if (Object.keys(flush).length === 0) {
+    if (!hasWorkspacePatch(get()._pendingWorkspacePatch)) {
       return;
     }
 
-    pendingWorkspacePatch = {};
     set({ isSavingWorkspace: true, lastWorkspaceError: null });
 
     try {
-      const updated = await updateWorkspaceApi(flush);
-      set({
-        workspace: updated,
+      while (hasWorkspacePatch(get()._pendingWorkspacePatch)) {
+        const flush = get()._pendingWorkspacePatch;
+        set({ _pendingWorkspacePatch: {}, _inFlightWorkspacePatch: flush });
+
+        const updated = await updateWorkspaceApi(flush, {
+          keepalive: options.keepalive,
+        });
+
+        set((state) => {
+          const hasPending = hasWorkspacePatch(state._pendingWorkspacePatch);
+          const mergedWorkspace = hasPending
+            ? ({ ...updated, ...state._pendingWorkspacePatch } as IsmsWorkspaceView)
+            : updated;
+
+          return {
+            workspace: mergedWorkspace,
+            _inFlightWorkspacePatch: null,
+            isDirty: hasPending,
+            lastWorkspaceError: null,
+            lastSavedAt: asIsoDate(updated.updatedAt) ?? new Date().toISOString(),
+          };
+        });
+      }
+
+      set((state) => ({
         isSavingWorkspace: false,
-        isDirty: false,
-        lastWorkspaceError: null,
-        lastSavedAt: asIsoDate(updated.updatedAt) ?? new Date().toISOString(),
-      });
+        isDirty: hasWorkspacePatch(state._pendingWorkspacePatch),
+      }));
     } catch (error) {
-      pendingWorkspacePatch = { ...flush, ...pendingWorkspacePatch };
-      set({
+      set((state) => ({
+        _pendingWorkspacePatch: mergeWorkspacePatch(
+          state._inFlightWorkspacePatch ?? {},
+          state._pendingWorkspacePatch,
+        ),
+        _inFlightWorkspacePatch: null,
         isSavingWorkspace: false,
         isDirty: true,
         lastWorkspaceError: getErrorMessage(error),
-      });
+      }));
       throw error;
     }
   },

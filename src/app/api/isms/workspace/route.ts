@@ -25,6 +25,58 @@ const SCALAR_FIELDS = [
   "employeeCount",
 ] as const;
 
+class WorkspaceValidationError extends Error {}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseWorkspaceMap(value: string): Record<string, unknown> {
+  const parsed = parseJsonMap<unknown>(value, {});
+  return isRecord(parsed) ? parsed : {};
+}
+
+function normalizeScalarValue(field: (typeof SCALAR_FIELDS)[number], value: unknown): string {
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  throw new WorkspaceValidationError(`${field} must be a string`);
+}
+
+function normalizeJsonValue(field: (typeof JSON_FIELDS)[number], value: unknown): string {
+  if (value == null) {
+    return stringifyJsonMap({}, {});
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (!isRecord(parsed)) {
+        throw new WorkspaceValidationError(`${field} must be a JSON object`);
+      }
+
+      return stringifyJsonMap(parsed, {});
+    } catch {
+      throw new WorkspaceValidationError(`${field} must be a valid JSON object`);
+    }
+  }
+
+  if (!isRecord(value)) {
+    throw new WorkspaceValidationError(`${field} must be a JSON object`);
+  }
+
+  return stringifyJsonMap(value, {});
+}
+
 function parseWorkspace(workspace: {
   clauseStatus: string;
   controlStatus: string;
@@ -36,12 +88,12 @@ function parseWorkspace(workspace: {
 }) {
   return {
     ...workspace,
-    clauseStatus: parseJsonMap(workspace.clauseStatus, {}),
-    controlStatus: parseJsonMap(workspace.controlStatus, {}),
-    soaData: parseJsonMap(workspace.soaData, {}),
-    docStatus: parseJsonMap(workspace.docStatus, {}),
-    dailyChecks: parseJsonMap(workspace.dailyChecks, {}),
-    dailyNotes: parseJsonMap(workspace.dailyNotes, {}),
+    clauseStatus: parseWorkspaceMap(workspace.clauseStatus),
+    controlStatus: parseWorkspaceMap(workspace.controlStatus),
+    soaData: parseWorkspaceMap(workspace.soaData),
+    docStatus: parseWorkspaceMap(workspace.docStatus),
+    dailyChecks: parseWorkspaceMap(workspace.dailyChecks),
+    dailyNotes: parseWorkspaceMap(workspace.dailyNotes),
   };
 }
 
@@ -62,18 +114,23 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const payload = (await req.json()) as Record<string, unknown>;
+    const rawPayload = (await req.json()) as unknown;
+    if (!isRecord(rawPayload)) {
+      return NextResponse.json({ error: "Workspace payload must be an object" }, { status: 400 });
+    }
+
+    const payload = rawPayload;
     const data: Record<string, unknown> = {};
 
     for (const field of SCALAR_FIELDS) {
       if (field in payload) {
-        data[field] = payload[field];
+        data[field] = normalizeScalarValue(field, payload[field]);
       }
     }
 
     for (const field of JSON_FIELDS) {
       if (field in payload) {
-        data[field] = stringifyJsonMap(payload[field], {});
+        data[field] = normalizeJsonValue(field, payload[field]);
       }
     }
 
@@ -88,6 +145,10 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(parseWorkspace(workspace));
   } catch (error) {
+    if (error instanceof WorkspaceValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     console.error("Error updating ISMS workspace:", error);
     return NextResponse.json({ error: "Failed to update workspace" }, { status: 500 });
   }

@@ -216,10 +216,8 @@ export const DEFAULT_SPS_DOMAINS: SPSDomain[] = [
     nameEn: 'Infrastructure Hardening',
     weight: 0.10,
     subMetrics: [
-      { id: 'endpoint-protection',   nameAr: 'حماية نقاط النهاية',          value: 50, weight: 30 },
-      { id: 'mfa-adoption',          nameAr: 'المصادقة متعددة العوامل',     value: 50, weight: 25 },
-      { id: 'encryption-compliance', nameAr: 'امتثال التشفير',              value: 50, weight: 25 },
-      { id: 'cloud-security',        nameAr: 'وضع أمان السحابة',            value: 50, weight: 20 },
+      { id: 'endpoint-protection',   nameAr: 'حماية نقاط النهاية',          value: 50, weight: 60 },
+      { id: 'mfa-adoption',          nameAr: 'المصادقة متعددة العوامل',     value: 50, weight: 40 },
     ],
   },
 ];

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import type { ReportData } from '@/types/report';
-import { fetchReport } from '@/lib/api';
+import { fetchReport, fetchReports } from '@/lib/api';
 import { buildReportSearchIndex, searchReportIndex, type ReportSearchResult } from '@/lib/search/reportSearch';
 import ReportPreview from '@/components/report/ReportPreview';
 import ReportSearchDropdown from '@/components/search/ReportSearchDropdown';
@@ -16,6 +16,7 @@ export default function ReportPreviewPage() {
   const params = useParams();
   const id = params.id as string;
   const [report, setReport] = useState<ReportData | null>(null);
+  const [totalReportsCount, setTotalReportsCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -27,11 +28,24 @@ export default function ReportPreviewPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await fetchReport(id);
-      setReport(data);
+      const [reportResult, reportsResult] = await Promise.allSettled([fetchReport(id), fetchReports()]);
+
+      if (reportResult.status === 'rejected') {
+        throw reportResult.reason;
+      }
+
+      setReport(reportResult.value);
+
+      if (reportsResult.status === 'fulfilled') {
+        setTotalReportsCount(Math.max(1, reportsResult.value.length));
+      } else {
+        console.warn('Failed to load total reports count. Falling back to single-report mode.', reportsResult.reason);
+        setTotalReportsCount(1);
+      }
     } catch (error) {
       console.error('Failed to load preview report:', error);
       setReport(null);
+      setTotalReportsCount(1);
       setLoadError('تعذر تحميل التقرير. يرجى إعادة المحاولة.');
     } finally {
       setLoading(false);
@@ -203,7 +217,7 @@ export default function ReportPreviewPage() {
 
       {/* Report */}
       <div className="report-preview-shell py-6">
-        <ReportPreview report={report} />
+        <ReportPreview report={report} totalReportsCount={totalReportsCount} />
       </div>
     </div>
   );
