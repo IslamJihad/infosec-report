@@ -29,12 +29,15 @@ export function normalizeSPSDomains(candidate: unknown): SPSDomain[] {
   const incomingDomains = Array.isArray(candidate) ? candidate : [];
 
   return DEFAULT_SPS_DOMAINS.map((defaultDomain) => {
-    const incomingDomain = findById<Partial<SPSDomain>>(incomingDomains, defaultDomain.id);
+    const incomingDomain = findById<Partial<SPSDomain> & { id: string }>(incomingDomains, defaultDomain.id);
 
     return {
       ...defaultDomain,
       subMetrics: defaultDomain.subMetrics.map((defaultSubMetric) => {
-        const incomingSubMetric = findById<Partial<SPSSubMetric>>(incomingDomain?.subMetrics, defaultSubMetric.id);
+        const incomingSubMetric = findById<Partial<SPSSubMetric> & { id: string }>(
+          incomingDomain?.subMetrics,
+          defaultSubMetric.id,
+        );
         return normalizeSubMetric(defaultSubMetric, incomingSubMetric);
       }),
     };
