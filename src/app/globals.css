@@ -312,6 +312,7 @@
     overflow: visible !important;
     page-break-before: auto !important;
     page-break-after: auto !important;
+    break-after: auto !important;
     break-inside: auto !important;
     display: block !important;
   }
@@ -398,6 +399,11 @@
   .report-toc {
     break-before: avoid !important;
     page-break-before: avoid !important;
+  }
+
+  .report-toc + .report-section {
+    break-before: page !important;
+    page-break-before: always !important;
   }
 
   .report-cover > div[style*="background: rgba(255,255,255,.6)"] {
