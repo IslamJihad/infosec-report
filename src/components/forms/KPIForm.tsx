@@ -10,7 +10,7 @@ export default function KPIForm() {
 
   return (
     <div id="search-editor-section-kpi" className="animate-fadeIn">
-      <FormCard icon="📊" title="مؤشرات الأداء الرئيسية">
+      <FormCard icon="📊" title="اتجاه المؤشرات الرئيسية">
         <div className="bg-navy-100 border border-blue-200 rounded-xl py-3 px-4 text-sm text-navy-800 mb-4">
           📈 أدخل القيم الحالية والسابقة لإظهار اتجاه التحسن أو التراجع.
         </div>

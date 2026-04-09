@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Asset, Challenge, EfficiencyKPI } from '@/types/report';
+import type { ReportData, Decision, Risk, MaturityDomain, Recommendation, Challenge, EfficiencyKPI } from '@/types/report';
 import { DEFAULT_SPS_DOMAINS, NAV_ITEMS } from '@/lib/constants';
 
 interface ReportStore {
@@ -38,11 +38,6 @@ interface ReportStore {
   addRecommendation: () => void;
   updateRecommendation: (index: number, data: Partial<Recommendation>) => void;
   removeRecommendation: (index: number) => void;
-
-  // Assets
-  addAsset: () => void;
-  updateAsset: (index: number, data: Partial<Asset>) => void;
-  removeAsset: (index: number) => void;
 
   // Challenges
   addChallenge: () => void;
@@ -231,35 +226,6 @@ export const useReportStore = create<ReportStore>((set, get) => ({
     const { report } = get();
     if (!report) return;
     set({ report: { ...report, recommendations: report.recommendations.filter((_, i) => i !== index) }, isDirty: true });
-  },
-
-  // Assets
-  addAsset: () => {
-    const { report } = get();
-    if (!report) return;
-    const newAsset: Asset = {
-      id: uuid(),
-      name: '',
-      value: '',
-      protectionLevel: 50,
-      gaps: '',
-      sortOrder: report.assets.length,
-    };
-    set({ report: { ...report, assets: [...report.assets, newAsset] }, isDirty: true });
-  },
-
-  updateAsset: (index, data) => {
-    const { report } = get();
-    if (!report) return;
-    const assets = [...report.assets];
-    assets[index] = { ...assets[index], ...data };
-    set({ report: { ...report, assets }, isDirty: true });
-  },
-
-  removeAsset: (index) => {
-    const { report } = get();
-    if (!report) return;
-    set({ report: { ...report, assets: report.assets.filter((_, i) => i !== index) }, isDirty: true });
   },
 
   // Challenges

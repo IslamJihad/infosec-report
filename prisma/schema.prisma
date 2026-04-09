@@ -81,7 +81,6 @@ model Report {
   risks           Risk[]
   maturityDomains MaturityDomain[]
   recommendations Recommendation[]
-  assets          Asset[]
   challenges      Challenge[]
   efficiencyKPIs  EfficiencyKPI[]
   aiConversations AIConversation[]
@@ -160,17 +159,6 @@ model AIConversation {
   pinned     Boolean @default(false)
   messages   String @default("[]")
   createdAt  DateTime @default(now())
-}
-
-model Asset {
-  id              String @id @default(uuid())
-  reportId        String
-  report          Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  name            String @default("")
-  value           String @default("")
-  protectionLevel Int    @default(50)
-  gaps            String @default("")
-  sortOrder       Int    @default(0)
 }
 
 model Challenge {

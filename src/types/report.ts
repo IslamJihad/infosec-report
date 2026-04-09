@@ -88,7 +88,6 @@ export interface ReportData {
   risks: Risk[];
   maturityDomains: MaturityDomain[];
   recommendations: Recommendation[];
-  assets: Asset[];
   challenges: Challenge[];
   efficiencyKPIs: EfficiencyKPI[];
 
@@ -163,16 +162,6 @@ export interface EfficiencyKPI {
   unit: string;
   description: string;
   lowerBetter: boolean;
-  sortOrder: number;
-}
-
-export interface Asset {
-  id: string;
-  reportId?: string;
-  name: string;
-  value: string;
-  protectionLevel: number;
-  gaps: string;
   sortOrder: number;
 }
 

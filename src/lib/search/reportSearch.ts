@@ -6,7 +6,6 @@ export type SearchSectionKey =
   | 'general'
   | 'executive'
   | 'risks'
-  | 'assets'
   | 'sps'
   | 'kpi'
   | 'efficiency'
@@ -23,13 +22,12 @@ const SECTION_META: Record<SearchSectionKey, SectionMeta> = {
   general: { label: 'معلومات التقرير', step: 0 },
   executive: { label: 'الملخص التنفيذي', step: 1 },
   risks: { label: 'المخاطر الرئيسية', step: 2 },
-  assets: { label: 'حماية الأصول الحيوية', step: 3 },
-  sps: { label: 'مؤشرات وضع الأمان', step: 4 },
-  kpi: { label: 'المؤشرات والمعايير', step: 5 },
-  efficiency: { label: 'مؤشرات الكفاءة التشغيلية', step: 6 },
-  sla: { label: 'مقاييس الاستجابة', step: 7 },
-  actions: { label: 'التوصيات والإجراءات', step: 8 },
-  maturity: { label: 'مستوى النضج الأمني', step: 9 },
+  sps: { label: 'مؤشرات وضع الأمان', step: 3 },
+  kpi: { label: 'المؤشرات والمعايير', step: 4 },
+  efficiency: { label: 'مؤشرات الكفاءة التشغيلية', step: 5 },
+  sla: { label: 'مقاييس الاستجابة', step: 6 },
+  actions: { label: 'التوصيات والإجراءات', step: 7 },
+  maturity: { label: 'مستوى النضج الأمني', step: 8 },
 };
 
 export interface SearchEntry {
@@ -280,18 +278,6 @@ export function buildReportSearchIndex(report: ReportData, surface: SearchSurfac
       snippet: risk.system || risk.worstCase || risk.requiredControls,
       textParts: [risk.description, risk.system, risk.severity, risk.status, risk.worstCase, risk.requiredControls, risk.affectedAssets, risk.probability, risk.impact],
       targetId: `search-${surface}-risk-${risk.id}`,
-      surface,
-    }));
-  }
-
-  for (const asset of report.assets) {
-    push(createEntry({
-      id: `asset-${asset.id}`,
-      section: 'assets',
-      title: asset.name || 'أصل حيوي',
-      snippet: asset.value || asset.gaps,
-      textParts: [asset.name, asset.value, asset.gaps, asset.protectionLevel],
-      targetId: `search-${surface}-asset-${asset.id}`,
       surface,
     }));
   }

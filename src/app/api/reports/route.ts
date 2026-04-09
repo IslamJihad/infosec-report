@@ -9,7 +9,6 @@ const REPORT_INCLUDE = {
   risks: { orderBy: { sortOrder: 'asc' as const } },
   maturityDomains: { orderBy: { sortOrder: 'asc' as const } },
   recommendations: { orderBy: { sortOrder: 'asc' as const } },
-  assets: { orderBy: { sortOrder: 'asc' as const } },
   challenges: { orderBy: { sortOrder: 'asc' as const } },
   efficiencyKPIs: { orderBy: { sortOrder: 'asc' as const } },
 };
@@ -139,14 +138,6 @@ export async function POST() {
           ],
         },
 
-        assets: {
-          create: [
-            { name: 'نظام ERP — الأعمال والمالية', value: 'أصل محوري — توقفه يوقف العمليات', protectionLevel: 55, gaps: 'صلاحيات مفرطة لمستخدمين، لا يوجد تسجيل للأنشطة', sortOrder: 0 },
-            { name: 'قاعدة بيانات العملاء', value: 'بيانات حساسة — اختراقها مسؤولية قانونية', protectionLevel: 70, gaps: 'تشفير جزئي، لا يوجد نظام DLP لمنع التسرب', sortOrder: 1 },
-            { name: 'البنية الشبكية الأساسية', value: 'تربط جميع الأنظمة', protectionLevel: 60, gaps: 'جدار الحماية لم يُحدَّث منذ 6 أشهر', sortOrder: 2 },
-          ],
-        },
-
         challenges: {
           create: [
             { title: '12 حادثة مفتوحة تراكمت دون معالجة', type: 'staff', rootCause: 'نقص في كوادر الاستجابة — الفريق مُثقَل', requirement: 'توظيف محلل أمن إضافي', sortOrder: 0 },
@@ -168,7 +159,6 @@ export async function POST() {
         risks: { orderBy: { sortOrder: 'asc' } },
         maturityDomains: { orderBy: { sortOrder: 'asc' } },
         recommendations: { orderBy: { sortOrder: 'asc' } },
-        assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
         efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },

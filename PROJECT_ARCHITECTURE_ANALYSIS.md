@@ -5,21 +5,20 @@
 ### Main Report Page: [src/app/report/[id]/page.tsx](src/app/report/[id]/page.tsx)
 
 The report page is a **multi-step form interface** with:
-- **9 distinct sections** managed in `FORM_SECTIONS` array:
+- **8 distinct sections** managed in `FORM_SECTIONS` array:
   1. GeneralInfoForm - Company info, classification, chairman note
   2. ExecutiveSummaryForm - Security score, trends, decisions
   3. RisksForm - Risk management data
-  4. AssetProtectionForm - Asset protection details
-  5. KPIForm - Key performance indicators
-  6. EfficiencyForm - Operational efficiency metrics
-  7. SLAForm - Response time metrics
-  8. RecommendationsForm - Recommendations and actions
-  9. MaturityForm - Security maturity domains
+  4. KPIForm - Key performance indicators
+  5. EfficiencyForm - Operational efficiency metrics
+  6. SLAForm - Response time metrics
+  7. RecommendationsForm - Recommendations and actions
+  8. MaturityForm - Security maturity domains
 
 **Architecture:**
 - Uses **Zustand store** (`useReportStore`) for global state management
 - **Auto-save mechanism**: Triggers save 2 seconds after changes (debounced)
-- **Current step tracking**: Sidebar navigation controls `currentStep` (0-8)
+- **Current step tracking**: Sidebar navigation controls `currentStep` (0-7)
 - **Dirty state tracking**: Tracks if data has been modified since last save
 
 ### Data Flow:
@@ -737,7 +736,6 @@ normalizeMaturityScore(score: number) {
 | `isoControls` | MaturityForm | JSON array | string (JSON) | "[]" |
 | `decisions[]` | ExecutiveSummaryForm | Nested form | Decision[] | [] |
 | `risks[]` | RisksForm | Nested form | Risk[] | [] |
-| `assets[]` | AssetProtectionForm | Nested form | Asset[] | [] |
 | `challenges[]` | ChallengesForm | Nested form | Challenge[] | [] |
 | `efficiencyKPIs[]` | EfficiencyForm | Nested form | EfficiencyKPI[] | [] |
 | `maturityDomains[]` | MaturityForm | Nested form | MaturityDomain[] | [] |

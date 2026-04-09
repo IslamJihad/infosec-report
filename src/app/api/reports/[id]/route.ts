@@ -8,7 +8,6 @@ const REPORT_INCLUDE = {
   risks: { orderBy: { sortOrder: 'asc' as const } },
   maturityDomains: { orderBy: { sortOrder: 'asc' as const } },
   recommendations: { orderBy: { sortOrder: 'asc' as const } },
-  assets: { orderBy: { sortOrder: 'asc' as const } },
   challenges: { orderBy: { sortOrder: 'asc' as const } },
   efficiencyKPIs: { orderBy: { sortOrder: 'asc' as const } },
 };
@@ -206,7 +205,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       risks,
       maturityDomains,
       recommendations,
-      assets,
       challenges,
       efficiencyKPIs,
       spsDomains,
@@ -315,27 +313,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 department: toStringValue(item.department),
                 timeline: toStringValue(item.timeline),
                 owner: toStringValue(item.owner),
-                sortOrder: i,
-              };
-            }),
-          });
-        }
-      }
-
-      // Update assets
-      if (Array.isArray(assets)) {
-        await tx.asset.deleteMany({ where: { reportId: id } });
-        if (assets.length > 0) {
-          await tx.asset.createMany({
-            data: assets.map((a, i) => {
-              const item = a as Record<string, unknown>;
-              return {
-                id: pickPersistedId(item),
-                reportId: id,
-                name: toStringValue(item.name),
-                value: toStringValue(item.value),
-                protectionLevel: clamp(toIntValue(item.protectionLevel, 0), 0, 100),
-                gaps: toStringValue(item.gaps),
                 sortOrder: i,
               };
             }),

@@ -27,7 +27,7 @@ interface Props {
   totalReportsCount: number;
 }
 
-type SectionId = 'exec' | 'eff' | 'risks' | 'assets' | 'sps' | 'ind' | 'sla' | 'act' | 'mat';
+type SectionId = 'exec' | 'eff' | 'risks' | 'sps' | 'ind' | 'sla' | 'act' | 'mat';
 
 interface SectionDefinition {
   id: SectionId;
@@ -42,6 +42,59 @@ function ensureArray<T>(value: T[] | null | undefined): T[] {
 
 function formatMetricValue(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+const ARABIC_DIACRITICS = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g;
+
+function normalizeArabicText(value: string | null | undefined): string {
+  return (value ?? '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(ARABIC_DIACRITICS, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/[\u200E\u200F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasAllArabicKeywords(text: string, keywords: string[]): boolean {
+  return keywords.every((keyword) => text.includes(keyword));
+}
+
+const CRITICAL_SYSTEMS_DR_PLAN_KEYWORDS = ['حرج', 'تعافي', 'كوارث'];
+const CRITICAL_SYSTEMS_HIGH_AVAILABILITY_KEYWORDS = ['حرج', 'توافر', 'مرتفع'];
+
+function isCriticalSystemsDrPlanKPI(title: string): boolean {
+  return hasAllArabicKeywords(normalizeArabicText(title), CRITICAL_SYSTEMS_DR_PLAN_KEYWORDS);
+}
+
+function isCriticalSystemsHighAvailabilityKPI(title: string): boolean {
+  return hasAllArabicKeywords(normalizeArabicText(title), CRITICAL_SYSTEMS_HIGH_AVAILABILITY_KEYWORDS);
+}
+
+function hasDefinedMetricValue(value: unknown): boolean {
+  if (typeof value === 'number') {
+    return Number.isFinite(value);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return false;
+    }
+
+    return Number.isFinite(Number(trimmed));
+  }
+
+  return false;
+}
+
+function isTargetedEfficiencyKpiEmpty(kpi: { title: string; val: unknown }): boolean {
+  return !normalizeArabicText(kpi.title) || !hasDefinedMetricValue(kpi.val);
 }
 
 const BULLET_LINE_PATTERN = /^[-*•]\s+/;
@@ -166,11 +219,26 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
 
   const decisions = ensureArray(r.decisions);
   const risks = ensureArray(r.risks);
-  const assets = ensureArray(r.assets);
   const recommendations = ensureArray(r.recommendations);
   const challenges = ensureArray(r.challenges);
   const maturityDomains = ensureArray(r.maturityDomains);
   const effKPIs = ensureArray(r.efficiencyKPIs);
+  const drPlanKPIs = effKPIs.filter((kpi) => isCriticalSystemsDrPlanKPI(kpi.title));
+  const highAvailabilityKPIs = effKPIs.filter((kpi) => isCriticalSystemsHighAvailabilityKPI(kpi.title));
+  const hasTargetedCriticalSystemKpis = drPlanKPIs.length > 0 || highAvailabilityKPIs.length > 0;
+  const isDrPlanKpiEmpty = drPlanKPIs.length === 0 || drPlanKPIs.every((kpi) => isTargetedEfficiencyKpiEmpty(kpi));
+  const isHighAvailabilityKpiEmpty =
+    highAvailabilityKPIs.length === 0 || highAvailabilityKPIs.every((kpi) => isTargetedEfficiencyKpiEmpty(kpi));
+  const hideEfficiencySectionForTargetedKpis =
+    hasTargetedCriticalSystemKpis && isDrPlanKpiEmpty && isHighAvailabilityKpiEmpty;
+  const visibleEffKPIs = effKPIs.filter((kpi) => {
+    if (isCriticalSystemsDrPlanKPI(kpi.title) || isCriticalSystemsHighAvailabilityKPI(kpi.title)) {
+      return !isTargetedEfficiencyKpiEmpty(kpi);
+    }
+
+    return true;
+  });
+  const shouldShowEfficiencySection = effKPIs.length > 0 && !hideEfficiencySectionForTargetedKpis;
   const isoControls = Array.isArray(r.isoControls) ? r.isoControls : [];
   const spsDomains = Array.isArray(r.spsDomains) && r.spsDomains.length > 0
     ? r.spsDomains : DEFAULT_SPS_DOMAINS;
@@ -190,61 +258,22 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
   const scoreBreakdown = r.scoreBreakdown ?? fallbackScoreResult.scoreBreakdown;
   const finalScore = r.scoreBreakdown ? r.securityScore : fallbackScoreResult.securityScore;
   const { domainResults } = scoreBreakdown;
-  const avgProt = (() => {
-    const assetDomain = domainResults.find((domain) => (
-      domain.id === 'asset-protection'
-      || domain.id === 'assetProtection'
-      || domain.nameEn.toLowerCase().includes('asset')
-    ));
-
-    if (assetDomain) {
-      return Math.round(assetDomain.domainScore);
-    }
-
-    return Math.round((finalScore + r.kpiCompliance) / 2);
-  })();
 
   const scoreColor = (s: number) => s >= 75 ? '#16a34a' : s >= 50 ? '#d97706' : '#dc2626';
-  const ragColor = (rag: string) => {
-    if (rag === 'r') return '#dc2626';
-    if (rag === 'a') return '#f59e0b';
-    if (rag === 'g') return '#16a34a';
-    return '#64748b';
-  };
-  const ragLabel = (rag: string) => {
-    if (rag === 'r') return 'يستوجب تدخلاً';
-    if (rag === 'a') return 'يستوجب متابعة';
-    if (rag === 'g') return 'وضع جيد';
-    return 'لا عناصر';
-  };
-  const ragBg = (rag: string) => {
-    if (rag === 'r') return '#fef2f2';
-    if (rag === 'a') return '#fffbeb';
-    if (rag === 'g') return '#f0fdf4';
-    return '#f1f5f9';
-  };
-  const ragBorder = (rag: string) => {
-    if (rag === 'r') return 'rgba(220,38,38,.15)';
-    if (rag === 'a') return 'rgba(120,53,15,.12)';
-    if (rag === 'g') return 'rgba(20,83,45,.12)';
-    return 'rgba(100,116,139,.2)';
-  };
 
   const targetMttc = Math.max(1, Number(r.slaMTTCTarget) || 24);
   const currentMttc = Math.max(0, Number(r.slaMTTC) || 0);
   const slaOk = currentMttc <= targetMttc;
   const slaCompliance = Math.min(100, Math.round((targetMttc / Math.max(currentMttc, 0.1)) * 100));
   const hasActions = recommendations.length > 0 || challenges.length > 0;
-  const hasAssets = assets.length > 0;
   const hasKpiComment = typeof r.kpiComment === 'string' && r.kpiComment.trim().length > 0;
 
   const sectionDefinitions: SectionDefinition[] = [
     { id: 'exec', title: 'الملخص التنفيذي', rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r', visible: true },
-    { id: 'eff', title: 'الكفاءة التشغيلية', rag: 'a', visible: effKPIs.length > 0 },
+    { id: 'eff', title: 'الكفاءة التشغيلية', rag: 'a', visible: shouldShowEfficiencySection },
     { id: 'risks', title: 'المخاطر الرئيسية', rag: critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r', visible: true },
-    { id: 'assets', title: 'حماية الأصول الحيوية', rag: avgProt >= 75 ? 'g' : avgProt >= 50 ? 'a' : 'r', visible: true },
     { id: 'sps', title: 'مؤشرات وضع الأمان', rag: finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r', visible: true },
-    { id: 'ind', title: 'مؤشرات الأداء', rag: r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r', visible: true },
+    { id: 'ind', title: 'اتجاه المؤشرات', rag: r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r', visible: true },
     { id: 'sla', title: 'مقاييس الاستجابة', rag: slaOk ? 'g' : 'r', visible: r.showSLA },
     { id: 'act', title: 'التوصيات والاعتمادات', rag: hasActions ? 'g' : 'n', visible: true },
     { id: 'mat', title: 'تقييم مستوى الامتثال', rag: avgMatValue >= 80 ? 'g' : avgMatValue >= 60 ? 'a' : 'r', visible: r.showMaturity && maturityDomains.length > 0 },
@@ -258,7 +287,6 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
   const toc = visibleSections.map((section) => ({
     num: secNum(section.id),
     title: section.title,
-    rag: section.rag,
   }));
 
   const kpiChartRows = [
@@ -284,17 +312,16 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
     };
   });
 
-  const SH = (id: SectionId, title: string, rag?: string) => (
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
-      <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: '#94a3b8', minWidth: 28 }}>{String(secNum(id)).padStart(2, '0')}</span>
-      <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', flex: 1, letterSpacing: -0.2 }}>{title}</h2>
-      {rag && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 9, fontWeight: 800, letterSpacing: 0.5, padding: '3px 10px', borderRadius: 2, background: ragBg(rag), color: ragColor(rag), border: `1px solid ${ragBorder(rag)}` }}>
-          {ragLabel(rag)}
-        </span>
-      )}
-    </div>
-  );
+  const SH = (id: SectionId, title: string, rag?: string) => {
+    void rag;
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: '#94a3b8', minWidth: 28 }}>{String(secNum(id)).padStart(2, '0')}</span>
+        <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', flex: 1, letterSpacing: -0.2 }}>{title}</h2>
+      </div>
+    );
+  };
 
   return (
     <div className="report-page bg-white shadow-xl" dir="rtl">
@@ -390,15 +417,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
 
                 <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontWeight: 700, color: '#94a3b8' }}>{String(s.num).padStart(2, '0')}</td>
 
-                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 600, flex: 1 }}>{s.title}</td>
-
-                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
-
-                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: ragColor(s.rag) }} />
-
-                </td>
-
-                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontSize: 9, fontWeight: 700, color: ragColor(s.rag) }}>{ragLabel(s.rag)}</td>
+                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 600, width: '100%' }}>{s.title}</td>
 
               </tr>
 
@@ -407,16 +426,6 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
           </tbody>
 
         </table>
-        </div>
-
-        <div className="report-toc-legend" style={{ display: 'flex', gap: 20, marginTop: 'auto', fontSize: 9, color: '#94a3b8', paddingTop: 16 }}>
-
-          <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#dc2626', marginRight: 4 }} /> يستوجب تدخلاً فورياً</span>
-
-          <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', marginRight: 4 }} /> يستوجب متابعة</span>
-
-          <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#22c55e', marginRight: 4 }} /> وضع جيد</span>
-
         </div>
 
       </div>
@@ -531,11 +540,11 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
       </div>
 
       {/* ═══════ EFFICIENCY ═══════ */}
-      {effKPIs.length > 0 && (
+      {shouldShowEfficiencySection && (
         <div id="search-preview-section-efficiency" className="report-section px-11 py-8 border-b border-gray-100">
           {SH('eff', 'الكفاءة التشغيلية', 'a')}
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, effKPIs.length)},1fr)`, gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-            {effKPIs.map((e) => {
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, visibleEffKPIs.length)},1fr)`, gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+            {visibleEffKPIs.map((e) => {
               const good = e.lowerBetter ? e.val <= e.target : e.val >= e.target;
               const pct = Math.min(100, Math.round((Math.abs(e.val) / Math.max(e.target, 1)) * 100));
               const mc = good ? '#16a34a' : '#dc2626';
@@ -660,72 +669,6 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
         )}
       </div>
 
-      {/* ═══════ ASSETS ═══════ */}
-      <div id="search-preview-section-assets" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f8fafc' }}>
-        {SH('assets', 'حماية الأصول الحيوية', avgProt >= 75 ? 'g' : avgProt >= 50 ? 'a' : 'r')}
-        {!hasAssets ? (
-          <div style={{ border: '1px dashed #cbd5e1', borderRadius: 6, padding: '18px 14px', fontSize: 11, color: '#64748b', background: '#fff' }}>
-            لا توجد أصول مدخلة في هذا التقرير حالياً.
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: 1, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
-            {assets.map((asset, i) => (
-              <div
-                id={`search-preview-asset-${asset.id}`}
-                key={asset.id}
-                style={{
-                  background: '#fff',
-                  padding: '12px 14px',
-                  display: 'grid',
-                  gridTemplateColumns: '36px 1fr auto',
-                  gap: 12,
-                  alignItems: 'start',
-                }}
-              >
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace', paddingTop: 1 }}>{i + 1}</div>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{asset.name || 'أصل حيوي'}</div>
-                  <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, lineHeight: 1.8 }}>
-                    {renderFormattedText(asset.value, {
-                      fontSize: 10,
-                      color: '#475569',
-                      lineHeight: 1.8,
-                      emptyText: '—',
-                      gap: 4,
-                    })}
-                  </div>
-                  <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.8 }}>
-                    {renderFormattedText(asset.gaps, {
-                      fontSize: 10,
-                      color: '#64748b',
-                      lineHeight: 1.8,
-                      emptyText: '—',
-                      gap: 4,
-                    })}
-                  </div>
-                </div>
-                <div style={{ display: 'grid', justifyItems: 'end', gap: 5 }}>
-                  <span style={{ fontSize: 9, color: '#94a3b8' }}>مستوى الحماية</span>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 800,
-                      fontFamily: 'monospace',
-                      padding: '3px 8px',
-                      borderRadius: 2,
-                      color: asset.protectionLevel >= 70 ? '#15803d' : asset.protectionLevel >= 40 ? '#a16207' : '#b91c1c',
-                      background: asset.protectionLevel >= 70 ? '#f0fdf4' : asset.protectionLevel >= 40 ? '#fffbeb' : '#fef2f2',
-                    }}
-                  >
-                    {asset.protectionLevel}%
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* ═══════ SPS DOMAINS ═══════ */}
       <div id="search-preview-section-sps" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f9fcff' }}>
         {SH('sps', 'مؤشرات وضع الأمان', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
@@ -783,7 +726,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
 
       {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
       <div id="search-preview-section-kpi" className="report-section px-11 py-8 border-b border-gray-100">
-        {SH('ind', 'مؤشرات الأداء', r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r')}
+        {SH('ind', 'اتجاه المؤشرات', r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r')}
         <div className="report-table-wrapper overflow-x-auto">
           <table className="report-preview-table w-full border-collapse text-[11px] mb-3 min-w-[640px]">
           <thead>

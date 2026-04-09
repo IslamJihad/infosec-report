@@ -12,7 +12,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         risks: { orderBy: { sortOrder: 'asc' } },
         maturityDomains: { orderBy: { sortOrder: 'asc' } },
         recommendations: { orderBy: { sortOrder: 'asc' } },
-        assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
         efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },
@@ -30,7 +29,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       risks,
       maturityDomains,
       recommendations,
-      assets,
       challenges,
       efficiencyKPIs,
       securityScore,
@@ -69,13 +67,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       return next;
     });
 
-    const cleanAsset = assets.map((item) => {
-      const { id: assetId, reportId, ...next } = item;
-      void assetId;
-      void reportId;
-      return next;
-    });
-
     const cleanChallenge = challenges.map((item) => {
       const { id: challengeId, reportId, ...next } = item;
       void challengeId;
@@ -107,9 +98,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         recommendations: {
           create: cleanRecommendation,
         },
-        assets: {
-          create: cleanAsset,
-        },
         challenges: {
           create: cleanChallenge,
         },
@@ -122,7 +110,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         risks: { orderBy: { sortOrder: 'asc' } },
         maturityDomains: { orderBy: { sortOrder: 'asc' } },
         recommendations: { orderBy: { sortOrder: 'asc' } },
-        assets: { orderBy: { sortOrder: 'asc' } },
         challenges: { orderBy: { sortOrder: 'asc' } },
         efficiencyKPIs: { orderBy: { sortOrder: 'asc' } },
       },
