@@ -105,7 +105,149 @@
 
 .report-toc-body {
   flex: 1;
-  overflow: auto;
+  overflow: visible;
+}
+
+.report-toc-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  direction: ltr;
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+.report-toc-title {
+  font-size: 19px;
+  line-height: 1.35;
+  letter-spacing: -0.3px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 14px;
+}
+
+.report-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #d8e1ed;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.report-toc-item + .report-toc-item .report-toc-link {
+  border-top: 1px solid #e2e8f0;
+}
+
+.report-toc-link {
+  text-decoration: none;
+  color: inherit;
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  direction: ltr;
+  padding: 9px 12px;
+  background: #ffffff;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.report-toc-link:hover {
+  background: #f8fafc;
+}
+
+.report-toc-link:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+  position: relative;
+  z-index: 2;
+}
+
+.report-toc-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  min-width: 44px;
+  padding: 2px 8px;
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.report-toc-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  direction: rtl;
+}
+
+.report-toc-number {
+  min-width: 26px;
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.report-toc-text {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.report-toc-rag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 2px 9px;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+  direction: rtl;
+}
+
+.report-toc-rag-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.report-toc-rag-g {
+  color: #166534;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.report-toc-rag-a {
+  color: #92400e;
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.report-toc-rag-r {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.report-toc-rag-n {
+  color: #334155;
+  border-color: #cbd5e1;
+  background: #f1f5f9;
 }
 
 @media print {
@@ -178,6 +320,25 @@
     overflow: visible !important;
     display: block !important;
     flex: none !important;
+  }
+
+  .report-toc-list {
+    border-color: #cbd5e1 !important;
+    border-radius: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-toc-item,
+  .report-toc-link {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-toc-link {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    background: #fff !important;
   }
 
   .report-toc-legend {

@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ReportData } from '@/types/report';
 import {
   formatArabicDate,
@@ -28,12 +29,36 @@ interface Props {
 }
 
 type SectionId = 'exec' | 'eff' | 'risks' | 'sps' | 'ind' | 'sla' | 'act' | 'mat';
+type SectionRag = 'g' | 'a' | 'r' | 'n';
 
 interface SectionDefinition {
   id: SectionId;
   title: string;
-  rag: string;
+  rag: SectionRag;
   visible: boolean;
+}
+
+interface TocEntry {
+  id: SectionId;
+  title: string;
+  num: number;
+  page: number;
+  targetId: string;
+}
+
+const SECTION_ANCHOR_IDS: Record<SectionId, string> = {
+  exec: 'search-preview-section-executive',
+  eff: 'search-preview-section-efficiency',
+  risks: 'search-preview-section-risks',
+  sps: 'search-preview-section-sps',
+  ind: 'search-preview-section-kpi',
+  sla: 'search-preview-section-sla',
+  act: 'search-preview-section-actions',
+  mat: 'search-preview-section-maturity',
+};
+
+function getSectionAnchorId(sectionId: SectionId): string {
+  return SECTION_ANCHOR_IDS[sectionId];
 }
 
 function ensureArray<T>(value: T[] | null | undefined): T[] {
@@ -284,10 +309,25 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
   visibleSections.forEach((section, index) => sectionNumberMap.set(section.id, index + 1));
   const secNum = (id: SectionId) => sectionNumberMap.get(id) ?? 0;
 
-  const toc = visibleSections.map((section) => ({
-    num: secNum(section.id),
+  const tocEntries: TocEntry[] = visibleSections.map((section, index) => ({
+    id: section.id,
     title: section.title,
+    num: secNum(section.id),
+    page: index + 1,
+    targetId: getSectionAnchorId(section.id),
   }));
+
+  const handleTocRowClick = (event: ReactMouseEvent<HTMLAnchorElement>, targetId: string) => {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    event.preventDefault();
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.classList.remove('search-highlight-pulse');
+    void target.getBoundingClientRect();
+    target.classList.add('search-highlight-pulse');
+    window.setTimeout(() => target.classList.remove('search-highlight-pulse'), 2200);
+  };
 
   const kpiChartRows = [
     { label: 'حوادث حرجة', previousRaw: r.prevCritical, currentRaw: r.kpiCritical, valueUnit: 'count' as const },
@@ -402,32 +442,47 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
 
 {/* ═══════ TOC ═══════ */}
 
-      <div className="report-toc" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '24px 44px', boxSizing: 'border-box' }}>
+      <div className="report-toc" style={{ background: 'linear-gradient(180deg,#f8fbff 0%,#f3f7fc 100%)', borderBottom: '1px solid #dbe5f1', padding: '26px 44px 30px', boxSizing: 'border-box' }}>
+        <h2 className="report-toc-title" style={{ fontSize: 22, lineHeight: 1.3, letterSpacing: -0.3, fontWeight: 900, color: '#0f172a', marginBottom: 14 }}>
+          فهرس التقرير — الحالة الراهنة
+        </h2>
 
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: '#94a3b8', marginBottom: 16, textTransform: 'uppercase' }}>فهرس التقرير — الحالة الراهنة</div>
-
-        <div className="report-toc-body">
-        <table className="report-preview-table w-full border-collapse text-[10px]">
-
-          <tbody>
-
-            {toc.map((s, i) => (
-
-              <tr key={i} style={{ background: i % 2 === 1 ? '#fff' : 'transparent' }}>
-
-                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontWeight: 700, color: '#94a3b8' }}>{String(s.num).padStart(2, '0')}</td>
-
-                <td style={{ padding: '7px 12px', borderBottom: '1px solid #e2e8f0', fontWeight: 600, width: '100%' }}>{s.title}</td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
+        <div className="report-toc-body" style={{ overflow: 'visible' }}>
+          <ol
+            className="report-toc-list"
+            aria-label="فهرس التقرير"
+            style={{ listStyle: 'none', margin: 0, padding: 0, border: '1px solid #d8e1ed', borderRadius: 10, background: '#fff', overflow: 'hidden', boxShadow: '0 6px 20px rgba(15,23,42,.05)' }}
+          >
+            {tocEntries.map((section, index) => {
+              return (
+                <li
+                  key={section.id}
+                  className="report-toc-item"
+                  style={{ borderTop: index === 0 ? 'none' : '1px solid #e2e8f0' }}
+                >
+                  <a
+                    href={`#${section.targetId}`}
+                    onClick={(event) => handleTocRowClick(event, section.targetId)}
+                    className="report-toc-link"
+                    style={{ textDecoration: 'none', color: 'inherit', display: 'grid', gridTemplateColumns: '56px 1fr', alignItems: 'center', gap: 12, direction: 'ltr', padding: '11px 12px', background: index % 2 === 1 ? '#fbfdff' : '#fff' }}
+                  >
+                    <span className="report-toc-page" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #cbd5e1', borderRadius: 999, background: '#f8fafc', minWidth: 44, padding: '2px 8px', fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: '#475569' }}>
+                      {String(section.page).padStart(2, '0')}
+                    </span>
+                    <span className="report-toc-main" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, direction: 'rtl' }}>
+                      <span className="report-toc-number" style={{ minWidth: 26, fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>
+                        {String(section.num).padStart(2, '0')}
+                      </span>
+                      <span className="report-toc-text" style={{ minWidth: 0, fontSize: 13, lineHeight: 1.45, fontWeight: 700, color: '#0f172a' }}>
+                        {section.title}
+                      </span>
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ol>
         </div>
-
       </div>
 
 
@@ -438,7 +493,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
       
 
       {/* ═══════ EXEC SUMMARY ═══════ */}
-      <div id="search-preview-section-executive" className="report-section px-11 py-8 border-b border-gray-100">
+      <div id={getSectionAnchorId('exec')} className="report-section px-11 py-8 border-b border-gray-100">
         {SH('exec', 'الملخص التنفيذي', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 20, marginBottom: 18, alignItems: 'start' }}>
           <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
@@ -541,7 +596,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
 
       {/* ═══════ EFFICIENCY ═══════ */}
       {shouldShowEfficiencySection && (
-        <div id="search-preview-section-efficiency" className="report-section px-11 py-8 border-b border-gray-100">
+        <div id={getSectionAnchorId('eff')} className="report-section px-11 py-8 border-b border-gray-100">
           {SH('eff', 'الكفاءة التشغيلية', 'a')}
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, visibleEffKPIs.length)},1fr)`, gap: 1, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
             {visibleEffKPIs.map((e) => {
@@ -578,7 +633,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
       )}
 
       {/* ═══════ RISKS ═══════ */}
-      <div id="search-preview-section-risks" className="report-section px-11 py-8 border-b border-gray-100" style={{ pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
+      <div id={getSectionAnchorId('risks')} className="report-section px-11 py-8 border-b border-gray-100" style={{ pageBreakBefore: 'always', pageBreakAfter: 'always' }}>
         {SH('risks', 'المخاطر الرئيسية', critRisks === 0 ? 'g' : critRisks <= 2 ? 'a' : 'r')}
         {critRisks > 0 && (
           <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.9, padding: '9px 13px', background: '#eff6ff', borderRight: '3px solid #2563eb', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>
@@ -670,7 +725,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
       </div>
 
       {/* ═══════ SPS DOMAINS ═══════ */}
-      <div id="search-preview-section-sps" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f9fcff' }}>
+      <div id={getSectionAnchorId('sps')} className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f9fcff' }}>
         {SH('sps', 'مؤشرات وضع الأمان', finalScore >= 75 ? 'g' : finalScore >= 50 ? 'a' : 'r')}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
@@ -725,7 +780,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
       </div>
 
       {/* ═══════ INDICATORS (KPIs + Benchmark) ═══════ */}
-      <div id="search-preview-section-kpi" className="report-section px-11 py-8 border-b border-gray-100">
+      <div id={getSectionAnchorId('ind')} className="report-section px-11 py-8 border-b border-gray-100">
         {SH('ind', 'اتجاه المؤشرات', r.kpiCompliance >= 75 ? 'g' : r.kpiCompliance >= 55 ? 'a' : 'r')}
         <div className="report-table-wrapper overflow-x-auto">
           <table className="report-preview-table w-full border-collapse text-[11px] mb-3 min-w-[640px]">
@@ -887,7 +942,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
 
       {/* ═══════ SLA ═══════ */}
       {r.showSLA && (
-        <div id="search-preview-section-sla" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+        <div id={getSectionAnchorId('sla')} className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f8fafc' }}>
           {SH('sla', 'مقاييس الاستجابة', slaOk ? 'g' : 'r')}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 12 }}>
             <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, padding: '12px 14px' }}>
@@ -921,7 +976,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
 
 
       {/* ═══════ ACTIONS (Recs + Challenges merged) ═══════ */}
-      <div id="search-preview-section-actions" className="report-section px-11 py-8 border-b border-gray-100">
+      <div id={getSectionAnchorId('act')} className="report-section px-11 py-8 border-b border-gray-100">
         {SH('act', 'التوصيات والاعتمادات')}
         {!hasActions ? (
           <div style={{ border: '1px dashed #cbd5e1', borderRadius: 6, padding: '18px 14px', fontSize: 11, color: '#64748b', background: '#f8fafc' }}>
@@ -994,7 +1049,7 @@ export default function ReportPreview({ report, totalReportsCount }: Props) {
 
       {/* ═══════ MATURITY ═══════ */}
       {r.showMaturity && maturityDomains.length > 0 && (
-        <div id="search-preview-section-maturity" className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+        <div id={getSectionAnchorId('mat')} className="report-section px-11 py-8 border-b border-gray-100" style={{ background: '#f8fafc' }}>
           {SH('mat', 'تقييم مستوى الامتثال — ملحق تقييمي', avgMatValue >= 80 ? 'g' : avgMatValue >= 60 ? 'a' : 'r')}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14, padding: '12px 16px', background: '#fff', borderRadius: 3, border: '1px solid #e2e8f0' }}>
             <div>
