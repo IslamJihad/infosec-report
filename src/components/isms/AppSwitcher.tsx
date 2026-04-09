@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 export default function AppSwitcher() {
   const pathname = usePathname();
-  const isIsms = pathname.startsWith('/isms');
+  const isIsms = pathname === '/isms' || pathname.startsWith('/isms/');
 
   return (
     <div
@@ -13,35 +13,40 @@ export default function AppSwitcher() {
         direction: 'ltr',
         display: 'flex',
         alignItems: 'center',
-        borderRadius: '10px',
-        overflow: 'hidden',
-        border: '1px solid rgba(255,255,255,0.12)',
+        gap: '2px',
+        padding: '2px',
+        borderRadius: '12px',
+        border: '1px solid #cbd5e1',
+        backgroundColor: 'rgba(255,255,255,0.96)',
         fontSize: '12px',
         fontWeight: 700,
         fontFamily: '"Space Grotesk", sans-serif',
+        boxShadow: '0 1px 4px rgba(15, 23, 42, 0.08)',
       }}
     >
       <Link
         href="/"
         style={{
-          padding: '5px 14px',
+          padding: '6px 12px',
+          borderRadius: '9px',
           textDecoration: 'none',
           whiteSpace: 'nowrap',
-          backgroundColor: !isIsms ? 'rgba(59,130,246,0.25)' : 'transparent',
-          color: !isIsms ? '#93c5fd' : 'rgba(255,255,255,0.4)',
+          backgroundColor: !isIsms ? '#2563eb' : 'transparent',
+          color: !isIsms ? '#ffffff' : '#334155',
           transition: 'all 0.15s',
         }}
       >
         🛡️ Reports
       </Link>
       <Link
-        href="/isms"
+        href="/isms/dashboard"
         style={{
-          padding: '5px 14px',
+          padding: '6px 12px',
+          borderRadius: '9px',
           textDecoration: 'none',
           whiteSpace: 'nowrap',
-          backgroundColor: isIsms ? 'rgba(59,130,246,0.25)' : 'transparent',
-          color: isIsms ? '#93c5fd' : 'rgba(255,255,255,0.4)',
+          backgroundColor: isIsms ? '#2563eb' : 'transparent',
+          color: isIsms ? '#ffffff' : '#334155',
           transition: 'all 0.15s',
         }}
       >
