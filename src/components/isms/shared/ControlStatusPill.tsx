@@ -9,9 +9,11 @@ const OPTIONS: Array<{ value: ControlStatus; label: string }> = [
 export default function ControlStatusPill({
   value,
   onChange,
+  disabled = false,
 }: {
   value: ControlStatus;
   onChange: (status: ControlStatus) => void;
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -22,6 +24,7 @@ export default function ControlStatusPill({
         borderRadius: '999px',
         padding: '3px',
         background: 'var(--isms-bg3)',
+        opacity: disabled ? 0.7 : 1,
       }}
     >
       {OPTIONS.map((option) => {
@@ -30,15 +33,20 @@ export default function ControlStatusPill({
           <button
             key={option.value}
             type="button"
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              if (!disabled) {
+                onChange(option.value);
+              }
+            }}
+            disabled={disabled}
             style={{
               border: 'none',
-              cursor: 'pointer',
+              cursor: disabled ? 'not-allowed' : 'pointer',
               borderRadius: '999px',
               padding: '4px 8px',
               fontSize: '11px',
               fontWeight: 700,
-              color: active ? 'var(--isms-txt)' : 'var(--isms-txt2)',
+              color: active ? 'var(--isms-txt)' : disabled ? 'var(--isms-txt3)' : 'var(--isms-txt2)',
               background: active ? 'rgba(59,130,246,0.22)' : 'transparent',
               whiteSpace: 'nowrap',
             }}

@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import { ensureAppSettingsColumns } from '@/lib/db/ensureAppSettingsColumns';
+import { normalizeThemeMode, type ThemeMode } from '@/lib/theme';
 
 export interface PersistedAppSettings {
   id: string;
@@ -8,6 +9,7 @@ export interface PersistedAppSettings {
   geminiApiKey: string;
   nvidiaApiKey: string;
   aiModel: string;
+  theme: ThemeMode;
   defaultOrgName: string;
   defaultAuthor: string;
 }
@@ -19,6 +21,7 @@ const DEFAULT_SETTINGS: PersistedAppSettings = {
   geminiApiKey: '',
   nvidiaApiKey: '',
   aiModel: 'gemini-2.5-flash',
+  theme: 'system',
   defaultOrgName: '',
   defaultAuthor: '',
 };
@@ -35,6 +38,7 @@ function normalizeRow(row?: Partial<PersistedAppSettings>): PersistedAppSettings
     geminiApiKey: asString(row?.geminiApiKey, DEFAULT_SETTINGS.geminiApiKey),
     nvidiaApiKey: asString(row?.nvidiaApiKey, DEFAULT_SETTINGS.nvidiaApiKey),
     aiModel: asString(row?.aiModel, DEFAULT_SETTINGS.aiModel),
+    theme: normalizeThemeMode(row?.theme),
     defaultOrgName: asString(row?.defaultOrgName, DEFAULT_SETTINGS.defaultOrgName),
     defaultAuthor: asString(row?.defaultAuthor, DEFAULT_SETTINGS.defaultAuthor),
   };
@@ -43,9 +47,9 @@ function normalizeRow(row?: Partial<PersistedAppSettings>): PersistedAppSettings
 async function ensureSingletonRow() {
   await prisma.$executeRaw`
     INSERT INTO "AppSettings"
-      ("id", "aiApiKey", "aiModel", "defaultOrgName", "defaultAuthor", "aiProvider", "geminiApiKey", "nvidiaApiKey")
+      ("id", "aiApiKey", "aiModel", "theme", "defaultOrgName", "defaultAuthor", "aiProvider", "geminiApiKey", "nvidiaApiKey")
     VALUES
-      ('singleton', '', 'gemini-2.5-flash', '', '', 'gemini', '', '')
+      ('singleton', '', 'gemini-2.5-flash', 'system', '', '', 'gemini', '', '')
     ON CONFLICT("id") DO NOTHING
   `;
 }
@@ -62,6 +66,7 @@ export async function getPersistedAppSettings(): Promise<PersistedAppSettings> {
       "geminiApiKey",
       "nvidiaApiKey",
       "aiModel",
+      "theme",
       "defaultOrgName",
       "defaultAuthor"
     FROM "AppSettings"
@@ -79,15 +84,16 @@ export async function upsertPersistedAppSettings(
 
   await prisma.$executeRaw`
     INSERT INTO "AppSettings"
-      ("id", "aiApiKey", "aiProvider", "geminiApiKey", "nvidiaApiKey", "aiModel", "defaultOrgName", "defaultAuthor")
+      ("id", "aiApiKey", "aiProvider", "geminiApiKey", "nvidiaApiKey", "aiModel", "theme", "defaultOrgName", "defaultAuthor")
     VALUES
-      ('singleton', ${settings.aiApiKey}, ${settings.aiProvider}, ${settings.geminiApiKey}, ${settings.nvidiaApiKey}, ${settings.aiModel}, ${settings.defaultOrgName}, ${settings.defaultAuthor})
+      ('singleton', ${settings.aiApiKey}, ${settings.aiProvider}, ${settings.geminiApiKey}, ${settings.nvidiaApiKey}, ${settings.aiModel}, ${settings.theme}, ${settings.defaultOrgName}, ${settings.defaultAuthor})
     ON CONFLICT("id") DO UPDATE SET
       "aiApiKey" = excluded."aiApiKey",
       "aiProvider" = excluded."aiProvider",
       "geminiApiKey" = excluded."geminiApiKey",
       "nvidiaApiKey" = excluded."nvidiaApiKey",
       "aiModel" = excluded."aiModel",
+      "theme" = excluded."theme",
       "defaultOrgName" = excluded."defaultOrgName",
       "defaultAuthor" = excluded."defaultAuthor"
   `;

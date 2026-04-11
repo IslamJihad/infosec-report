@@ -27,7 +27,7 @@ export default function ExecutiveSummaryForm() {
             value={report.summary}
             onChange={(e) => updateField('summary', e.target.value)}
             rows={5}
-            className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] resize-y min-h-[100px] hover:border-navy-200"
+            className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] resize-y min-h-[100px] hover:border-navy-200"
             placeholder="أدخل ملخصاً تنفيذياً شاملاً عن الوضع الأمني..."
           />
         </div>
@@ -38,7 +38,7 @@ export default function ExecutiveSummaryForm() {
             <select
               value={report.securityLevel}
               onChange={(e) => updateField('securityLevel', e.target.value)}
-              className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200 transition-all duration-200"
+              className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200 transition-all duration-200"
             >
               {SECURITY_LEVELS.map((l) => (
                 <option key={l} value={l}>{l}</option>
@@ -62,7 +62,7 @@ export default function ExecutiveSummaryForm() {
               <button
                 type="button"
                 onClick={() => setShowScoreHelp(true)}
-                className="mb-2 text-xs font-bold bg-white border border-border rounded-lg px-2.5 py-1.5 text-navy-800 hover:bg-navy-50 transition-colors"
+                className="mb-2 text-xs font-bold bg-[color:var(--surface-elevated)] border border-border rounded-lg px-2.5 py-1.5 text-navy-800 hover:bg-navy-50 transition-colors"
               >
                 شرح مبسط: كيف انحسبت الدرجة؟
               </button>
@@ -77,7 +77,7 @@ export default function ExecutiveSummaryForm() {
             <select
               value={report.trend}
               onChange={(e) => updateField('trend', e.target.value)}
-              className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200 transition-all duration-200"
+              className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200 transition-all duration-200"
             >
               {TRENDS.map((t) => (
                 <option key={t} value={t}>{t}</option>
@@ -89,8 +89,8 @@ export default function ExecutiveSummaryForm() {
 
       {showScoreHelp && (
         <div className="fixed inset-0 z-[100] bg-black/45 backdrop-blur-[1px] flex items-center justify-center p-4">
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-border shadow-2xl" dir="rtl">
-            <div className="sticky top-0 bg-white border-b border-border px-5 py-4 flex items-center justify-between">
+          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[color:var(--surface-elevated)] border border-border shadow-2xl" dir="rtl">
+            <div className="sticky top-0 bg-[color:var(--surface-elevated)] border-b border-border px-5 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-[900] text-navy-950">شرح بسيط جدا لدرجة وضع الأمان (SPS v1)</h3>
                 <p className="text-xs text-text-muted mt-1">هنا نشرح كل رقم بطريقة مباشرة وواضحة.</p>
@@ -222,7 +222,7 @@ export default function ExecutiveSummaryForm() {
                   value={dec.description}
                   onChange={(e) => updateDecision(i, { description: e.target.value })}
                   rows={2}
-                  className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] resize-y min-h-[64px] hover:border-navy-200 transition-all duration-200"
+                  className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] resize-y min-h-[64px] hover:border-navy-200 transition-all duration-200"
                 />
               </div>
               <div className="grid grid-cols-3 gap-4">

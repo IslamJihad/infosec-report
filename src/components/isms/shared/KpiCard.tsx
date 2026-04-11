@@ -14,15 +14,16 @@ export default function KpiCard({
       style={{
         border: '1px solid var(--isms-border)',
         borderRadius: '12px',
-        background: 'var(--isms-surf)',
+        background: 'linear-gradient(180deg, var(--isms-surf-raised), var(--isms-surf))',
         padding: '14px 16px',
+        boxShadow: 'var(--isms-kpi-shadow)',
       }}
     >
       <div
         style={{
           fontFamily: '"Fira Code", monospace',
           fontSize: '10px',
-          color: 'var(--isms-txt3)',
+          color: 'var(--isms-txt2)',
           textTransform: 'uppercase',
           letterSpacing: '0.7px',
         }}

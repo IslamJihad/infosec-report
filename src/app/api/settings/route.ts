@@ -9,6 +9,7 @@ import {
   upsertPersistedAppSettings,
   type PersistedAppSettings,
 } from '@/lib/db/appSettings';
+import { normalizeThemeMode } from '@/lib/theme';
 
 type SettingsBody = {
   aiApiKey?: string;
@@ -16,6 +17,7 @@ type SettingsBody = {
   geminiApiKey?: string;
   nvidiaApiKey?: string;
   aiModel?: string;
+  theme?: string;
   defaultOrgName?: string;
   defaultAuthor?: string;
 };
@@ -37,6 +39,7 @@ function normalizeOutgoingSettings(settings: PersistedAppSettings) {
     id: settings.id,
     aiProvider,
     aiModel,
+    theme: normalizeThemeMode(settings.theme),
     aiApiKey: '',
     geminiApiKey: '',
     nvidiaApiKey: '',
@@ -90,9 +93,14 @@ export async function PUT(req: Request) {
       ? normalizeAIModel(requestedProvider, body.aiModel)
       : normalizeAIModel(requestedProvider, current?.aiModel || getDefaultModelForProvider(requestedProvider));
 
+    const theme = hasOwnField(body, 'theme')
+      ? normalizeThemeMode(body.theme)
+      : normalizeThemeMode(current?.theme);
+
     const updatePayload = {
       aiProvider: requestedProvider,
       aiModel,
+      theme,
       aiApiKey: geminiApiKey,
       geminiApiKey,
       nvidiaApiKey,

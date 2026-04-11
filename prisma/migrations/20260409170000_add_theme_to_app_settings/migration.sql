@@ -1,0 +1,1 @@
+ALTER TABLE "AppSettings" ADD COLUMN "theme" TEXT NOT NULL DEFAULT 'system';

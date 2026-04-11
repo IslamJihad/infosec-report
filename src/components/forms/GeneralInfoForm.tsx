@@ -42,7 +42,7 @@ export default function GeneralInfoForm() {
             <select
               value={report.classification}
               onChange={(e) => updateField('classification', e.target.value)}
-              className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200"
+              className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200"
             >
               {CLASSIFICATIONS.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -60,7 +60,7 @@ export default function GeneralInfoForm() {
           value={report.chairNote || ''}
           onChange={(e) => updateField('chairNote', e.target.value)}
           rows={4}
-          className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] resize-y min-h-[90px] hover:border-navy-200"
+          className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] resize-y min-h-[90px] hover:border-navy-200 bg-[color:var(--surface-elevated)]"
           placeholder="مثال: نرى أهمية بالغة في الاستثمار المستمر في الأمن السيبراني كركيزة لحماية أصولنا ومصالح أطراف العمل..."
         />
       </FormCard>
@@ -71,12 +71,12 @@ export default function GeneralInfoForm() {
 // Reusable form card
 export function FormCard({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
-      <div className="bg-gradient-to-l from-navy-50 to-white py-4 px-5 border-b border-border flex items-center gap-3">
+    <div className="bg-[color:var(--surface-elevated)] rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+      <div className="[background:linear-gradient(270deg,var(--surface-muted),var(--surface-elevated))] py-4 px-5 border-b border-border flex items-center gap-3">
         <div className="bg-gradient-to-br from-navy-800 to-navy-900 text-white w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 shadow-sm">
           {icon}
         </div>
-        <h3 className="text-base font-[800] text-navy-950 flex-1">{title}</h3>
+        <h3 className="text-base font-[800] text-text-primary flex-1">{title}</h3>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -113,8 +113,8 @@ export function FormField({
         readOnly={readOnly}
         min={min}
         max={max}
-        className={`border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] focus:ring-0 bg-white hover:border-navy-200 ${
-          readOnly ? 'bg-navy-50 font-bold cursor-default' : ''
+        className={`border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] focus:ring-0 bg-[color:var(--surface-elevated)] hover:border-navy-200 ${
+          readOnly ? 'bg-[color:var(--surface-muted)] text-text-secondary font-bold cursor-default' : ''
         }`}
       />
       {hint && <span className="text-xs text-text-hint mt-1">{hint}</span>}

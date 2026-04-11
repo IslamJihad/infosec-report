@@ -9,6 +9,7 @@ import {
   FiAlertCircle,
   FiArchive,
   FiBarChart2,
+  FiBriefcase,
   FiCheckSquare,
   FiClipboard,
   FiCompass,
@@ -24,6 +25,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { computeComplianceStats, getTaskDueStatus } from '@/lib/isms/calculations';
+import { ANNEX_THEME_METADATA } from '@/lib/isms/constants';
 import { useIsmsStore } from '@/store/ismsStore';
 
 type NavItem = {
@@ -51,7 +53,6 @@ const CLAUSE_ITEMS: NavItem[] = [
   { label: 'Clause 8 - Operation', href: '/isms/clause/8', icon: FiLayers },
   { label: 'Clause 9 - Evaluation', href: '/isms/clause/9', icon: FiBarChart2 },
   { label: 'Clause 10 - Improvement', href: '/isms/clause/10', icon: FiAlertCircle },
-  { label: 'Statement of Applicability', href: '/isms/soa', icon: FiShield },
 ];
 
 const PROCESS_ITEMS: NavItem[] = [
@@ -62,11 +63,29 @@ const PROCESS_ITEMS: NavItem[] = [
   { label: 'Documentation Register', href: '/isms/documents', icon: FiArchive },
 ];
 
-const ANNEX_QUICK_LINKS: NavItem[] = [
-  { label: 'A.5', href: '/isms/annex/5', icon: FiShield },
-  { label: 'A.6', href: '/isms/annex/6', icon: FiShield },
-  { label: 'A.7', href: '/isms/annex/7', icon: FiShield },
-  { label: 'A.8', href: '/isms/annex/8', icon: FiShield },
+const ANNEX_ITEMS: NavItem[] = [
+  { label: 'Annex Overview', href: '/isms/annex', icon: FiLayers },
+  { label: 'Statement of Applicability', href: '/isms/soa', icon: FiShield },
+  {
+    label: `${ANNEX_THEME_METADATA['5'].code} - ${ANNEX_THEME_METADATA['5'].shortLabel}`,
+    href: '/isms/annex/5',
+    icon: FiBriefcase,
+  },
+  {
+    label: `${ANNEX_THEME_METADATA['6'].code} - ${ANNEX_THEME_METADATA['6'].shortLabel}`,
+    href: '/isms/annex/6',
+    icon: FiUsers,
+  },
+  {
+    label: `${ANNEX_THEME_METADATA['7'].code} - ${ANNEX_THEME_METADATA['7'].shortLabel}`,
+    href: '/isms/annex/7',
+    icon: FiHome,
+  },
+  {
+    label: `${ANNEX_THEME_METADATA['8'].code} - ${ANNEX_THEME_METADATA['8'].shortLabel}`,
+    href: '/isms/annex/8',
+    icon: FiActivity,
+  },
 ];
 
 type BadgeTone = 'danger' | 'warning' | 'success';
@@ -78,11 +97,15 @@ type NavBadge = {
 
 function isActive(pathname: string, href: string): boolean {
   if (href.startsWith('/isms/clause/')) {
-    return pathname.startsWith('/isms/clause/');
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  if (href === '/isms/annex') {
+    return pathname === href;
   }
 
   if (href.startsWith('/isms/annex/')) {
-    return pathname.startsWith('/isms/annex/');
+    return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   return pathname === href;
@@ -340,50 +363,12 @@ export default function IsmsSidebar() {
         <NavGroup title="CISO Command" items={COMMAND_ITEMS} pathname={pathname} getBadge={navBadge} />
         <NavGroup title="ISO 27001:2022" items={CLAUSE_ITEMS} pathname={pathname} getBadge={navBadge} />
         <NavGroup title="ISMS Processes" items={PROCESS_ITEMS} pathname={pathname} getBadge={navBadge} />
+        <NavGroup title="Annex A Controls" items={ANNEX_ITEMS} pathname={pathname} getBadge={navBadge} />
       </div>
 
       <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid var(--isms-border)' }}>
         <div
           style={{
-            marginBottom: '8px',
-            color: 'var(--isms-txt3)',
-            fontFamily: '"Fira Code", monospace',
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-            fontSize: '10px',
-          }}
-        >
-          Annex A
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-          {ANNEX_QUICK_LINKS.map((item) => {
-            const active = isActive(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  textAlign: 'center',
-                  borderRadius: '8px',
-                  padding: '6px 0',
-                  textDecoration: 'none',
-                  border: active ? '1px solid rgba(59,130,246,0.5)' : '1px solid var(--isms-border)',
-                  color: active ? '#93c5fd' : 'var(--isms-txt2)',
-                  background: active ? 'rgba(59,130,246,0.18)' : 'var(--isms-bg2)',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                }}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-
-        <div
-          style={{
-            marginTop: '10px',
             border: '1px solid var(--isms-border)',
             borderRadius: '8px',
             background: 'var(--isms-bg2)',

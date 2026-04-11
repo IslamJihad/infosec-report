@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 type StatusBadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
 const VARIANT_STYLES: Record<StatusBadgeVariant, { bg: string; border: string; color: string }> = {
-  neutral: { bg: 'rgba(148,163,184,0.14)', border: 'rgba(148,163,184,0.35)', color: 'var(--isms-txt2)' },
+  neutral: { bg: 'var(--isms-surf-soft)', border: 'var(--isms-border)', color: 'var(--isms-txt2)' },
   success: { bg: 'rgba(34,197,94,0.14)', border: 'rgba(34,197,94,0.35)', color: 'var(--isms-green)' },
   warning: { bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.35)', color: 'var(--isms-amber)' },
   danger: { bg: 'rgba(239,68,68,0.14)', border: 'rgba(239,68,68,0.35)', color: 'var(--isms-red)' },

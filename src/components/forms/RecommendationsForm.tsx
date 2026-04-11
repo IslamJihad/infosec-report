@@ -30,7 +30,7 @@ export default function RecommendationsForm() {
                   value={rec.description}
                   onChange={(e) => updateRecommendation(i, { description: e.target.value })}
                   rows={2}
-                  className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] resize-y min-h-[64px] hover:border-navy-200 transition-all duration-200"
+                  className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] resize-y min-h-[64px] hover:border-navy-200 transition-all duration-200"
                 />
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -39,7 +39,7 @@ export default function RecommendationsForm() {
                   <select
                     value={rec.priority}
                     onChange={(e) => updateRecommendation(i, { priority: e.target.value as 'high' | 'medium' | 'low' })}
-                    className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200 transition-all duration-200"
+                    className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200 transition-all duration-200"
                   >
                     {Object.entries(PRIORITY_MAP).map(([k, v]) => (
                       <option key={k} value={k}>{v.label}</option>
@@ -81,7 +81,7 @@ export default function RecommendationsForm() {
                   <select
                     value={challenge.type}
                     onChange={(e) => updateChallenge(i, { type: e.target.value as 'budget' | 'staff' | 'tech' | 'process' })}
-                    className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200 transition-all duration-200"
+                    className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200 transition-all duration-200"
                   >
                     {Object.entries(CHALLENGE_TYPES).map(([k, v]) => (
                       <option key={k} value={k}>{v.label}</option>

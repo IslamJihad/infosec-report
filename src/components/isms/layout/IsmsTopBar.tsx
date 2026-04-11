@@ -13,6 +13,7 @@ import {
   FiUpload,
 } from 'react-icons/fi';
 import AppSwitcher from '@/components/isms/AppSwitcher';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 import { exportIsmsData } from '@/lib/isms/api';
 import { useIsmsStore } from '@/store/ismsStore';
 
@@ -56,6 +57,10 @@ function getPageMeta(pathname: string): PageMeta {
 
   if (pathname.startsWith('/isms/clause/')) {
     return { title: 'ISO Clause Management', subtitle: 'Clause-level implementation tracking and guidance notes' };
+  }
+
+  if (pathname === '/isms/annex') {
+    return { title: 'Annex A Overview', subtitle: 'Navigate control themes and Statement of Applicability' };
   }
 
   if (pathname.startsWith('/isms/annex/')) {
@@ -216,6 +221,7 @@ export default function IsmsTopBar() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
         <AppSwitcher />
+        <ThemeToggle compact />
 
         <button type='button' style={topbarButtonStyle(false)} onClick={() => router.push('/isms/board-report')}>
           <FiBarChart2 size={14} />

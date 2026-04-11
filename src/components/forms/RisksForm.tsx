@@ -37,7 +37,7 @@ export default function RisksForm() {
                     <select
                       value={risk.severity}
                       onChange={(e) => updateRisk(i, { severity: e.target.value as 'critical' | 'high' | 'medium' | 'low' })}
-                      className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200 transition-all duration-200"
+                      className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200 transition-all duration-200"
                     >
                       {Object.entries(SEVERITY_MAP).map(([k, v]) => (
                         <option key={k} value={k}>{v.label}</option>
@@ -49,7 +49,7 @@ export default function RisksForm() {
                     <select
                       value={risk.status}
                       onChange={(e) => updateRisk(i, { status: e.target.value as 'open' | 'inprogress' | 'accepted' | 'closed' })}
-                      className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200 transition-all duration-200"
+                      className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200 transition-all duration-200"
                     >
                       {Object.entries(STATUS_MAP).map(([k, v]) => (
                         <option key={k} value={k}>{v.label}</option>

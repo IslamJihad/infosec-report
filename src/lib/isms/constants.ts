@@ -226,6 +226,35 @@ export const ISO_CLAUSES: ClauseData[] = [
   }
 ];
 
+export const ANNEX_THEME_ORDER = ["5", "6", "7", "8"] as const;
+
+export const ANNEX_THEME_METADATA = {
+  "5": {
+    code: "A.5",
+    shortLabel: "Organizational",
+    label: "Organizational Controls",
+    description: "Governance, policy, asset, access, and supplier security controls.",
+  },
+  "6": {
+    code: "A.6",
+    shortLabel: "People",
+    label: "People Controls",
+    description: "People lifecycle, awareness, and personnel-related control requirements.",
+  },
+  "7": {
+    code: "A.7",
+    shortLabel: "Physical",
+    label: "Physical Controls",
+    description: "Physical and environmental protections for facilities and supporting utilities.",
+  },
+  "8": {
+    code: "A.8",
+    shortLabel: "Technological",
+    label: "Technological Controls",
+    description: "Technical controls for systems, networks, applications, and data protection.",
+  },
+} as const;
+
 export const ANNEX_A_CONTROLS: ControlData[] = [
   {
     "id": "5.1",

@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { ControlStatus, SoaEntry } from '@/types/isms';
-import { ANNEX_A_CONTROLS } from '@/lib/isms/constants';
+import { ANNEX_A_CONTROLS, ANNEX_THEME_METADATA, ANNEX_THEME_ORDER } from '@/lib/isms/constants';
 import { useIsmsStore } from '@/store/ismsStore';
 
 const STATUS_OPTIONS: Array<{ value: ControlStatus; label: string }> = [
@@ -10,6 +11,9 @@ const STATUS_OPTIONS: Array<{ value: ControlStatus; label: string }> = [
   { value: 'in-progress', label: 'In Progress' },
   { value: 'implemented', label: 'Implemented' },
 ];
+
+const EMPTY_CONTROL_STATUS: Record<string, ControlStatus> = {};
+const EMPTY_SOA_DATA: Record<string, SoaEntry> = {};
 
 export default function SoaPage() {
   const workspace = useIsmsStore((state) => state.workspace);
@@ -27,8 +31,8 @@ export default function SoaPage() {
     }
   }, [workspace, loadAll]);
 
-  const controlStatus = workspace?.controlStatus ?? {};
-  const soaData = workspace?.soaData ?? {};
+  const controlStatus = workspace?.controlStatus ?? EMPTY_CONTROL_STATUS;
+  const soaData = workspace?.soaData ?? EMPTY_SOA_DATA;
 
   const controls = useMemo(() => {
     return ANNEX_A_CONTROLS.filter((control) => {
@@ -58,6 +62,11 @@ export default function SoaPage() {
   const notStartedCount = ANNEX_A_CONTROLS.filter(
     (control) => (controlStatus[control.id] ?? 'not-started') === 'not-started',
   ).length;
+
+  const themeLinks = useMemo(
+    () => ANNEX_THEME_ORDER.map((theme) => ({ theme, ...ANNEX_THEME_METADATA[theme] })),
+    [],
+  );
 
   function setApplicable(controlId: string, applicable: boolean) {
     const current = (soaData[controlId] as SoaEntry | undefined) ?? { applicable: true, justification: '' };
@@ -108,6 +117,43 @@ export default function SoaPage() {
         <p style={{ margin: '8px 0 0', color: 'var(--isms-txt2)', fontSize: '13px' }}>
           {applicableCount} Applicable | {implementedCount} Implemented | {notStartedCount} Not Started
         </p>
+
+        <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <Link
+            href='/isms/annex'
+            style={{
+              border: '1px solid var(--isms-border)',
+              borderRadius: '8px',
+              background: 'var(--isms-bg3)',
+              color: 'var(--isms-txt)',
+              textDecoration: 'none',
+              padding: '6px 10px',
+              fontSize: '12px',
+              fontWeight: 700,
+            }}
+          >
+            Back to Annex Overview
+          </Link>
+
+          {themeLinks.map((item) => (
+            <Link
+              key={item.theme}
+              href={`/isms/annex/${item.theme}`}
+              style={{
+                border: '1px solid rgba(59,130,246,0.45)',
+                borderRadius: '8px',
+                background: 'rgba(59,130,246,0.15)',
+                color: '#93c5fd',
+                textDecoration: 'none',
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 700,
+              }}
+            >
+              {item.code} {item.shortLabel}
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div
@@ -136,10 +182,11 @@ export default function SoaPage() {
 
         <select value={themeFilter} onChange={(event) => setThemeFilter(event.target.value as typeof themeFilter)} style={{ border: '1px solid var(--isms-border)', borderRadius: '8px', background: 'var(--isms-bg3)', color: 'var(--isms-txt)', padding: '8px 10px' }}>
           <option value="all">All Themes</option>
-          <option value="5">A.5</option>
-          <option value="6">A.6</option>
-          <option value="7">A.7</option>
-          <option value="8">A.8</option>
+          {ANNEX_THEME_ORDER.map((theme) => (
+            <option key={theme} value={theme}>
+              {ANNEX_THEME_METADATA[theme].code} - {ANNEX_THEME_METADATA[theme].shortLabel}
+            </option>
+          ))}
         </select>
 
         <select value={applicableFilter} onChange={(event) => setApplicableFilter(event.target.value as typeof applicableFilter)} style={{ border: '1px solid var(--isms-border)', borderRadius: '8px', background: 'var(--isms-bg3)', color: 'var(--isms-txt)', padding: '8px 10px' }}>
@@ -180,7 +227,9 @@ export default function SoaPage() {
                     <div style={{ fontFamily: '"Fira Code", monospace', fontSize: '11px', color: 'var(--isms-txt3)' }}>{control.id}</div>
                     <div style={{ marginTop: '4px', fontWeight: 600 }}>{control.title}</div>
                   </td>
-                  <td style={{ padding: '10px', borderBottom: '1px solid var(--isms-border)' }}>A.{control.theme}</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--isms-border)' }}>
+                    {ANNEX_THEME_METADATA[control.theme].code} - {ANNEX_THEME_METADATA[control.theme].shortLabel}
+                  </td>
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--isms-border)' }}>
                     <input
                       type="checkbox"

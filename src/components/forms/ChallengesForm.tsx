@@ -31,7 +31,7 @@ export default function ChallengesForm() {
                   <select
                     value={challenge.type}
                     onChange={(e) => updateChallenge(i, { type: e.target.value as 'budget' | 'staff' | 'tech' | 'process' })}
-                    className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white hover:border-navy-200 transition-all duration-200"
+                    className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200 transition-all duration-200"
                   >
                     {Object.entries(CHALLENGE_TYPES).map(([k, v]) => (
                       <option key={k} value={k}>{v.label}</option>

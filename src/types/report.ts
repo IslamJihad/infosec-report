@@ -187,6 +187,7 @@ export interface AppSettings {
   id: string;
   aiProvider: 'gemini' | 'nvidia';
   aiModel: string;
+  theme: 'light' | 'dark' | 'system';
   geminiApiKey: string;
   nvidiaApiKey: string;
   aiApiKey?: string; // legacy compatibility

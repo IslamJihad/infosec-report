@@ -51,7 +51,7 @@ export default function MaturityForm() {
           </button>
         </div>
 
-        <div className="border border-border/70 rounded-2xl overflow-hidden bg-white">
+        <div className="border border-border/70 rounded-2xl overflow-hidden bg-[color:var(--surface-elevated)]">
           <div className="grid grid-cols-[70px_1.4fr_180px_1fr_90px] gap-3 py-3 px-4 bg-surface border-b border-border text-xs font-bold text-text-muted">
             <div className="text-center">#</div>
             <div>اسم البند</div>
@@ -71,7 +71,7 @@ export default function MaturityForm() {
                   value={domain.name}
                   onChange={(e) => updateMaturity(i, { name: e.target.value })}
                   placeholder="اكتب اسم البند"
-                  className="border-[1.5px] border-border rounded-xl py-2.5 px-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white"
+                  className="border-[1.5px] border-border rounded-xl py-2.5 px-3 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)]"
                 />
 
                 <div className="flex items-center gap-2 justify-center">
@@ -81,7 +81,7 @@ export default function MaturityForm() {
                     max={100}
                     value={domain.score}
                     onChange={(e) => updateMaturity(i, { score: Number.parseInt(e.target.value, 10) || 0 })}
-                    className="w-22.5 border-[1.5px] border-border rounded-xl py-2 px-2.5 text-sm text-center outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)]"
+                    className="w-22.5 border-[1.5px] border-border rounded-xl py-2 px-2.5 text-sm text-center outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)]"
                   />
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-lg min-w-14 text-center ${tone.badge}`}>
                     {domain.score}%

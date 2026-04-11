@@ -4,6 +4,7 @@ import { useReportStore } from '@/store/reportStore';
 import { NAV_ITEMS } from '@/lib/constants';
 import ReportSearchDropdown from '@/components/search/ReportSearchDropdown';
 import AppSwitcher from '@/components/isms/AppSwitcher';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 import type { ReportSearchResult } from '@/lib/search/reportSearch';
 
 interface TopBarSearchProps {
@@ -34,13 +35,15 @@ export default function TopBar({ currentStep, onStepChange, onPreview, onAIRevie
   const title = NAV_ITEMS[currentStep]?.label || '';
 
   return (
-    <div className="bg-white/90 backdrop-blur-lg border-b border-border py-3.5 px-6 flex items-center justify-between sticky top-0 z-40 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-      <h1 className="text-lg font-[800] text-navy-950">{title}</h1>
+    <div className="bg-[color:var(--topbar-bg)] backdrop-blur-lg border-b border-[color:var(--topbar-border)] py-3.5 px-6 flex items-center justify-between sticky top-0 z-40 shadow-[var(--topbar-shadow)]">
+      <h1 className="text-lg font-[800] text-text-primary">{title}</h1>
 
       <div className="flex items-center gap-3">
         <div style={{ direction: 'ltr' }}>
           <AppSwitcher />
         </div>
+
+        <ThemeToggle />
 
         {/* Save status */}
         <span className="text-xs text-text-muted ml-3">
@@ -63,7 +66,7 @@ export default function TopBar({ currentStep, onStepChange, onPreview, onAIRevie
                 }
                 search.onToggle();
               }}
-              className="py-2 px-4 rounded-xl border border-navy-200 bg-white text-navy-900 text-sm font-bold transition-all duration-200 hover:bg-navy-50 cursor-pointer flex items-center gap-1.5"
+              className="py-2 px-4 rounded-xl border border-border bg-[color:var(--surface-elevated)] text-text-primary text-sm font-bold transition-all duration-200 hover:bg-[color:var(--button-soft-hover)] cursor-pointer flex items-center gap-1.5"
             >
               🔍 بحث
             </button>
@@ -84,7 +87,7 @@ export default function TopBar({ currentStep, onStepChange, onPreview, onAIRevie
 
         <button
           onClick={onGoHome}
-          className="py-2 px-5 rounded-xl border border-navy-200 bg-navy-50 text-navy-900 text-sm font-bold transition-all duration-200 hover:bg-navy-100 cursor-pointer"
+          className="py-2 px-5 rounded-xl border border-border bg-[color:var(--surface-muted)] text-text-primary text-sm font-bold transition-all duration-200 hover:bg-[color:var(--button-soft-hover)] cursor-pointer"
         >
           🏠 الرئيسية
         </button>
@@ -92,7 +95,7 @@ export default function TopBar({ currentStep, onStepChange, onPreview, onAIRevie
         <button
           onClick={() => onStepChange(currentStep - 1)}
           disabled={currentStep === 0}
-          className="py-2 px-5 rounded-xl border border-border bg-white text-navy-800 text-sm font-bold transition-all duration-200 hover:bg-navy-50 hover:shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          className="py-2 px-5 rounded-xl border border-border bg-[color:var(--surface-elevated)] text-text-primary text-sm font-bold transition-all duration-200 hover:bg-[color:var(--button-soft-hover)] hover:shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
         >
           → السابق
         </button>

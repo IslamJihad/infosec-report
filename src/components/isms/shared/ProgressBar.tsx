@@ -24,8 +24,8 @@ export default function ProgressBar({
         width: '100%',
         height,
         borderRadius: 999,
-        background: 'var(--isms-bg3)',
-        border: '1px solid var(--isms-border)',
+        background: 'var(--isms-progress-track)',
+        border: '1px solid var(--isms-progress-border)',
         overflow: 'hidden',
       }}
     >

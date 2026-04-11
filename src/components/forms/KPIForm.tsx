@@ -67,7 +67,7 @@ export default function KPIForm() {
             ].map((item) => {
               const info = getDeltaInfo(item.current, item.prev, item.lower);
               return (
-                <div key={item.label} className="text-center p-2 bg-white rounded-xl">
+                <div key={item.label} className="text-center p-2 bg-[color:var(--surface-elevated)] rounded-xl">
                   <div className="text-2xl font-[900] text-navy-950">{item.current}</div>
                   <div className="text-xs text-text-muted mt-0.5">{item.label}</div>
                   <span className={`inline-block text-xs px-2 py-0.5 rounded-lg mt-1.5 font-bold ${info.colorClass}`}>
@@ -117,7 +117,7 @@ export default function KPIForm() {
                         max={ctrl.totalControls}
                         value={ctrl.currentApplied}
                         onChange={(e) => updateISOControl(i, 'currentApplied', Math.min(ctrl.totalControls, Math.max(0, parseInt(e.target.value) || 0)))}
-                        className="w-full border-[1.5px] border-border rounded-lg py-1.5 px-2 text-xs font-bold text-center outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white"
+                        className="w-full border-[1.5px] border-border rounded-lg py-1.5 px-2 text-xs font-bold text-center outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)]"
                       />
                     </div>
                     <div>
@@ -128,7 +128,7 @@ export default function KPIForm() {
                         max={ctrl.totalControls}
                         value={ctrl.previousApplied}
                         onChange={(e) => updateISOControl(i, 'previousApplied', Math.min(ctrl.totalControls, Math.max(0, parseInt(e.target.value) || 0)))}
-                        className="w-full border-[1.5px] border-border rounded-lg py-1.5 px-2 text-xs font-bold text-center outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white"
+                        className="w-full border-[1.5px] border-border rounded-lg py-1.5 px-2 text-xs font-bold text-center outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)]"
                       />
                     </div>
                   </div>
@@ -181,7 +181,7 @@ export default function KPIForm() {
             value={report.kpiComment || ''}
             onChange={(e) => updateField('kpiComment', e.target.value)}
             rows={4}
-            className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] resize-y min-h-[90px] hover:border-navy-200"
+            className="w-full border-[1.5px] border-border rounded-xl py-3 px-4 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] resize-y min-h-[90px] hover:border-navy-200"
             placeholder="مثال: انخفاض إجمالي الحوادث مقارنة بالفترة السابقة يعكس تحسناً في الاستجابة، لكن استمرار الثغرات الحرجة يتطلب تسريع الإغلاق."
           />
         </div>

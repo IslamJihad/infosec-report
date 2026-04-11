@@ -22,6 +22,8 @@ import {
 } from '@/lib/isms/calculations';
 import {
   ANNEX_A_CONTROLS,
+  ANNEX_THEME_METADATA,
+  ANNEX_THEME_ORDER,
   ISO_CLAUSES,
   MANDATORY_DOCUMENTS,
   POLICY_DOCUMENTS,
@@ -43,13 +45,6 @@ type UpcomingItem = {
   date: string;
   days: number;
   variant: BadgeVariant;
-};
-
-const ANNEX_THEME_LABELS: Record<'5' | '6' | '7' | '8', string> = {
-  '5': 'Organizational Controls',
-  '6': 'People Controls',
-  '7': 'Physical Controls',
-  '8': 'Technological Controls',
 };
 
 function pct(implemented: number, total: number): number {
@@ -175,7 +170,7 @@ export default function IsmsDashboardPage() {
 
   const annexRows = useMemo(
     () =>
-      (['5', '6', '7', '8'] as const).map((theme) => {
+      ANNEX_THEME_ORDER.map((theme) => {
         const controls = ANNEX_A_CONTROLS.filter((control) => control.theme === theme);
         const implemented = controls.filter(
           (control) => workspace?.controlStatus?.[control.id] === 'implemented',
@@ -183,7 +178,7 @@ export default function IsmsDashboardPage() {
 
         return {
           theme,
-          label: ANNEX_THEME_LABELS[theme],
+          label: ANNEX_THEME_METADATA[theme].label,
           implemented,
           total: controls.length,
           completion: pct(implemented, controls.length),
@@ -374,8 +369,9 @@ export default function IsmsDashboardPage() {
         style={{
           border: '1px solid var(--isms-border)',
           borderRadius: '12px',
-          background: 'linear-gradient(120deg, rgba(79,142,247,0.14), rgba(34,211,238,0.07) 55%, rgba(12,20,36,0.5))',
+          background: 'var(--isms-hero-gradient)',
           padding: '16px',
+          boxShadow: 'var(--isms-panel-shadow)',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
           gap: '12px',
@@ -396,22 +392,22 @@ export default function IsmsDashboardPage() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
-          <div style={{ border: '1px solid var(--isms-border)', borderRadius: '10px', background: 'rgba(9,14,26,0.46)', padding: '10px' }}>
+          <div style={{ border: '1px solid var(--isms-context-border)', borderRadius: '10px', background: 'var(--isms-context-bg)', padding: '10px' }}>
             <div style={{ fontSize: '11px', color: 'var(--isms-txt3)' }}>Organization</div>
             <div style={{ marginTop: '3px', fontWeight: 700, fontSize: '14px' }}>{workspace?.orgName || 'Not Set'}</div>
           </div>
 
-          <div style={{ border: '1px solid var(--isms-border)', borderRadius: '10px', background: 'rgba(9,14,26,0.46)', padding: '10px' }}>
+          <div style={{ border: '1px solid var(--isms-context-border)', borderRadius: '10px', background: 'var(--isms-context-bg)', padding: '10px' }}>
             <div style={{ fontSize: '11px', color: 'var(--isms-txt3)' }}>CISO</div>
             <div style={{ marginTop: '3px', fontWeight: 700, fontSize: '14px' }}>{workspace?.cisoName || 'Not Set'}</div>
           </div>
 
-          <div style={{ border: '1px solid var(--isms-border)', borderRadius: '10px', background: 'rgba(9,14,26,0.46)', padding: '10px' }}>
+          <div style={{ border: '1px solid var(--isms-context-border)', borderRadius: '10px', background: 'var(--isms-context-bg)', padding: '10px' }}>
             <div style={{ fontSize: '11px', color: 'var(--isms-txt3)' }}>Certification Body</div>
             <div style={{ marginTop: '3px', fontWeight: 700, fontSize: '14px' }}>{workspace?.certBody || 'Not Set'}</div>
           </div>
 
-          <div style={{ border: '1px solid var(--isms-border)', borderRadius: '10px', background: 'rgba(9,14,26,0.46)', padding: '10px' }}>
+          <div style={{ border: '1px solid var(--isms-context-border)', borderRadius: '10px', background: 'var(--isms-context-bg)', padding: '10px' }}>
             <div style={{ fontSize: '11px', color: 'var(--isms-txt3)' }}>Days to Milestone</div>
             <div style={{ marginTop: '3px', fontWeight: 700, fontSize: '14px' }}>{targetDays ?? '-'}</div>
           </div>
@@ -434,8 +430,9 @@ export default function IsmsDashboardPage() {
           style={{
             border: '1px solid var(--isms-border)',
             borderRadius: '12px',
-            background: 'var(--isms-surf)',
+            background: 'var(--isms-surf-raised)',
             padding: '16px',
+            boxShadow: 'var(--isms-panel-shadow)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
@@ -477,8 +474,9 @@ export default function IsmsDashboardPage() {
             style={{
               border: '1px solid var(--isms-border)',
               borderRadius: '12px',
-              background: 'var(--isms-surf)',
+              background: 'var(--isms-surf-raised)',
               padding: '16px',
+              boxShadow: 'var(--isms-panel-shadow)',
             }}
           >
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>Annex A Theme Coverage</h3>
@@ -506,8 +504,9 @@ export default function IsmsDashboardPage() {
             style={{
               border: '1px solid var(--isms-border)',
               borderRadius: '12px',
-              background: 'var(--isms-surf)',
+              background: 'var(--isms-surf-raised)',
               padding: '16px',
+              boxShadow: 'var(--isms-panel-shadow)',
             }}
           >
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>Execution Pulse</h3>
@@ -549,8 +548,9 @@ export default function IsmsDashboardPage() {
           style={{
             border: '1px solid var(--isms-border)',
             borderRadius: '12px',
-            background: 'var(--isms-surf)',
+            background: 'var(--isms-surf-raised)',
             padding: '16px',
+            boxShadow: 'var(--isms-panel-shadow)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
@@ -572,7 +572,7 @@ export default function IsmsDashboardPage() {
                   style={{
                     border: '1px solid var(--isms-border)',
                     borderRadius: '10px',
-                    background: 'var(--isms-bg3)',
+                    background: 'var(--isms-surf-soft)',
                     padding: '10px',
                     display: 'grid',
                     gridTemplateColumns: '1fr auto',
@@ -602,8 +602,9 @@ export default function IsmsDashboardPage() {
           style={{
             border: '1px solid var(--isms-border)',
             borderRadius: '12px',
-            background: 'var(--isms-surf)',
+            background: 'var(--isms-surf-raised)',
             padding: '16px',
+            boxShadow: 'var(--isms-panel-shadow)',
           }}
         >
           <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>Upcoming Actions and Reviews</h3>
@@ -618,7 +619,7 @@ export default function IsmsDashboardPage() {
                   style={{
                     border: '1px solid var(--isms-border)',
                     borderRadius: '10px',
-                    background: 'var(--isms-bg3)',
+                    background: 'var(--isms-surf-soft)',
                     padding: '9px 10px',
                     display: 'grid',
                     gridTemplateColumns: '1fr auto',
@@ -646,7 +647,7 @@ export default function IsmsDashboardPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
-        <div style={{ border: '1px solid var(--isms-border)', borderRadius: '12px', background: 'var(--isms-surf)', padding: '14px' }}>
+        <div style={{ border: '1px solid var(--isms-border)', borderRadius: '12px', background: 'var(--isms-surf-raised)', padding: '14px', boxShadow: 'var(--isms-kpi-shadow)' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
             <FiFileText size={15} />
             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>Document Control</h4>
@@ -658,7 +659,7 @@ export default function IsmsDashboardPage() {
           </div>
         </div>
 
-        <div style={{ border: '1px solid var(--isms-border)', borderRadius: '12px', background: 'var(--isms-surf)', padding: '14px' }}>
+        <div style={{ border: '1px solid var(--isms-border)', borderRadius: '12px', background: 'var(--isms-surf-raised)', padding: '14px', boxShadow: 'var(--isms-kpi-shadow)' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
             <FiUsers size={15} />
             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>Awareness Program</h4>
@@ -670,7 +671,7 @@ export default function IsmsDashboardPage() {
           </div>
         </div>
 
-        <div style={{ border: '1px solid var(--isms-border)', borderRadius: '12px', background: 'var(--isms-surf)', padding: '14px' }}>
+        <div style={{ border: '1px solid var(--isms-border)', borderRadius: '12px', background: 'var(--isms-surf-raised)', padding: '14px', boxShadow: 'var(--isms-kpi-shadow)' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
             <FiShield size={15} />
             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>Supplier Assurance</h4>
@@ -682,7 +683,7 @@ export default function IsmsDashboardPage() {
           </div>
         </div>
 
-        <div style={{ border: '1px solid var(--isms-border)', borderRadius: '12px', background: 'var(--isms-surf)', padding: '14px' }}>
+        <div style={{ border: '1px solid var(--isms-border)', borderRadius: '12px', background: 'var(--isms-surf-raised)', padding: '14px', boxShadow: 'var(--isms-kpi-shadow)' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
             <FiTrendingUp size={15} />
             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>KPI Achievement</h4>

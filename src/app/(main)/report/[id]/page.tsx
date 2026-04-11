@@ -228,7 +228,7 @@ export default function ReportEditorPage() {
   const CurrentForm = FORM_SECTIONS[currentStep];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-surface to-[#eef1f8] flex" dir="rtl">
+    <div className="min-h-screen [background:var(--page-main-bg)] flex" dir="rtl">
       <Sidebar currentStep={currentStep} onStepChange={navigateToStep} />
       <div className="flex-1 mr-[280px] flex flex-col min-h-screen">
         <TopBar

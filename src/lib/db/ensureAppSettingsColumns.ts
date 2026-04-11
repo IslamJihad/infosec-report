@@ -22,12 +22,20 @@ async function runEnsure() {
     await prisma.$executeRawUnsafe('ALTER TABLE "AppSettings" ADD COLUMN "nvidiaApiKey" TEXT NOT NULL DEFAULT \'\'');
   }
 
+  if (!names.has('theme')) {
+    await prisma.$executeRawUnsafe('ALTER TABLE "AppSettings" ADD COLUMN "theme" TEXT NOT NULL DEFAULT \'system\'');
+  }
+
   await prisma.$executeRawUnsafe(
     'UPDATE "AppSettings" SET "geminiApiKey" = COALESCE(NULLIF("geminiApiKey", \'\'), COALESCE("aiApiKey", \'\'))'
   );
 
   await prisma.$executeRawUnsafe(
     'UPDATE "AppSettings" SET "aiProvider" = \'gemini\' WHERE "aiProvider" IS NULL OR "aiProvider" = \'\''
+  );
+
+  await prisma.$executeRawUnsafe(
+    'UPDATE "AppSettings" SET "theme" = \'system\' WHERE "theme" IS NULL OR "theme" = \'\''
   );
 }
 

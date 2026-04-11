@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { fetchSettings, testAIConnection, updateSettings } from '@/lib/api';
 import Link from 'next/link';
 import type { AppSettings } from '@/types/report';
+import ThemeToggle from '@/components/theme/ThemeToggle';
+import { useTheme } from '@/components/theme/ThemeProvider';
+import { normalizeThemeMode, type ThemeMode } from '@/lib/theme';
 import {
   AI_MODEL_OPTIONS,
   AI_PROVIDER_OPTIONS,
@@ -18,6 +21,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   id: 'singleton',
   aiProvider: 'gemini',
   aiModel: getDefaultModelForProvider('gemini'),
+  theme: 'system',
   geminiApiKey: '',
   nvidiaApiKey: '',
   aiApiKey: '',
@@ -30,6 +34,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export default function SettingsPage() {
+  const { setMode: setThemeMode } = useTheme();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,12 +58,14 @@ export default function SettingsPage() {
         const data = await fetchSettings();
         const aiProvider = normalizeAIProvider(data.aiProvider);
         const aiModel = normalizeAIModel(aiProvider, data.aiModel);
+        const theme = normalizeThemeMode(data.theme);
 
         setSettings({
           ...DEFAULT_SETTINGS,
           ...data,
           aiProvider,
           aiModel,
+          theme,
           geminiApiKey: '',
           nvidiaApiKey: data.nvidiaApiKey || '',
           aiApiKey: '',
@@ -67,6 +74,7 @@ export default function SettingsPage() {
           geminiApiKeyMasked: data.geminiApiKeyMasked || '',
           nvidiaApiKeyMasked: data.nvidiaApiKeyMasked || '',
         });
+        setThemeMode(theme);
       } catch (e) {
         console.error(e);
       } finally {
@@ -74,7 +82,7 @@ export default function SettingsPage() {
       }
     }
     load();
-  }, []);
+  }, [setThemeMode]);
 
   function setProvider(provider: AIProvider) {
     setSettings((prev) => ({
@@ -94,6 +102,12 @@ export default function SettingsPage() {
     setTestResult(null);
   }
 
+  function handleThemeChange(nextTheme: ThemeMode) {
+    const normalized = normalizeThemeMode(nextTheme);
+    setSettings((prev) => ({ ...prev, theme: normalized }));
+    setThemeMode(normalized);
+  }
+
   async function handleSave() {
     setSaving(true);
     setSaved(false);
@@ -101,6 +115,7 @@ export default function SettingsPage() {
       const nextSettings: Partial<AppSettings> = {
         aiProvider: settings.aiProvider,
         aiModel: normalizeAIModel(settings.aiProvider, settings.aiModel),
+        theme: settings.theme,
         defaultOrgName: settings.defaultOrgName,
         defaultAuthor: settings.defaultAuthor,
       };
@@ -126,10 +141,13 @@ export default function SettingsPage() {
         ...updated,
         aiProvider,
         aiModel,
+        theme: normalizeThemeMode(updated.theme),
         geminiApiKey: '',
         nvidiaApiKey: '',
         aiApiKey: '',
       }));
+
+      setThemeMode(normalizeThemeMode(updated.theme));
 
       setSaved(true);
       setTestResult(null);
@@ -170,7 +188,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#e8edf4] via-[#dce4f0] to-[#c8d6e8]">
+    <div className="min-h-screen [background:var(--page-main-bg)]">
       {/* Header */}
       <header className="bg-gradient-to-l from-navy-950 via-navy-900 to-navy-950 text-white shadow-xl">
         <div className="max-w-3xl mx-auto px-8 py-8 flex items-center justify-between">
@@ -189,7 +207,7 @@ export default function SettingsPage() {
 
       <div className="max-w-3xl mx-auto px-8 py-8">
         {/* AI Settings */}
-        <div className="bg-white rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md">
+        <div className="bg-[color:var(--surface-elevated)] rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md">
           <div className="bg-gradient-to-l from-purple-800 to-purple-900 text-white px-6 py-4 text-base font-bold flex items-center gap-2.5">
             🤖 إعدادات الذكاء الاصطناعي
           </div>
@@ -199,7 +217,7 @@ export default function SettingsPage() {
               <select
                 value={settings.aiProvider}
                 onChange={(e) => setProvider(e.target.value as AIProvider)}
-                className="border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] bg-white w-full hover:border-purple-200 transition-all duration-200"
+                className="border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] w-full hover:border-purple-200 transition-all duration-200"
               >
                 {AI_PROVIDER_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -215,12 +233,12 @@ export default function SettingsPage() {
                   type={showKey ? 'text' : 'password'}
                   value={activeApiKey}
                   onChange={(e) => setActiveProviderKey(e.target.value)}
-                  className="flex-1 border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] hover:border-purple-200 transition-all duration-200"
+                  className="flex-1 border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] hover:border-purple-200 transition-all duration-200 bg-[color:var(--surface-elevated)] text-text-primary"
                   placeholder={activeMaskedKey ? `مفتاح محفوظ (${activeMaskedKey})` : providerMeta.keyPlaceholder}
                 />
                 <button
                   onClick={() => setShowKey(!showKey)}
-                  className="bg-gray-100 border border-gray-200 rounded-xl px-4 text-base cursor-pointer hover:bg-gray-200 transition-all duration-200"
+                  className="bg-[color:var(--surface-muted)] border border-border rounded-xl px-4 text-base cursor-pointer hover:bg-[color:var(--button-soft-hover)] transition-all duration-200 text-text-secondary"
                 >
                   {showKey ? '🙈' : '👁️'}
                 </button>
@@ -231,14 +249,14 @@ export default function SettingsPage() {
               </p>
               <p className="text-xs text-text-hint mt-1">اترك الحقل فارغاً للاحتفاظ بالمفتاح المخزن حالياً.</p>
               <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                <div className="bg-[color:var(--surface-muted)] border border-border rounded-lg px-3 py-2 text-text-secondary">
                   Gemini: {settings.geminiApiKey
                     ? '🟡 مفتاح جديد غير محفوظ'
                     : settings.hasGeminiApiKey
                       ? `✅ محفوظ (${settings.geminiApiKeyMasked || '••••••'})`
                       : '⚪ غير محفوظ'}
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                <div className="bg-[color:var(--surface-muted)] border border-border rounded-lg px-3 py-2 text-text-secondary">
                   NVIDIA: {settings.nvidiaApiKey
                     ? '🟡 مفتاح جديد غير محفوظ'
                     : settings.hasNvidiaApiKey
@@ -253,7 +271,7 @@ export default function SettingsPage() {
               <select
                 value={settings.aiModel}
                 onChange={(e) => setSettings({ ...settings, aiModel: e.target.value })}
-                className="border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_rgba(107,33,168,0.1)] bg-white w-full hover:border-purple-200 transition-all duration-200"
+                className="border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-purple-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] w-full hover:border-purple-200 transition-all duration-200"
               >
                 {modelOptions.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -268,13 +286,13 @@ export default function SettingsPage() {
               🔌 اختبار الاتصال
             </button>
             {testResult && (
-              <p className="text-sm mt-3 p-3 rounded-xl bg-gray-50 border border-border">{testResult}</p>
+              <p className="text-sm mt-3 p-3 rounded-xl bg-[color:var(--surface-muted)] border border-border text-text-secondary">{testResult}</p>
             )}
           </div>
         </div>
 
         {/* Default Settings */}
-        <div className="bg-white rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md">
+        <div className="bg-[color:var(--surface-elevated)] rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md">
           <div className="bg-gradient-to-l from-navy-800 to-navy-900 text-white px-6 py-4 text-base font-bold flex items-center gap-2.5">
             🏢 الإعدادات الافتراضية
           </div>
@@ -285,7 +303,7 @@ export default function SettingsPage() {
                 <input
                   value={settings.defaultOrgName}
                   onChange={(e) => setSettings({ ...settings, defaultOrgName: e.target.value })}
-                  className="w-full border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] hover:border-navy-200 transition-all duration-200"
+                  className="w-full border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] hover:border-navy-200 transition-all duration-200 bg-[color:var(--surface-elevated)] text-text-primary"
                   placeholder="شركة المستقبل للتقنية"
                 />
               </div>
@@ -294,10 +312,27 @@ export default function SettingsPage() {
                 <input
                   value={settings.defaultAuthor}
                   onChange={(e) => setSettings({ ...settings, defaultAuthor: e.target.value })}
-                  className="w-full border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] hover:border-navy-200 transition-all duration-200"
+                  className="w-full border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] hover:border-navy-200 transition-all duration-200 bg-[color:var(--surface-elevated)] text-text-primary"
                   placeholder="إدارة أمن المعلومات"
                 />
               </div>
+            </div>
+
+            <div className="mt-5">
+              <label className="text-sm font-bold text-text-secondary block mb-2">المظهر العام</label>
+              <div className="flex items-center gap-3 flex-wrap">
+                <select
+                  value={settings.theme}
+                  onChange={(e) => handleThemeChange(e.target.value as ThemeMode)}
+                  className="border-[1.5px] border-border rounded-xl py-2.5 px-4 text-sm outline-none focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] min-w-[170px]"
+                >
+                  <option value='light'>فاتح</option>
+                  <option value='dark'>داكن</option>
+                  <option value='system'>حسب النظام</option>
+                </select>
+                <ThemeToggle />
+              </div>
+              <p className="text-xs text-text-hint mt-2">يتم تطبيق هذا الاختيار على نظام التقارير وبيئة ISMS معاً.</p>
             </div>
           </div>
         </div>

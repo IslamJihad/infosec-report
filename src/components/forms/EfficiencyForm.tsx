@@ -83,7 +83,7 @@ export default function EfficiencyForm() {
                   </div>
                 </div>
                 {/* Progress bar preview */}
-                <div className="bg-white border border-border rounded-xl p-3">
+                <div className="bg-[color:var(--surface-elevated)] border border-border rounded-xl p-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs text-text-muted">الإنجاز</span>
                     <span className={`text-sm font-[900] ${isGood ? 'text-emerald-600' : 'text-amber-600'}`}>

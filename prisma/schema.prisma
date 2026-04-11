@@ -179,6 +179,7 @@ model AppSettings {
   geminiApiKey    String @default("")
   nvidiaApiKey    String @default("")
   aiModel         String @default("gemini-2.5-flash")
+  theme           String @default("system")
   defaultOrgName  String @default("")
   defaultAuthor   String @default("")
 }

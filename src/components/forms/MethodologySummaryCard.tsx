@@ -10,12 +10,12 @@ interface Props {
 }
 
 const TONE_CLASSES = [
-  'border-blue-200 bg-blue-50 text-blue-900',
-  'border-violet-200 bg-violet-50 text-violet-900',
-  'border-teal-200 bg-teal-50 text-teal-900',
-  'border-amber-200 bg-amber-50 text-amber-900',
-  'border-red-200 bg-red-50 text-red-900',
-  'border-green-200 bg-green-50 text-green-900',
+  'border-[color:var(--method-tone-1-border)] bg-[color:var(--method-tone-1-bg)] text-[color:var(--method-tone-1-text)]',
+  'border-[color:var(--method-tone-2-border)] bg-[color:var(--method-tone-2-bg)] text-[color:var(--method-tone-2-text)]',
+  'border-[color:var(--method-tone-3-border)] bg-[color:var(--method-tone-3-bg)] text-[color:var(--method-tone-3-text)]',
+  'border-[color:var(--method-tone-4-border)] bg-[color:var(--method-tone-4-bg)] text-[color:var(--method-tone-4-text)]',
+  'border-[color:var(--method-tone-5-border)] bg-[color:var(--method-tone-5-bg)] text-[color:var(--method-tone-5-text)]',
+  'border-[color:var(--method-tone-6-border)] bg-[color:var(--method-tone-6-bg)] text-[color:var(--method-tone-6-text)]',
 ];
 
 export default function MethodologySummaryCard({ report }: Props) {
@@ -46,13 +46,13 @@ export default function MethodologySummaryCard({ report }: Props) {
     <>
       {/* Formula */}
       <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="text-xs text-text-muted leading-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 ltr text-left">
+        <div className="text-xs text-text-secondary leading-6 rounded-xl border border-border bg-[color:var(--surface-muted)] px-4 py-3 ltr text-left">
           SPS = clamp(round(Σ DomainScore × DomainWeight), 0, 100)&nbsp;&nbsp;|&nbsp;&nbsp;DomainScore = Σ(subMetric × weight) / Σ(weights)
         </div>
         <button
           type="button"
           onClick={() => setShowSourcesModal(true)}
-          className="text-xs font-bold bg-white border border-border rounded-lg px-3 py-1.5 text-navy-800 hover:bg-navy-50 transition-colors whitespace-nowrap"
+          className="text-xs font-bold bg-[color:var(--surface-elevated)] border border-border rounded-lg px-3 py-1.5 text-text-primary hover:bg-[color:var(--button-soft-hover)] transition-colors whitespace-nowrap"
         >
           عرض المراجع والمنهجية
         </button>
@@ -93,7 +93,7 @@ export default function MethodologySummaryCard({ report }: Props) {
         })}
 
         {/* Weighted contributions summary */}
-        <div className="rounded-xl border border-navy-200 bg-navy-50 px-4 py-3 text-xs text-navy-900 leading-6">
+        <div className="rounded-xl border border-border bg-[color:var(--surface-muted)] px-4 py-3 text-xs text-text-primary leading-6">
           <div className="font-bold mb-1">المساهمات الموزونة</div>
           {domainResults.map((d) => (
             <div key={d.id}>
@@ -106,7 +106,7 @@ export default function MethodologySummaryCard({ report }: Props) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-navy-200 bg-navy-50 px-4 py-3 text-sm text-navy-900 leading-7">
+      <div className="rounded-xl border border-border bg-[color:var(--surface-muted)] px-4 py-3 text-sm text-text-primary leading-7">
         <div>النتيجة قبل التقريب: <span className="font-bold">{scoreBreakdown.rawScore}</span></div>
         <div>النتيجة النهائية: <span className="font-[900] text-base">{scoreBreakdown.finalScore}/100</span></div>
         <div>النسخة المستخدمة: <span className="font-bold">{scoreBreakdown.formulaVersion}</span></div>
@@ -116,18 +116,18 @@ export default function MethodologySummaryCard({ report }: Props) {
 
   return (
     <>
-      <div className="bg-white rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md" dir="rtl">
-        <div className="bg-gradient-to-l from-navy-50 to-white py-4 px-5 border-b border-border flex items-center justify-between gap-3">
+      <div className="bg-[color:var(--surface-elevated)] rounded-2xl border border-border/60 mb-5 overflow-hidden shadow-md" dir="rtl">
+        <div className="[background:linear-gradient(270deg,var(--surface-muted),var(--surface-elevated))] py-4 px-5 border-b border-border flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-br from-navy-800 to-navy-900 text-white w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 shadow-sm">
               🧪
             </div>
             <div>
-              <h3 className="text-base font-[800] text-navy-950">القيم المستخدمة في حساب درجة SPS</h3>
+              <h3 className="text-base font-[800] text-text-primary">القيم المستخدمة في حساب درجة SPS</h3>
               <p className="text-xs text-text-muted mt-0.5">مخفية افتراضيا لتقليل المساحة. يمكن فتحها كنافذة عند الحاجة.</p>
             </div>
           </div>
-          <div className="text-xs font-bold text-navy-900 bg-navy-50 border border-navy-100 rounded-lg px-2.5 py-1.5">
+          <div className="text-xs font-bold text-text-primary bg-[color:var(--surface-muted)] border border-border rounded-lg px-2.5 py-1.5">
             الدرجة الحالية: {scoreBreakdown.finalScore}/100
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function MethodologySummaryCard({ report }: Props) {
           <button
             type="button"
             onClick={() => { setShowModal(true); setShowSourcesModal(false); }}
-            className="text-xs font-bold bg-navy-900 border border-navy-900 rounded-lg px-3 py-1.5 text-white hover:bg-navy-800 transition-colors"
+            className="text-xs font-bold bg-gradient-to-l from-navy-800 to-navy-900 border border-navy-800 rounded-lg px-3 py-1.5 text-white hover:from-navy-700 hover:to-navy-800 transition-colors"
           >
             فتح كنافذة مستقلة
           </button>
@@ -158,13 +158,13 @@ export default function MethodologySummaryCard({ report }: Props) {
           onClick={() => { setShowModal(false); setShowSourcesModal(false); }}
         >
           <div
-            className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-border shadow-2xl"
+            className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[color:var(--surface-elevated)] border border-border shadow-2xl"
             dir="rtl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white border-b border-border px-5 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-[color:var(--surface-elevated)] border-b border-border px-5 py-4 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-[900] text-navy-950">تفاصيل حساب درجة وضع الأمان (SPS v1)</h3>
+                <h3 className="text-base font-[900] text-text-primary">تفاصيل حساب درجة وضع الأمان (SPS v1)</h3>
                 <p className="text-xs text-text-muted mt-0.5">يمكن اغلاق النافذة في اي وقت بدون التأثير على البيانات.</p>
               </div>
               <button
@@ -184,10 +184,10 @@ export default function MethodologySummaryCard({ report }: Props) {
                 onClick={() => setShowSourcesModal(false)}
               >
                 <div
-                  className="w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-border shadow-2xl"
+                  className="w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl bg-[color:var(--surface-elevated)] border border-border shadow-2xl"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <div className="sticky top-0 bg-white border-b border-border px-4 py-3 flex items-center justify-between">
+                  <div className="sticky top-0 bg-[color:var(--surface-elevated)] border-b border-border px-4 py-3 flex items-center justify-between">
                     <div className="font-bold text-text-secondary">المرجع العلمي والمنهجي — SPS v1</div>
                     <button
                       type="button"

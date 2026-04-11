@@ -136,10 +136,10 @@ export default function ReportSearchDropdown({
   return (
     <div
       ref={rootRef}
-      className="absolute top-[calc(100%+10px)] right-0 z-[120] w-[460px] max-w-[90vw] bg-white border border-border rounded-2xl shadow-[0_20px_45px_rgba(12,24,48,0.22)] overflow-hidden"
+      className="absolute top-[calc(100%+10px)] right-0 z-[120] w-[460px] max-w-[90vw] bg-[color:var(--surface-elevated)] border border-border rounded-2xl shadow-[0_20px_45px_rgba(12,24,48,0.22)] overflow-hidden"
       dir="rtl"
     >
-      <div className="p-3 border-b border-border bg-navy-50/50">
+      <div className="p-3 border-b border-border bg-[color:var(--surface-muted)]">
         <input
           ref={inputRef}
           value={query}
@@ -149,7 +149,7 @@ export default function ReportSearchDropdown({
           }}
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder}
-          className="w-full border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_rgba(26,58,124,0.1)] bg-white"
+          className="w-full border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)]"
         />
         <div className="text-[11px] text-text-hint mt-2">
           {showTypingHint
@@ -160,7 +160,7 @@ export default function ReportSearchDropdown({
         </div>
       </div>
 
-      <div className="max-h-[420px] overflow-y-auto p-2 bg-white">
+      <div className="max-h-[420px] overflow-y-auto p-2 bg-[color:var(--surface-elevated)]">
         {!showTypingHint && results.length === 0 && (
           <div className="py-8 text-center text-sm text-text-muted">
             لا توجد نتائج مطابقة. جرّب كلمة أقرب.
@@ -169,7 +169,7 @@ export default function ReportSearchDropdown({
 
         {!showTypingHint && grouped.map(([section, sectionResults]) => (
           <div key={section} className="mb-2.5 last:mb-0">
-            <div className="px-2 py-1.5 text-[11px] font-bold text-navy-800 bg-navy-50 rounded-lg mb-1.5">
+            <div className="px-2 py-1.5 text-[11px] font-bold text-text-secondary bg-[color:var(--surface-muted)] rounded-lg mb-1.5">
               {section}
             </div>
             <div className="space-y-1">
@@ -185,9 +185,9 @@ export default function ReportSearchDropdown({
                   onMouseEnter={() => {
                     if (resultIndex >= 0) setActiveIndex(resultIndex);
                   }}
-                  className={`w-full text-right p-2.5 rounded-xl border transition-all duration-150 ${isActive ? 'border-navy-300 bg-navy-50/70' : 'border-transparent hover:border-navy-200 hover:bg-navy-50/60'}`}
+                  className={`w-full text-right p-2.5 rounded-xl border transition-all duration-150 ${isActive ? 'border-navy-300 bg-[color:var(--surface-muted)]' : 'border-transparent hover:border-border hover:bg-[color:var(--surface-muted)]'}`}
                 >
-                  <div className="text-sm font-bold text-navy-950">{renderHighlighted(result.title, query)}</div>
+                  <div className="text-sm font-bold text-text-primary">{renderHighlighted(result.title, query)}</div>
                   <div className="text-xs text-text-muted mt-0.5 leading-5 line-clamp-2">
                     {renderHighlighted(result.snippet, query)}
                   </div>
@@ -203,7 +203,7 @@ export default function ReportSearchDropdown({
             <button
               type="button"
               onClick={onLoadMore}
-              className="w-full rounded-xl border border-navy-200 bg-navy-50/70 text-navy-900 text-xs font-bold py-2.5 hover:bg-navy-100 transition-colors"
+              className="w-full rounded-xl border border-border bg-[color:var(--surface-muted)] text-text-primary text-xs font-bold py-2.5 hover:bg-[color:var(--button-soft-hover)] transition-colors"
             >
               تحميل المزيد ({visibleCount}/{effectiveTotal})
             </button>
