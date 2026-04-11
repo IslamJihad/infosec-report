@@ -86,9 +86,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ conversations: items });
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('AI history GET failed:', error);
     return NextResponse.json(
-      { error: 'فشل في جلب سجل المحادثات', details: errMsg },
+      { error: 'فشل في جلب سجل المحادثات' },
       { status: 500 }
     );
   }
@@ -154,9 +154,9 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'المحادثة غير موجودة.' }, { status: 404 });
     }
 
-    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('AI history PATCH failed:', error);
     return NextResponse.json(
-      { error: 'فشل في تحديث المحادثة', details: errMsg },
+      { error: 'فشل في تحديث المحادثة' },
       { status: 500 }
     );
   }
@@ -178,9 +178,9 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'المحادثة غير موجودة.' }, { status: 404 });
     }
 
-    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('AI history DELETE failed:', error);
     return NextResponse.json(
-      { error: 'فشل في حذف المحادثة', details: errMsg },
+      { error: 'فشل في حذف المحادثة' },
       { status: 500 }
     );
   }

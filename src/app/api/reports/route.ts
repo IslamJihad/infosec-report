@@ -35,30 +35,17 @@ export async function GET() {
       orderBy: { updatedAt: 'desc' },
     });
 
-    const scoredReports = await Promise.all(
-      reports.map(async (report) => {
-        const spsDomains = parseSPSDomainsJson(report.spsDomainsJson);
-        const scoreResult = calculateGlobalSecurityScore({ id: report.id, spsDomains });
-        const normalizedSpsDomainsJson = JSON.stringify(spsDomains);
+    const scoredReports = reports.map((report) => {
+      const spsDomains = parseSPSDomainsJson(report.spsDomainsJson);
+      const scoreResult = calculateGlobalSecurityScore({ id: report.id, spsDomains });
 
-        if (report.securityScore !== scoreResult.securityScore || report.spsDomainsJson !== normalizedSpsDomainsJson) {
-          await prisma.report.update({
-            where: { id: report.id },
-            data: {
-              securityScore: scoreResult.securityScore,
-              ...(report.spsDomainsJson !== normalizedSpsDomainsJson ? { spsDomainsJson: normalizedSpsDomainsJson } : {}),
-            },
-          });
-        }
-
-        return {
-          ...report,
-          spsDomains,
-          securityScore: scoreResult.securityScore,
-          scoreBreakdown: scoreResult.scoreBreakdown,
-        };
-      }),
-    );
+      return {
+        ...report,
+        spsDomains,
+        securityScore: scoreResult.securityScore,
+        scoreBreakdown: scoreResult.scoreBreakdown,
+      };
+    });
 
     const percentileMap = buildPercentileMap(
       scoredReports.map((report) => ({ id: report.id, securityScore: report.securityScore })),

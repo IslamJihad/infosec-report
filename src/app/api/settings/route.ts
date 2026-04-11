@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import {
   getDefaultModelForProvider,
   normalizeAIModel,
@@ -21,6 +22,17 @@ type SettingsBody = {
   defaultOrgName?: string;
   defaultAuthor?: string;
 };
+
+const SettingsBodySchema = z.object({
+  aiApiKey: z.string().max(1024).optional(),
+  aiProvider: z.string().max(32).optional(),
+  geminiApiKey: z.string().max(1024).optional(),
+  nvidiaApiKey: z.string().max(1024).optional(),
+  aiModel: z.string().max(128).optional(),
+  theme: z.string().max(16).optional(),
+  defaultOrgName: z.string().max(200).optional(),
+  defaultAuthor: z.string().max(200).optional(),
+}).strict();
 
 function maskSecret(secret: string): string {
   const trimmed = secret.trim();
@@ -70,7 +82,17 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const body = (await req.json()) as SettingsBody;
+    const rawBody = await req.json().catch(() => null);
+    if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
+      return NextResponse.json({ error: 'بيانات الطلب غير صالحة.' }, { status: 400 });
+    }
+
+    const parsedBody = SettingsBodySchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: 'تعذر التحقق من بيانات الإعدادات.' }, { status: 400 });
+    }
+
+    const body = parsedBody.data as SettingsBody;
     const current = await getPersistedAppSettings();
 
     const currentProvider = normalizeAIProvider(current?.aiProvider);

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getProviderMeta, normalizeAIModel, normalizeAIProvider } from '@/lib/ai/models';
 import { generateProviderReply } from '@/lib/ai/providers';
 import { getPersistedAppSettings } from '@/lib/db/appSettings';
@@ -11,9 +12,27 @@ interface TestConnectionBody {
   aiApiKey?: string;
 }
 
+const TestConnectionBodySchema = z.object({
+  aiProvider: z.string().max(32).optional(),
+  aiModel: z.string().max(128).optional(),
+  geminiApiKey: z.string().max(1024).optional(),
+  nvidiaApiKey: z.string().max(1024).optional(),
+  aiApiKey: z.string().max(1024).optional(),
+}).strict();
+
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as TestConnectionBody;
+    const rawBody = await req.json().catch(() => null);
+    if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
+      return NextResponse.json({ ok: false, error: 'بيانات الطلب غير صالحة.' }, { status: 400 });
+    }
+
+    const parsedBody = TestConnectionBodySchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return NextResponse.json({ ok: false, error: 'تعذر التحقق من بيانات الطلب.' }, { status: 400 });
+    }
+
+    const body = parsedBody.data as TestConnectionBody;
     const aiProvider = normalizeAIProvider(body.aiProvider);
     const aiModel = normalizeAIModel(aiProvider, body.aiModel);
     let apiKey = aiProvider === 'nvidia'

@@ -26,6 +26,7 @@ const SYSTEM_PROMPT = [
 ].join('\n');
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 200;
 
 type CachedSummary = Omit<AnalyticsAISummaryResponse, 'cacheHit'> & { expiresAt: number };
 
@@ -36,9 +37,18 @@ function normalizeAudience(value: unknown): AnalyticsSummaryAudience {
   return 'leadership';
 }
 
-function trimError(err: unknown): string {
-  const message = err instanceof Error ? err.message : String(err);
-  return message.slice(0, 240);
+function pruneSummaryCache(now: number): void {
+  for (const [key, cachedValue] of summaryCache.entries()) {
+    if (cachedValue.expiresAt <= now) {
+      summaryCache.delete(key);
+    }
+  }
+
+  while (summaryCache.size > MAX_CACHE_ENTRIES) {
+    const oldestKey = summaryCache.keys().next().value as string | undefined;
+    if (!oldestKey) break;
+    summaryCache.delete(oldestKey);
+  }
 }
 
 function buildAudienceGuidance(audience: AnalyticsSummaryAudience): string {
@@ -153,8 +163,11 @@ export async function POST(req: Request) {
 
     const queryHash = buildQueryHash(queryOptions, audience);
     const cacheKey = `${provider}|${model}|${queryHash}`;
+    const now = Date.now();
+    pruneSummaryCache(now);
+
     const cached = summaryCache.get(cacheKey);
-    if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
+    if (!forceRefresh && cached && cached.expiresAt > now) {
       return NextResponse.json({
         ...cached,
         cacheHit: true,
@@ -213,13 +226,16 @@ export async function POST(req: Request) {
 
     summaryCache.set(cacheKey, {
       ...response,
-      expiresAt: Date.now() + CACHE_TTL_MS,
+      expiresAt: now + CACHE_TTL_MS,
     });
+
+    pruneSummaryCache(now);
 
     return NextResponse.json(response);
   } catch (error: unknown) {
+    console.error('AI analytics summary generation failed:', error);
     return NextResponse.json(
-      { error: 'فشل توليد الملخص التنفيذي الذكي', details: trimError(error) },
+      { error: 'فشل توليد الملخص التنفيذي الذكي' },
       { status: 500 }
     );
   }

@@ -167,17 +167,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     const spsDomains = parseSPSDomainsJson(report.spsDomainsJson);
     const scoreResult = calculateGlobalSecurityScore({ id: report.id, spsDomains });
-    const normalizedSpsDomainsJson = JSON.stringify(spsDomains);
-
-    if (report.securityScore !== scoreResult.securityScore || report.spsDomainsJson !== normalizedSpsDomainsJson) {
-      await prisma.report.update({
-        where: { id },
-        data: {
-          securityScore: scoreResult.securityScore,
-          ...(report.spsDomainsJson !== normalizedSpsDomainsJson ? { spsDomainsJson: normalizedSpsDomainsJson } : {}),
-        },
-      });
-    }
 
     const percentileMap = await buildReportPercentiles(id, scoreResult.securityScore);
 
@@ -399,8 +388,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     });
   } catch (error) {
     console.error('Error updating report:', error);
-    const detail = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: 'فشل في حفظ التقرير', detail }, { status: 500 });
+    return NextResponse.json({ error: 'فشل في حفظ التقرير' }, { status: 500 });
   }
 }
 
