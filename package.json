@@ -6,7 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:push:force": "prisma db push --accept-data-loss",
+    "prisma:studio": "prisma studio",
+    "isms:generate:constants": "node scripts/generate-isms-constants.mjs",
+    "isms:generate:routes": "node scripts/generate-isms-routes.mjs",
+    "isms:generate": "npm run isms:generate:constants && npm run isms:generate:routes",
+    "isms:generate:if-source": "node scripts/run-isms-generate-if-source.mjs",
+    "dev:setup": "npm run prisma:generate && npm run isms:generate:if-source",
+    "dev:bootstrap": "npm run dev:setup && npm run dev",
+    "verify:prisma": "prisma validate",
+    "verify:typecheck": "tsc --noEmit",
+    "verify:lint": "eslint .",
+    "verify:all": "npm run verify:prisma && npm run verify:typecheck && npm run verify:lint && npm run build"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

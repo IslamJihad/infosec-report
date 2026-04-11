@@ -1,0 +1,35 @@
+{
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "github.copilot.chat.agent.thinkingTool": true,
+  "github.copilot.chat.edits.enabled": true,
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "github.copilot.chat.generateTests.codeLensEnabled": true,
+  "github.copilot.chat.fixTestFailure.enabled": true,
+  "github.copilot.chat.reviewSelection.enabled": true,
+  "github.copilot.chat.commitMessageGeneration.enabled": true,
+  "github.copilot.chat.pullRequestDescriptionGeneration.enabled": true,
+  "github.copilot.renameSuggestions.triggerAutomatically": true,
+  "chat.agent.maxRequests": 30,
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "files.exclude": {
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/coverage": true
+  },
+  "search.exclude": {
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/coverage": true,
+    "**/dist": true
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.enablePersistentSessions": true,
+
+  // Optional VS Code 1.115+ enhancements:
+  // "workbench.browser.enableChatTools": true,
+  // "chat.tools.terminal.backgroundNotifications": true
+}

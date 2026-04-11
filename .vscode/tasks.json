@@ -1,0 +1,76 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: Setup prerequisites",
+      "type": "shell",
+      "command": "npm run dev:setup",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: Start Next.js",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "build"
+    },
+    {
+      "label": "Dev: Bootstrap (setup + dev)",
+      "dependsOn": ["Dev: Setup prerequisites", "Dev: Start Next.js"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Prisma: Generate client",
+      "type": "shell",
+      "command": "npm run prisma:generate",
+      "problemMatcher": []
+    },
+    {
+      "label": "Prisma: DB Push",
+      "type": "shell",
+      "command": "npm run prisma:push",
+      "problemMatcher": []
+    },
+    {
+      "label": "Prisma: DB Push (accept data loss)",
+      "type": "shell",
+      "command": "npm run prisma:push:force",
+      "problemMatcher": []
+    },
+    {
+      "label": "ISMS: Generate constants/routes",
+      "type": "shell",
+      "command": "npm run isms:generate",
+      "problemMatcher": []
+    },
+    {
+      "label": "Verify: TypeScript",
+      "type": "shell",
+      "command": "npm run verify:typecheck",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Verify: Lint",
+      "type": "shell",
+      "command": "npm run verify:lint",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "Verify: Full",
+      "type": "shell",
+      "command": "npm run verify:all",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}

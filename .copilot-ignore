@@ -1,0 +1,32 @@
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Build artifacts (not useful as context)
+dist/
+build/
+*.min.js
+*.min.css
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Auto-generated files
+*.lock
+package-lock.json
+yarn.lock
+
+# Large data files
+*.csv
+*.sql
+*.dump
+*.db
+*.sqlite

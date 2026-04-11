@@ -21,6 +21,7 @@
 - [التشغيل السريع](#-التشغيل-السريع)
 - [التشغيل بالتفصيل](#-التشغيل-بالتفصيل)
 - [التطوير المحلي](#-التطوير-المحلي)
+- [VS Code 1.115 Agent Workflow](#vs-code-1115-agent-workflow)
 - [البنية التقنية](#-البنية-التقنية)
 - [هيكل المشروع](#-هيكل-المشروع)
 - [التكامل المستمر CI/CD](#-التكامل-المستمر-cicd)
@@ -267,6 +268,31 @@ npm run build     # بناء نسخة الإنتاج
 npm run start     # تشغيل نسخة الإنتاج
 npm run lint      # فحص الكود
 ```
+
+## VS Code 1.115 Agent Workflow
+
+لأفضل تجربة تطوير مع الوكلاء في VS Code 1.115، تمت إضافة ملفات إعداد جاهزة للمشروع داخل `.vscode` مع تعليمات Copilot على مستوى المستودع.
+
+For agent-native development, this repository now includes workspace automation and Copilot guidance.
+
+### Quick commands
+
+```bash
+npm run dev:setup
+npm run dev
+```
+
+### Validation loop
+
+```bash
+npm run verify:prisma
+npm run verify:typecheck
+npm run verify:lint
+npm run build
+```
+
+تفاصيل كاملة (Arabic + English):
+- [VSCODE-1.115-WORKFLOW.md](VSCODE-1.115-WORKFLOW.md)
 
 ### بناء و تشغيل Docker محلياً
 

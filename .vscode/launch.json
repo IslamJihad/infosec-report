@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Next.js: Dev Server",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev"
+    },
+    {
+      "name": "Next.js: Dev Server (inspect)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--inspect",
+        "${workspaceFolder}/node_modules/next/dist/bin/next",
+        "dev"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Node: Attach 9229",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}
