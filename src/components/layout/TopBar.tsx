@@ -33,10 +33,16 @@ export default function TopBar({ currentStep, onStepChange, onPreview, onAIRevie
   const { isSaving, lastSaved } = useReportStore();
 
   const title = NAV_ITEMS[currentStep]?.label || '';
+  const stepLabel = `${currentStep + 1}/${NAV_ITEMS.length}`;
 
   return (
     <div className="bg-[color:var(--topbar-bg)] backdrop-blur-lg border-b border-[color:var(--topbar-border)] py-3.5 px-6 flex items-center justify-between sticky top-0 z-40 shadow-[var(--topbar-shadow)]">
-      <h1 className="text-lg font-[800] text-text-primary">{title}</h1>
+      <h1 className="text-lg font-[800] text-text-primary flex items-center gap-2.5">
+        <span className="text-xs font-bold text-text-muted bg-[color:var(--surface-muted)] border border-border rounded-lg px-2 py-1 leading-none">
+          {stepLabel}
+        </span>
+        <span>{title}</span>
+      </h1>
 
       <div className="flex items-center gap-3">
         <div style={{ direction: 'ltr' }}>
@@ -66,9 +72,10 @@ export default function TopBar({ currentStep, onStepChange, onPreview, onAIRevie
                 }
                 search.onToggle();
               }}
+              title="اختصار لوحة المفاتيح /"
               className="py-2 px-4 rounded-xl border border-border bg-[color:var(--surface-elevated)] text-text-primary text-sm font-bold transition-all duration-200 hover:bg-[color:var(--button-soft-hover)] cursor-pointer flex items-center gap-1.5"
             >
-              🔍 بحث
+              🔍 بحث /
             </button>
 
             <ReportSearchDropdown

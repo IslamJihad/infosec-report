@@ -46,6 +46,28 @@ function parseStepParam(value: string | null): number | null {
   return clampStep(parsed);
 }
 
+const CORE_REQUIRED_FIELDS = [
+  { key: 'orgName', label: 'اسم المنظمة' },
+  { key: 'recipientName', label: 'المستلم' },
+  { key: 'subject', label: 'الموضوع' },
+  { key: 'period', label: 'الفترة الزمنية' },
+  { key: 'issueDate', label: 'تاريخ الإصدار' },
+  { key: 'author', label: 'معد التقرير' },
+] as const;
+
+function getMissingCoreFieldLabels(report: {
+  orgName: string;
+  recipientName: string;
+  subject: string;
+  period: string;
+  issueDate: string;
+  author: string;
+}): string[] {
+  return CORE_REQUIRED_FIELDS
+    .filter(({ key }) => !report[key].trim())
+    .map(({ label }) => label);
+}
+
 export default function ReportEditorPage() {
   const params = useParams();
   const router = useRouter();
@@ -58,6 +80,7 @@ export default function ReportEditorPage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE_SIZE);
   const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { report, setReport, currentStep, setStep, isDirty, setSaving, setLastSaved, setDirty } = useReportStore();
@@ -75,6 +98,38 @@ export default function ReportEditorPage() {
   useEffect(() => {
     setSearchLimit(SEARCH_PAGE_SIZE);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '/') return;
+
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      const isEditable = Boolean(
+        target && (target.isContentEditable || tagName === 'input' || tagName === 'textarea' || tagName === 'select'),
+      );
+
+      if (isEditable) return;
+
+      event.preventDefault();
+      setSearchOpen(true);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   const searchPage = useMemo(
     () => searchReportIndex(searchIndex, debouncedSearchQuery, { limit: searchLimit }),
@@ -152,6 +207,7 @@ export default function ReportEditorPage() {
       try {
         const data = await fetchReport(id);
         setReport(data);
+        setSaveError(null);
       } catch {
         router.push('/');
       } finally {
@@ -162,18 +218,22 @@ export default function ReportEditorPage() {
   }, [id, setReport, router]);
 
   // Auto-save
-  const doSave = useCallback(async () => {
+  const doSave = useCallback(async (): Promise<boolean> => {
     const store = useReportStore.getState();
     const currentReport = store.report;
-    if (!currentReport || !store.isDirty) return;
+    if (!currentReport || !store.isDirty) return true;
 
     setSaving(true);
     try {
       await updateReport(currentReport.id, currentReport);
       setLastSaved(new Date());
       setDirty(false);
+      setSaveError(null);
+      return true;
     } catch (e) {
       console.error('Auto-save failed:', e);
+      setSaveError('تعذر حفظ التعديلات تلقائياً. يرجى إعادة المحاولة قبل مغادرة الصفحة.');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -181,7 +241,8 @@ export default function ReportEditorPage() {
 
   const saveThenNavigate = useCallback(
     async (path: string) => {
-      await doSave();
+      const saveSucceeded = await doSave();
+      if (!saveSucceeded) return;
       router.push(path);
     },
     [doSave, router],
@@ -226,6 +287,7 @@ export default function ReportEditorPage() {
   if (!report) return null;
 
   const CurrentForm = FORM_SECTIONS[currentStep];
+  const missingCoreFields = getMissingCoreFieldLabels(report);
 
   return (
     <div className="min-h-screen [background:var(--page-main-bg)] flex" dir="rtl">
@@ -255,6 +317,26 @@ export default function ReportEditorPage() {
           }}
         />
         <div className="flex-1 overflow-y-auto p-6 pb-10">
+          {saveError && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger-700">
+              <span>⚠️ {saveError}</span>
+              <button
+                onClick={() => {
+                  void doSave();
+                }}
+                className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-danger-700 transition-colors hover:bg-red-100"
+              >
+                إعادة المحاولة
+              </button>
+            </div>
+          )}
+
+          {missingCoreFields.length > 0 && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              ⚠️ الحقول الأساسية الناقصة: {missingCoreFields.join('، ')}
+            </div>
+          )}
+
           <MethodologySummaryCard report={report} />
           <CurrentForm />
         </div>

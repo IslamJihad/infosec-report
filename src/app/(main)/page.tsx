@@ -8,14 +8,59 @@ import { getScoreColorClass } from '@/lib/constants';
 import Link from 'next/link';
 import AppSwitcher from '@/components/isms/AppSwitcher';
 
+function getMissingCoreFieldsCount(report: ReportData): number {
+  const requiredValues = [
+    report.orgName,
+    report.recipientName,
+    report.subject,
+    report.period,
+    report.issueDate,
+    report.author,
+  ];
+
+  return requiredValues.filter((value) => !value.trim()).length;
+}
+
+function formatRelativeTimeArabic(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'غير متاح';
+
+  const diffMs = date.getTime() - Date.now();
+  const absMs = Math.abs(diffMs);
+  const formatter = new Intl.RelativeTimeFormat('ar', { numeric: 'auto' });
+
+  if (absMs < 60_000) return 'الآن';
+  if (absMs < 3_600_000) return formatter.format(Math.round(diffMs / 60_000), 'minute');
+  if (absMs < 86_400_000) return formatter.format(Math.round(diffMs / 3_600_000), 'hour');
+  if (absMs < 2_592_000_000) return formatter.format(Math.round(diffMs / 86_400_000), 'day');
+  return formatter.format(Math.round(diffMs / 2_592_000_000), 'month');
+}
+
 export default function DashboardPage() {
   const [reports, setReports] = useState<ReportData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const router = useRouter();
+
+  const pendingDeleteReport = reports.find((report) => report.id === pendingDeleteId) || null;
 
   useEffect(() => {
     loadReports();
   }, []);
+
+  useEffect(() => {
+    if (!pendingDeleteId) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPendingDeleteId(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [pendingDeleteId]);
 
   async function loadReports() {
     try {
@@ -38,14 +83,25 @@ export default function DashboardPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
-    await deleteReport(id);
-    setReports((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await deleteReport(id);
+      setReports((prev) => prev.filter((r) => r.id !== id));
+      setDeleteError(null);
+    } catch (e) {
+      console.error(e);
+      setDeleteError('تعذر حذف التقرير. حاول مرة أخرى.');
+    } finally {
+      setPendingDeleteId(null);
+    }
   }
 
   async function handleDuplicate(id: string) {
-    const dup = await duplicateReport(id);
-    setReports((prev) => [dup, ...prev]);
+    try {
+      const dup = await duplicateReport(id);
+      setReports((prev) => [dup, ...prev]);
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   const totalReports = reports.length;
@@ -109,6 +165,12 @@ export default function DashboardPage() {
 
       {/* Reports grid */}
       <div className="max-w-7xl mx-auto px-8 py-8">
+        {deleteError && (
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger-700">
+            ⚠️ {deleteError}
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-24">
             <div className="text-5xl animate-spin inline-block mb-4">⚙️</div>
@@ -132,6 +194,8 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {reports.map((r) => {
               const scoreColor = getScoreColorClass(r.securityScore);
+              const missingCoreFieldsCount = getMissingCoreFieldsCount(r);
+
               return (
                 <div key={r.id} className="bg-white rounded-2xl border border-border/60 overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
                   {/* Card header */}
@@ -153,6 +217,11 @@ export default function DashboardPage() {
                         {r.status === 'draft' ? 'مسودة' : 'منشور'}
                       </span>
                       <span className="text-xs px-3 py-1 rounded-lg bg-gray-100 text-text-muted">{r.risks.length} مخاطر</span>
+                      {missingCoreFieldsCount > 0 && (
+                        <span className="text-xs px-3 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                          ناقص {missingCoreFieldsCount} حقول أساسية
+                        </span>
+                      )}
                       {typeof r.scorePercentile === 'number' && (
                         <span className="text-xs px-3 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold border border-blue-100">
                           أعلى من {r.scorePercentile}% من التقارير
@@ -162,6 +231,7 @@ export default function DashboardPage() {
                     <div className="text-sm text-text-muted mb-4 flex gap-4">
                       <span>📅 {r.issueDate}</span>
                       <span>👤 {r.author}</span>
+                      <span>🕒 {formatRelativeTimeArabic(r.updatedAt)}</span>
                     </div>
                     <div className="flex gap-2">
                       <Link
@@ -180,13 +250,15 @@ export default function DashboardPage() {
                         onClick={() => handleDuplicate(r.id)}
                         className="bg-navy-50 text-navy-800 border border-navy-200 rounded-xl py-2.5 px-3.5 text-sm hover:bg-navy-100 transition-all duration-200 cursor-pointer"
                         title="نسخ التقرير"
+                        aria-label="نسخ التقرير"
                       >
                         📋
                       </button>
                       <button
-                        onClick={() => handleDelete(r.id)}
+                        onClick={() => setPendingDeleteId(r.id)}
                         className="bg-red-50 text-danger-500 border border-red-200 rounded-xl py-2.5 px-3.5 text-sm hover:bg-red-100 transition-all duration-200 cursor-pointer"
                         title="حذف التقرير"
+                        aria-label="حذف التقرير"
                       >
                         🗑️
                       </button>
@@ -198,6 +270,39 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {pendingDeleteReport && (
+        <div
+          className="fixed inset-0 z-[120] bg-navy-950/55 backdrop-blur-[2px] flex items-center justify-center px-4"
+          onClick={() => setPendingDeleteId(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border bg-white shadow-2xl p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-lg font-[900] text-navy-950 mb-2">تأكيد حذف التقرير</h3>
+            <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+              سيتم حذف تقرير <strong>{pendingDeleteReport.orgName || 'بدون اسم'}</strong> بشكل نهائي. لا يمكن التراجع بعد التأكيد.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setPendingDeleteId(null)}
+                className="flex-1 rounded-xl border border-border bg-surface-muted text-text-primary py-2.5 text-sm font-bold hover:bg-navy-50 transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={() => {
+                  void handleDelete(pendingDeleteReport.id);
+                }}
+                className="flex-1 rounded-xl border border-red-200 bg-red-50 text-danger-700 py-2.5 text-sm font-bold hover:bg-red-100 transition-colors"
+              >
+                حذف نهائي
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="text-center text-sm text-text-muted py-6 border-t border-border/40">
         © {new Date().getFullYear()} إدارة أمن المعلومات – النسخة الاحترافية v5.0

@@ -2,10 +2,12 @@
 
 import { useReportStore } from '@/store/reportStore';
 import { CLASSIFICATIONS } from '@/lib/constants';
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 export default function GeneralInfoForm() {
   const { report, updateField } = useReportStore();
+  const classificationId = useId();
+  const chairNoteId = useId();
   if (!report) return null;
 
   return (
@@ -20,7 +22,7 @@ export default function GeneralInfoForm() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <FormField label="اسم الشركة / المنظمة" value={report.orgName} onChange={(v) => updateField('orgName', v)} />
           <FormField label="المدير العام / المستلم" value={report.recipientName} onChange={(v) => updateField('recipientName', v)} />
         </div>
@@ -29,17 +31,18 @@ export default function GeneralInfoForm() {
           <FormField label="الموضوع" value={report.subject} onChange={(v) => updateField('subject', v)} />
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <FormField label="الفترة الزمنية" value={report.period} onChange={(v) => updateField('period', v)} />
           <FormField label="تاريخ الإصدار" value={report.issueDate} onChange={(v) => updateField('issueDate', v)} type="date" />
           <FormField label="رقم الإصدار" value={report.version} onChange={(v) => updateField('version', v)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="معد التقرير / القسم" value={report.author} onChange={(v) => updateField('author', v)} />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-bold text-text-secondary">تصنيف التقرير</label>
+            <label htmlFor={classificationId} className="text-sm font-bold text-text-secondary">تصنيف التقرير</label>
             <select
+              id={classificationId}
               value={report.classification}
               onChange={(e) => updateField('classification', e.target.value)}
               className="border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] bg-[color:var(--surface-elevated)] hover:border-navy-200"
@@ -57,6 +60,7 @@ export default function GeneralInfoForm() {
           ✍️ هذه الفقرة تظهر في التقرير النهائي مباشرة بعد صفحة الغلاف.
         </div>
         <textarea
+          id={chairNoteId}
           value={report.chairNote || ''}
           onChange={(e) => updateField('chairNote', e.target.value)}
           rows={4}
@@ -103,21 +107,26 @@ export function FormField({
   min?: number;
   max?: number;
 }) {
+  const inputId = useId();
+  const hintId = `${inputId}-hint`;
+
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-bold text-text-secondary">{label}</label>
+      <label htmlFor={inputId} className="text-sm font-bold text-text-secondary">{label}</label>
       <input
+        id={inputId}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         readOnly={readOnly}
         min={min}
         max={max}
+        aria-describedby={hint ? hintId : undefined}
         className={`border-[1.5px] border-border rounded-xl py-2.5 px-3.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-navy-700 focus:shadow-[0_0_0_3px_var(--color-focus-ring)] focus:ring-0 bg-[color:var(--surface-elevated)] hover:border-navy-200 ${
           readOnly ? 'bg-[color:var(--surface-muted)] text-text-secondary font-bold cursor-default' : ''
         }`}
       />
-      {hint && <span className="text-xs text-text-hint mt-1">{hint}</span>}
+      {hint && <span id={hintId} className="text-xs text-text-hint mt-1">{hint}</span>}
     </div>
   );
 }
