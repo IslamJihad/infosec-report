@@ -49,7 +49,7 @@ function unauthorizedResponse(): NextResponse {
   });
 }
 
-export function middleware(req: NextRequest): NextResponse {
+export function proxy(req: NextRequest): NextResponse {
   const configuredUsername = process.env.BASIC_AUTH_USERNAME?.trim() || '';
   const configuredPassword = process.env.BASIC_AUTH_PASSWORD?.trim() || '';
 

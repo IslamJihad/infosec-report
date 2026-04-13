@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@/generated/prisma/client";
 import db from "@/lib/db";
 import {
   ISMS_WORKSPACE_ID,
@@ -43,6 +44,9 @@ type ImportPayload = {
   ncas?: Array<Record<string, unknown>>;
 };
 
+type WorkspaceField = (typeof SCALAR_FIELDS)[number] | (typeof JSON_FIELDS)[number];
+type WorkspacePayloadData = Partial<Record<WorkspaceField, string>>;
+
 class ImportValidationError extends Error {}
 
 function normalizeScalar(value: unknown): string {
@@ -78,12 +82,12 @@ function withSortOrder(item: Record<string, unknown>, idx: number): Record<strin
   return payload;
 }
 
-function workspaceUpdateFromPayload(workspace: Record<string, unknown> | undefined): Record<string, unknown> {
+function workspaceUpdateFromPayload(workspace: Record<string, unknown> | undefined): WorkspacePayloadData {
   if (!workspace) {
     return {};
   }
 
-  const data: Record<string, unknown> = {};
+  const data: WorkspacePayloadData = {};
 
   for (const field of SCALAR_FIELDS) {
     if (field in workspace) {
@@ -140,7 +144,7 @@ export async function POST(req: Request) {
         create: {
           id: ISMS_WORKSPACE_ID,
           ...workspaceData,
-        } as any,
+        },
       });
 
       await tx.ismsRisk.deleteMany({ where: { workspaceId: ISMS_WORKSPACE_ID } });
@@ -155,92 +159,112 @@ export async function POST(req: Request) {
       await tx.ismsNca.deleteMany({ where: { workspaceId: ISMS_WORKSPACE_ID } });
 
       if (risks.length > 0) {
+        const riskData = risks.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsRiskCreateManyInput[];
+
         await tx.ismsRisk.createMany({
-          data: risks.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: riskData,
         });
       }
 
       if (assets.length > 0) {
+        const assetData = assets.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsAssetCreateManyInput[];
+
         await tx.ismsAsset.createMany({
-          data: assets.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: assetData,
         });
       }
 
       if (incidents.length > 0) {
+        const incidentData = incidents.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsIncidentCreateManyInput[];
+
         await tx.ismsIncident.createMany({
-          data: incidents.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: incidentData,
         });
       }
 
       if (tasks.length > 0) {
+        const taskData = tasks.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsTaskCreateManyInput[];
+
         await tx.ismsTask.createMany({
-          data: tasks.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: taskData,
         });
       }
 
       if (team.length > 0) {
+        const teamData = team.map((item) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...sanitizeEntityPayload(item),
+        })) as unknown as Prisma.IsmsTeamMemberCreateManyInput[];
+
         await tx.ismsTeamMember.createMany({
-          data: team.map((item) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...sanitizeEntityPayload(item),
-          })) as any,
+          data: teamData,
         });
       }
 
       if (kpis.length > 0) {
+        const kpiData = kpis.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsKpiCreateManyInput[];
+
         await tx.ismsKpi.createMany({
-          data: kpis.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: kpiData,
         });
       }
 
       if (suppliers.length > 0) {
+        const supplierData = suppliers.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsSupplierCreateManyInput[];
+
         await tx.ismsSupplier.createMany({
-          data: suppliers.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: supplierData,
         });
       }
 
       if (awareness.length > 0) {
+        const awarenessData = awareness.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsAwarenessCreateManyInput[];
+
         await tx.ismsAwareness.createMany({
-          data: awareness.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: awarenessData,
         });
       }
 
       if (audits.length > 0) {
+        const auditData = audits.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsAuditCreateManyInput[];
+
         await tx.ismsAudit.createMany({
-          data: audits.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: auditData,
         });
       }
 
       if (ncas.length > 0) {
+        const ncaData = ncas.map((item, idx) => ({
+          workspaceId: ISMS_WORKSPACE_ID,
+          ...withSortOrder(item, idx),
+        })) as unknown as Prisma.IsmsNcaCreateManyInput[];
+
         await tx.ismsNca.createMany({
-          data: ncas.map((item, idx) => ({
-            workspaceId: ISMS_WORKSPACE_ID,
-            ...withSortOrder(item, idx),
-          })) as any,
+          data: ncaData,
         });
       }
     });

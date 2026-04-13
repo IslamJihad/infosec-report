@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 import prisma from '@/lib/db';
 import { ensureAppSettingsColumns } from '@/lib/db/ensureAppSettingsColumns';
 import { normalizeThemeMode, type ThemeMode } from '@/lib/theme';
@@ -30,9 +30,35 @@ const DEFAULT_SETTINGS: PersistedAppSettings = {
 const ENCRYPTION_PREFIX = 'enc:v1:';
 const ENCRYPTION_SALT = 'infosec-report-app-settings';
 
-let cachedEncryptionKey: Buffer | null | undefined;
+let cachedEncryptionKey: Uint8Array | null | undefined;
 
-function getEncryptionKey(): Buffer | null {
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+function mergeByteArrays(first: Uint8Array, second: Uint8Array): Uint8Array {
+  const merged = new Uint8Array(first.length + second.length);
+  merged.set(first, 0);
+  merged.set(second, first.length);
+  return merged;
+}
+
+function getEncryptionKey(): Uint8Array | null {
   if (cachedEncryptionKey !== undefined) {
     return cachedEncryptionKey;
   }
@@ -55,9 +81,9 @@ function encryptSecretIfEnabled(value: string): string {
 
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', encryptionKey, iv);
-  const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+  const encrypted = mergeByteArrays(new Uint8Array(cipher.update(value, 'utf8')), new Uint8Array(cipher.final()));
   const authTag = cipher.getAuthTag();
-  const payload = Buffer.concat([iv, authTag, encrypted]).toString('base64');
+  const payload = `${bytesToBase64(new Uint8Array(iv))}.${bytesToBase64(new Uint8Array(authTag))}.${bytesToBase64(encrypted)}`;
 
   return `${ENCRYPTION_PREFIX}${payload}`;
 }
@@ -74,19 +100,23 @@ function decryptSecretIfNeeded(value: string): string {
 
   try {
     const encoded = value.slice(ENCRYPTION_PREFIX.length);
-    const payload = Buffer.from(encoded, 'base64');
-    if (payload.length <= 28) {
+    const [ivBase64, authTagBase64, ciphertextBase64] = encoded.split('.');
+    if (!ivBase64 || !authTagBase64 || !ciphertextBase64) {
       return '';
     }
 
-    const iv = payload.subarray(0, 12);
-    const authTag = payload.subarray(12, 28);
-    const ciphertext = payload.subarray(28);
+    const iv = base64ToBytes(ivBase64);
+    const authTag = base64ToBytes(authTagBase64);
+    const ciphertext = base64ToBytes(ciphertextBase64);
 
     const decipher = createDecipheriv('aes-256-gcm', encryptionKey, iv);
     decipher.setAuthTag(authTag);
 
-    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    const plainFirst = new Uint8Array(decipher.update(ciphertext));
+    const plainSecond = new Uint8Array(decipher.final());
+    const plain = mergeByteArrays(plainFirst, plainSecond);
+
+    return new TextDecoder().decode(plain);
   } catch {
     return '';
   }
