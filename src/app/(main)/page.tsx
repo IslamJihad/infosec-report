@@ -113,7 +113,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="bg-gradient-to-l from-navy-950 via-navy-900 to-navy-950 text-white shadow-xl relative overflow-hidden">
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #4a90d9 0%, transparent 50%), radial-gradient(circle at 80% 50%, #1a5298 0%, transparent 50%)' }} />
-        <div className="max-w-7xl mx-auto px-8 py-8 flex items-center justify-between relative z-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 flex flex-wrap items-center justify-between gap-3 relative z-10">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-gradient-to-br from-navy-600 to-navy-800 rounded-2xl flex items-center justify-center text-3xl shadow-lg shadow-navy-900/50">
               🛡️
@@ -123,20 +123,20 @@ export default function DashboardPage() {
               <p className="text-sm opacity-60 mt-1">النسخة الاحترافية – إدارة أمن المعلومات</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <div style={{ direction: 'ltr' }}>
               <AppSwitcher />
             </div>
 
-            <Link href="/analytics" className="bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-200 cursor-pointer flex items-center gap-2 no-underline backdrop-blur-sm">
+            <Link href="/analytics" className="bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl px-4 md:px-5 py-2.5 text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer flex items-center gap-2 no-underline backdrop-blur-sm">
               📈 التحليلات
             </Link>
-            <Link href="/settings" className="bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-200 cursor-pointer flex items-center gap-2 no-underline backdrop-blur-sm">
+            <Link href="/settings" className="bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl px-4 md:px-5 py-2.5 text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer flex items-center gap-2 no-underline backdrop-blur-sm">
               ⚙️ الإعدادات
             </Link>
             <button
               onClick={handleCreate}
-              className="bg-gradient-to-l from-navy-600 to-navy-700 hover:from-navy-500 hover:to-navy-600 text-white border-none rounded-xl px-6 py-2.5 text-sm font-bold transition-all duration-200 cursor-pointer flex items-center gap-2 shadow-lg shadow-navy-900/30 animate-pulse-glow"
+              className="bg-gradient-to-l from-navy-600 to-navy-700 hover:from-navy-500 hover:to-navy-600 text-white border-none rounded-xl px-5 md:px-6 py-2.5 text-xs md:text-sm font-bold transition-all duration-200 cursor-pointer flex items-center gap-2 shadow-lg shadow-navy-900/30 animate-pulse-glow"
             >
               + إنشاء تقرير جديد
             </button>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                       <span>👤 {r.author}</span>
                       <span>🕒 {formatRelativeTimeArabic(r.updatedAt)}</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2">
                       <Link
                         href={`/report/${r.id}`}
                         className="flex-1 bg-gradient-to-l from-navy-800 to-navy-900 text-white border-none rounded-xl py-2.5 text-center text-sm font-bold hover:from-navy-700 hover:to-navy-800 transition-all duration-200 no-underline shadow-sm"
@@ -248,7 +248,7 @@ export default function DashboardPage() {
                       </Link>
                       <button
                         onClick={() => handleDuplicate(r.id)}
-                        className="bg-navy-50 text-navy-800 border border-navy-200 rounded-xl py-2.5 px-3.5 text-sm hover:bg-navy-100 transition-all duration-200 cursor-pointer"
+                        className="w-full md:w-auto bg-navy-50 text-navy-800 border border-navy-200 rounded-xl py-2.5 px-3.5 text-sm hover:bg-navy-100 transition-all duration-200 cursor-pointer"
                         title="نسخ التقرير"
                         aria-label="نسخ التقرير"
                       >
@@ -256,7 +256,7 @@ export default function DashboardPage() {
                       </button>
                       <button
                         onClick={() => setPendingDeleteId(r.id)}
-                        className="bg-red-50 text-danger-500 border border-red-200 rounded-xl py-2.5 px-3.5 text-sm hover:bg-red-100 transition-all duration-200 cursor-pointer"
+                        className="w-full md:w-auto bg-red-50 text-danger-500 border border-red-200 rounded-xl py-2.5 px-3.5 text-sm hover:bg-red-100 transition-all duration-200 cursor-pointer"
                         title="حذف التقرير"
                         aria-label="حذف التقرير"
                       >

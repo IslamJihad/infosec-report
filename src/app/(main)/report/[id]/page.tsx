@@ -34,6 +34,7 @@ const FORM_SECTIONS = [
 const MAX_STEP = FORM_SECTIONS.length - 1;
 const SEARCH_PAGE_SIZE = 40;
 const SEARCH_DEBOUNCE_MS = 220;
+const SEARCH_HINT_STORAGE_KEY = 'report-editor-search-hint-dismissed-v1';
 
 function clampStep(step: number): number {
   return Math.max(0, Math.min(MAX_STEP, step));
@@ -80,7 +81,9 @@ export default function ReportEditorPage() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE_SIZE);
   const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
+  const [searchHintVisible, setSearchHintVisible] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [previewValidationError, setPreviewValidationError] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { report, setReport, currentStep, setStep, isDirty, setSaving, setLastSaved, setDirty } = useReportStore();
@@ -94,6 +97,15 @@ export default function ReportEditorPage() {
     const timer = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    try {
+      const dismissed = window.localStorage.getItem(SEARCH_HINT_STORAGE_KEY) === '1';
+      setSearchHintVisible(!dismissed);
+    } catch {
+      setSearchHintVisible(true);
+    }
+  }, []);
 
   useEffect(() => {
     setSearchLimit(SEARCH_PAGE_SIZE);
@@ -112,6 +124,7 @@ export default function ReportEditorPage() {
       if (isEditable) return;
 
       event.preventDefault();
+      setSearchHintVisible(false);
       setSearchOpen(true);
     };
 
@@ -136,6 +149,18 @@ export default function ReportEditorPage() {
     [searchIndex, debouncedSearchQuery, searchLimit],
   );
   const searchResults = searchPage.results;
+
+  const dismissSearchHint = useCallback((persist = false) => {
+    setSearchHintVisible(false);
+
+    if (!persist) return;
+
+    try {
+      window.localStorage.setItem(SEARCH_HINT_STORAGE_KEY, '1');
+    } catch {
+      // Ignore storage failures; this hint is optional.
+    }
+  }, []);
 
   const syncStepToUrl = useCallback(
     (step: number) => {
@@ -273,6 +298,19 @@ export default function ReportEditorPage() {
     return () => window.clearInterval(timer);
   }, [pendingTargetId, currentStep, highlightTarget]);
 
+  const handlePreview = useCallback(() => {
+    if (!report) return;
+
+    const missing = getMissingCoreFieldLabels(report);
+    if (missing.length > 0) {
+      setPreviewValidationError(`لا يمكن إنشاء المعاينة قبل إكمال: ${missing.join('، ')}`);
+      return;
+    }
+
+    setPreviewValidationError(null);
+    void saveThenNavigate(`/report/${id}/preview`);
+  }, [id, report, saveThenNavigate]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
@@ -288,6 +326,7 @@ export default function ReportEditorPage() {
 
   const CurrentForm = FORM_SECTIONS[currentStep];
   const missingCoreFields = getMissingCoreFieldLabels(report);
+  const activePreviewValidationError = missingCoreFields.length > 0 ? previewValidationError : null;
 
   return (
     <div className="min-h-screen [background:var(--page-main-bg)] flex" dir="rtl">
@@ -296,9 +335,7 @@ export default function ReportEditorPage() {
         <TopBar
           currentStep={currentStep}
           onStepChange={navigateToStep}
-          onPreview={() => {
-            void saveThenNavigate(`/report/${id}/preview`);
-          }}
+          onPreview={handlePreview}
           onAIReview={() => setShowAI(true)}
           onGoHome={() => {
             void saveThenNavigate('/');
@@ -309,7 +346,10 @@ export default function ReportEditorPage() {
             results: searchResults,
             totalResults: searchPage.total,
             hasMore: searchPage.hasMore,
-            onToggle: () => setSearchOpen((prev) => !prev),
+            onToggle: () => {
+              dismissSearchHint(true);
+              setSearchOpen((prev) => !prev);
+            },
             onClose: () => setSearchOpen(false),
             onQueryChange: setSearchQuery,
             onLoadMore: () => setSearchLimit((prev) => prev + SEARCH_PAGE_SIZE),
@@ -317,6 +357,29 @@ export default function ReportEditorPage() {
           }}
         />
         <div className="flex-1 overflow-y-auto p-6 pb-10">
+          {searchHintVisible && !searchOpen && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+              <span>💡 يمكنك البحث داخل التقرير بسرعة عبر زر البحث أو بالضغط على /</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    dismissSearchHint(true);
+                    setSearchOpen(true);
+                  }}
+                  className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-900 transition-colors hover:bg-blue-100"
+                >
+                  فتح البحث
+                </button>
+                <button
+                  onClick={() => dismissSearchHint(true)}
+                  className="rounded-lg border border-blue-200 bg-transparent px-3 py-1.5 text-xs font-bold text-blue-900 transition-colors hover:bg-blue-100"
+                >
+                  إخفاء
+                </button>
+              </div>
+            </div>
+          )}
+
           {saveError && (
             <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger-700">
               <span>⚠️ {saveError}</span>
@@ -328,6 +391,12 @@ export default function ReportEditorPage() {
               >
                 إعادة المحاولة
               </button>
+            </div>
+          )}
+
+          {activePreviewValidationError && (
+            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger-700" role="alert">
+              ⚠️ {activePreviewValidationError}
             </div>
           )}
 
