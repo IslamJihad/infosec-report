@@ -313,9 +313,9 @@ export default function ReportEditorPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
+      <div className="min-h-screen flex items-center justify-center [background:var(--page-main-bg)]">
         <div className="text-center">
-          <div className="text-4xl animate-spin inline-block mb-3">⚙️</div>
+          <div className="mx-auto w-12 h-12 rounded-full border-4 border-[color:var(--color-border)] border-t-navy-600 animate-spin mb-3" />
           <p className="text-text-muted text-sm">جاري تحميل التقرير...</p>
         </div>
       </div>
@@ -358,7 +358,7 @@ export default function ReportEditorPage() {
         />
         <div className="flex-1 overflow-y-auto p-6 pb-10">
           {searchHintVisible && !searchOpen && (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-navy-200 bg-navy-100 px-4 py-3 text-sm text-navy-800">
               <span>💡 يمكنك البحث داخل التقرير بسرعة عبر زر البحث أو بالضغط على /</span>
               <div className="flex items-center gap-2">
                 <button
@@ -366,13 +366,13 @@ export default function ReportEditorPage() {
                     dismissSearchHint(true);
                     setSearchOpen(true);
                   }}
-                  className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-900 transition-colors hover:bg-blue-100"
+                  className="rounded-lg border border-navy-200 bg-[color:var(--surface-elevated)] px-3 py-1.5 text-xs font-bold text-navy-800 transition-colors hover:bg-navy-50"
                 >
                   فتح البحث
                 </button>
                 <button
                   onClick={() => dismissSearchHint(true)}
-                  className="rounded-lg border border-blue-200 bg-transparent px-3 py-1.5 text-xs font-bold text-blue-900 transition-colors hover:bg-blue-100"
+                  className="rounded-lg border border-navy-200 bg-transparent px-3 py-1.5 text-xs font-bold text-navy-800 transition-colors hover:bg-navy-50"
                 >
                   إخفاء
                 </button>
@@ -381,13 +381,13 @@ export default function ReportEditorPage() {
           )}
 
           {saveError && (
-            <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger-700">
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-danger-500/30 bg-danger-100 px-4 py-3 text-sm text-danger-700">
               <span>⚠️ {saveError}</span>
               <button
                 onClick={() => {
                   void doSave();
                 }}
-                className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-danger-700 transition-colors hover:bg-red-100"
+                className="rounded-lg border border-danger-500/30 bg-[color:var(--surface-elevated)] px-3 py-1.5 text-xs font-bold text-danger-700 transition-colors hover:brightness-95"
               >
                 إعادة المحاولة
               </button>
@@ -395,13 +395,13 @@ export default function ReportEditorPage() {
           )}
 
           {activePreviewValidationError && (
-            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger-700" role="alert">
+            <div className="mb-4 rounded-2xl border border-danger-500/30 bg-danger-100 px-4 py-3 text-sm text-danger-700" role="alert">
               ⚠️ {activePreviewValidationError}
             </div>
           )}
 
           {missingCoreFields.length > 0 && (
-            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="mb-4 rounded-2xl border border-warning-500/30 bg-warning-100 px-4 py-3 text-sm text-warning-700">
               ⚠️ الحقول الأساسية الناقصة: {missingCoreFields.join('، ')}
             </div>
           )}

@@ -181,8 +181,8 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
-        <div className="text-3xl animate-spin">⚙️</div>
+      <div className="min-h-screen flex items-center justify-center [background:var(--page-main-bg)]">
+        <div className="w-12 h-12 rounded-full border-4 border-[color:var(--color-border)] border-t-navy-600 animate-spin" />
       </div>
     );
   }

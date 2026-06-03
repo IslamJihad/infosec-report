@@ -682,6 +682,10 @@
   animation: slideInRight 0.3s ease-out;
 }
 
+.animate-pulse-glow {
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
 .search-highlight-pulse {
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -693,6 +697,26 @@
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted) 25%,
+    var(--color-border) 37%,
+    var(--surface-muted) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .animate-fadeIn,
+  .animate-slideIn,
+  .animate-pulse-glow {
+    animation: none !important;
+  }
 }
 
 @media print {

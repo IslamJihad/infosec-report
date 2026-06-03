@@ -18,6 +18,7 @@ import {
   YAxis,
 } from 'recharts';
 import { fetchAnalytics, generateAnalyticsSummary } from '@/lib/api';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 import { formatArabicDate, getDeltaInfo, PRIORITY_MAP, SEVERITY_MAP, STATUS_MAP } from '@/lib/constants';
 import type {
   AnalyticsAISummaryResponse,
@@ -45,9 +46,9 @@ const GROUP_BY_LABELS: Record<AnalyticsGroupBy, string> = {
 };
 
 const INSIGHT_STYLES = {
-  alert: 'bg-danger-100 border-red-200 text-danger-700',
-  info: 'bg-blue-50 border-blue-200 text-blue-900',
-  success: 'bg-green-50 border-green-200 text-green-800',
+  alert: 'bg-danger-100 border-danger-500/30 text-danger-700',
+  info: 'bg-navy-100 border-navy-200 text-navy-800',
+  success: 'bg-success-100 border-success-500/30 text-success-700',
 } as const;
 
 const AUDIENCE_LABELS: Record<AnalyticsSummaryAudience, string> = {
@@ -196,17 +197,21 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#e8edf4] via-[#dce4f0] to-[#c8d6e8]">
-      <header className="bg-gradient-to-l from-navy-950 via-navy-900 to-navy-950 text-white shadow-xl">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 py-7 flex items-center justify-between gap-4">
+    <div className="min-h-screen [background:var(--page-main-bg)] animate-fadeIn">
+      <header className="bg-gradient-to-l from-navy-950 via-navy-900 to-navy-950 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-l from-transparent via-navy-500/40 to-transparent" />
+        <div className="max-w-7xl mx-auto px-6 md:px-8 py-7 flex items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-navy-600 to-navy-800 rounded-2xl flex items-center justify-center text-2xl shadow-lg">📈</div>
+            <div className="w-12 h-12 bg-gradient-to-br from-navy-600 to-navy-800 rounded-2xl flex items-center justify-center text-2xl shadow-lg ring-1 ring-white/10">📈</div>
             <div>
               <h1 className="text-xl md:text-2xl font-[900]">لوحة التحليلات الأمنية</h1>
               <p className="text-sm opacity-60 mt-0.5">تحليل شامل لمحفظة تقارير أمن المعلومات</p>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
+            <div style={{ direction: 'ltr' }}>
+              <ThemeToggle compact />
+            </div>
             <Link href="/" className="bg-white/10 hover:bg-white/20 text-white rounded-xl px-4 py-2 text-sm font-bold no-underline transition-colors">
               ← لوحة التقارير
             </Link>
@@ -309,7 +314,7 @@ export default function AnalyticsPage() {
             </button>
             <button
               onClick={resetFilters}
-              className="bg-gray-100 text-text-secondary rounded-xl px-4 py-2.5 text-sm font-bold border border-gray-200 cursor-pointer"
+              className="bg-[color:var(--surface-muted)] text-text-secondary rounded-xl px-4 py-2.5 text-sm font-bold border border-border cursor-pointer hover:bg-[color:var(--button-soft-hover)] transition-colors"
             >
               إعادة ضبط
             </button>
@@ -369,7 +374,7 @@ export default function AnalyticsPage() {
 
           {aiSummaryLoading ? (
             <div className="mt-4 bg-surface rounded-xl border border-border/50 p-6 text-center">
-              <div className="text-3xl animate-spin inline-block">⚙️</div>
+              <div className="mx-auto w-8 h-8 rounded-full border-[3px] border-[color:var(--color-border)] border-t-navy-600 animate-spin" />
               <p className="text-sm text-text-muted mt-2">جاري إنتاج الملخص الذكي...</p>
             </div>
           ) : null}
@@ -420,41 +425,31 @@ export default function AnalyticsPage() {
         </section>
 
         {loading ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-border/60 shadow-md">
-            <div className="text-5xl animate-spin inline-block mb-3">⚙️</div>
+          <div className="text-center py-20 bg-[color:var(--surface-elevated)] rounded-2xl border border-border/60 shadow-md">
+            <div className="mx-auto w-12 h-12 rounded-full border-4 border-[color:var(--color-border)] border-t-navy-600 animate-spin mb-3" />
             <p className="text-text-muted">جاري تحميل التحليلات...</p>
           </div>
         ) : error ? (
-          <div className="bg-danger-100 text-danger-700 border border-red-200 rounded-2xl p-5 font-bold">
+          <div className="bg-danger-100 text-danger-700 border border-danger-500/30 rounded-2xl p-5 font-bold">
             {error}
           </div>
         ) : !analytics ? (
-          <div className="bg-white border border-border rounded-2xl p-6 text-text-muted">لا توجد بيانات متاحة.</div>
+          <div className="bg-[color:var(--surface-elevated)] border border-border rounded-2xl p-6 text-text-muted">لا توجد بيانات متاحة.</div>
         ) : (
           <>
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-border/60 p-5 shadow-md">
-                <div className="text-xs text-text-secondary font-bold">إجمالي التقارير</div>
-                <div className="text-3xl font-[900] text-navy-900 mt-2">{formatArabicNumber(analytics.summary.totalReports)}</div>
-              </div>
-              <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl border border-border/60 p-5 shadow-md">
-                <div className="text-xs text-text-secondary font-bold">متوسط درجة الأمن</div>
-                <div className="text-3xl font-[900] text-success-700 mt-2">{formatArabicNumber(analytics.summary.avgSecurityScore)} / 100</div>
-              </div>
-              <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl border border-border/60 p-5 shadow-md">
-                <div className="text-xs text-text-secondary font-bold">المخاطر المفتوحة</div>
-                <div className="text-3xl font-[900] text-danger-700 mt-2">{formatArabicNumber(analytics.summary.openRisks)}</div>
-                <div className="text-xs text-text-muted mt-2">من أصل {formatArabicNumber(analytics.summary.totalRisks)} مخاطر</div>
-              </div>
-              <div className="bg-gradient-to-br from-amber-50 to-white rounded-2xl border border-border/60 p-5 shadow-md">
-                <div className="text-xs text-text-secondary font-bold">تغطية ISO الإجمالية</div>
-                <div className="text-3xl font-[900] text-warning-700 mt-2">{formatArabicNumber(analytics.overallIsoCoverage)}%</div>
-                {complianceDelta && (
-                  <div className={`inline-flex mt-2 px-2.5 py-1 rounded-lg text-xs font-bold ${complianceDelta.colorClass}`}>
-                    {complianceDelta.arrow} {formatArabicNumber(complianceDelta.delta)}
-                  </div>
-                )}
-              </div>
+              {[
+                { label: 'إجمالي التقارير', accent: 'var(--color-navy-600)', node: <div className="text-3xl font-[900] text-navy-900 mt-2">{formatArabicNumber(analytics.summary.totalReports)}</div> },
+                { label: 'متوسط درجة الأمن', accent: 'var(--color-success-500)', node: <div className="text-3xl font-[900] text-success-700 mt-2">{formatArabicNumber(analytics.summary.avgSecurityScore)} / 100</div> },
+                { label: 'المخاطر المفتوحة', accent: 'var(--color-danger-500)', node: <><div className="text-3xl font-[900] text-danger-700 mt-2">{formatArabicNumber(analytics.summary.openRisks)}</div><div className="text-xs text-text-muted mt-2">من أصل {formatArabicNumber(analytics.summary.totalRisks)} مخاطر</div></> },
+                { label: 'تغطية ISO الإجمالية', accent: 'var(--color-warning-500)', node: <><div className="text-3xl font-[900] text-warning-700 mt-2">{formatArabicNumber(analytics.overallIsoCoverage)}%</div>{complianceDelta && (<div className={`inline-flex mt-2 px-2.5 py-1 rounded-lg text-xs font-bold ${complianceDelta.colorClass}`}>{complianceDelta.arrow} {formatArabicNumber(complianceDelta.delta)}</div>)}</> },
+              ].map((card) => (
+                <div key={card.label} className="relative bg-[color:var(--surface-elevated)] rounded-2xl border border-border/60 p-5 shadow-md overflow-hidden">
+                  <span className="absolute inset-y-0 right-0 w-1.5" style={{ background: card.accent }} aria-hidden="true" />
+                  <div className="text-xs text-text-secondary font-bold">{card.label}</div>
+                  {card.node}
+                </div>
+              ))}
             </section>
 
             <section className="grid grid-cols-1 xl:grid-cols-2 gap-5">
@@ -463,10 +458,10 @@ export default function AnalyticsPage() {
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e6ebf5" />
-                      <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                      <Tooltip />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} interval="preserveStartEnd" />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
+                      <Tooltip contentStyle={{ background: 'var(--surface-elevated)', border: '1px solid var(--color-border)', borderRadius: 12, color: 'var(--color-text-primary)' }} />
                       <Line type="monotone" dataKey="securityScore" stroke="#1a5298" strokeWidth={3} dot={{ r: 4 }} name="درجة الأمن" />
                       <Line type="monotone" dataKey="compliance" stroke="#1b5e20" strokeWidth={2} dot={{ r: 3 }} name="الامتثال" />
                     </LineChart>
@@ -494,7 +489,7 @@ export default function AnalyticsPage() {
                             <Cell key={entry.severity} fill={entry.fill} />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip contentStyle={{ background: 'var(--surface-elevated)', border: '1px solid var(--color-border)', borderRadius: 12, color: 'var(--color-text-primary)' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -655,9 +650,9 @@ export default function AnalyticsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={riskChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e6ebf5" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: 'var(--color-text-muted)' }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'var(--color-text-muted)' }} />
+                    <Tooltip contentStyle={{ background: 'var(--surface-elevated)', border: '1px solid var(--color-border)', borderRadius: 12, color: 'var(--color-text-primary)' }} cursor={{ fill: 'var(--surface-muted)' }} />
                     <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                       {riskChartData.map((item) => (
                         <Cell key={`bar-${item.severity}`} fill={item.fill} />
@@ -691,7 +686,7 @@ export default function AnalyticsPage() {
         )}
 
         {!loading && !error && analytics?.trend.length === 0 && (
-          <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-2xl p-4">
+          <div className="bg-warning-100 text-warning-700 border border-warning-500/30 rounded-2xl p-4">
             لا توجد تقارير ضمن النطاق المحدد. جرّب توسيع التاريخ أو زيادة عدد التقارير.
           </div>
         )}
